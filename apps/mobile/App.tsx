@@ -5,7 +5,7 @@ import {
 } from "react-native";
 import {
   ArrowRight, ArrowLeft, Globe2, ShieldCheck, Sparkles, UserRound,
-  LockKeyhole, Mail, Phone, Check, ChevronDown, Users, PlayCircle, Radio,
+  LockKeyhole, Mail, Phone, Check, ChevronDown, Eye, EyeOff, Users, PlayCircle, Radio,
   MessageCircle, ShoppingBag, Newspaper, GraduationCap, Cpu, WalletCards,
   Plane, BriefcaseBusiness, Clapperboard, BookOpen, Coins, Shield, Headphones
 } from "lucide-react-native";
@@ -36,15 +36,15 @@ const services = [
 const copy = {
   OM: {
     tagline:"Waan hunda bakka tokkotti.", intro:"Eenummaa dijitaalaa kee tokkoon tajaajiloota hedduu fayyadami.",
-    create:"Ethio ID Uumi", signin:"Seeni", already:"Herrega qabdaa?", start:"Jalqabi", full:"Maqaa guutuu", phone:"Lakkoofsa bilbilaa", email:"Imeelii", password:"Jecha icciitii", country:"Biyya", countryValue:"Itoophiyaa", region:"Naannoo", city:"Magaalaa", username:"Maqaa fayyadamaa", terms:"Haala itti fayyadamaa fi imaammata iccitii nan fudhadha.", continue:"Itti fufi", back:"Duubatti", secure:"Eenummaa kee nageenyaan eegi", subtitle:"Ethio ID kee uumi; tajaajiloota 16 hundaaf furtuu tokko.", loginTitle:"Baga nagaan deebite", loginSub:"Ethio ID kee fayyadamuun seeni.", preview:"Agarsiisa UI qofa — galmeen ammaa hin raawwatamu.", language:"Afaan"
+    create:"Ethio ID Uumi", signin:"Seeni", already:"Herrega qabdaa?", start:"Jalqabi", full:"Maqaa guutuu", phone:"Lakkoofsa bilbilaa", email:"Imeelii", password:"Jecha icciitii", country:"Biyya", countryValue:"Itoophiyaa", region:"Naannoo", city:"Magaalaa", username:"Maqaa fayyadamaa", terms:"Haala itti fayyadamaa fi imaammata iccitii nan fudhadha.", continue:"Itti fufi", back:"Duubatti", secure:"Eenummaa kee nageenyaan eegi", subtitle:"Ethio ID kee uumi; tajaajiloota 16 hundaaf furtuu tokko.", loginTitle:"Baga nagaan deebite", loginSub:"Ethio ID kee fayyadamuun seeni.", preview:"Agarsiisa UI qofa — galmeen ammaa hin raawwatamu.", language:"Afaan", show:"Mul'isi", hide:"Dhoksii"
   },
   AM: {
     tagline:"ሁሉም ነገር በአንድ ቦታ።", intro:"በአንድ ዲጂታል መለያ ብዙ አገልግሎቶችን ይጠቀሙ።",
-    create:"Ethio ID ፍጠር", signin:"ግባ", already:"መለያ አለዎት?", start:"ጀምር", full:"ሙሉ ስም", phone:"ስልክ ቁጥር", email:"ኢሜይል", password:"የይለፍ ቃል", country:"አገር", countryValue:"ኢትዮጵያ", region:"ክልል", city:"ከተማ", username:"የተጠቃሚ ስም", terms:"የአጠቃቀም ውሎችን እና የግላዊነት ፖሊሲን እቀበላለሁ።", continue:"ቀጥል", back:"ተመለስ", secure:"መለያዎን በደህና ይጠብቁ", subtitle:"Ethio ID ይፍጠሩ፤ ለ16 አገልግሎቶች አንድ ቁልፍ።", loginTitle:"እንኳን ደህና መጡ", loginSub:"በEthio ID ይግቡ።", preview:"የUI ቅድመ እይታ ብቻ — ምዝገባ አልተፈጸመም።", language:"ቋንቋ"
+    create:"Ethio ID ፍጠር", signin:"ግባ", already:"መለያ አለዎት?", start:"ጀምር", full:"ሙሉ ስም", phone:"ስልክ ቁጥር", email:"ኢሜይል", password:"የይለፍ ቃል", country:"አገር", countryValue:"ኢትዮጵያ", region:"ክልል", city:"ከተማ", username:"የተጠቃሚ ስም", terms:"የአጠቃቀም ውሎችን እና የግላዊነት ፖሊሲን እቀበላለሁ።", continue:"ቀጥል", back:"ተመለስ", secure:"መለያዎን በደህና ይጠብቁ", subtitle:"Ethio ID ይፍጠሩ፤ ለ16 አገልግሎቶች አንድ ቁልፍ።", loginTitle:"እንኳን ደህና መጡ", loginSub:"በEthio ID ይግቡ።", preview:"የUI ቅድመ እይታ ብቻ — ምዝገባ አልተፈጸመም።", language:"ቋንቋ", show:"አሳይ", hide:"ደብቅ"
   },
   EN: {
     tagline:"Everything. In one place.", intro:"One digital identity. A world of Ethiopian services.",
-    create:"Create Ethio ID", signin:"Sign in", already:"Already have an account?", start:"Get started", full:"Full name", phone:"Phone number", email:"Email address", password:"Password", country:"Country", countryValue:"Ethiopia", region:"Region", city:"City", username:"Username", terms:"I agree to the Terms of Service and Privacy Policy.", continue:"Continue", back:"Back", secure:"Your identity, protected", subtitle:"Create your Ethio ID — one key to 16 connected services.", loginTitle:"Welcome back", loginSub:"Sign in with your Ethio ID.", preview:"UI preview only — account creation is not connected yet.", language:"Language"
+    create:"Create Ethio ID", signin:"Sign in", already:"Already have an account?", start:"Get started", full:"Full name", phone:"Phone number", email:"Email address", password:"Password", country:"Country", countryValue:"Ethiopia", region:"Region", city:"City", username:"Username", terms:"I agree to the Terms of Service and Privacy Policy.", continue:"Continue", back:"Back", secure:"Your identity, protected", subtitle:"Create your Ethio ID — one key to 16 connected services.", loginTitle:"Welcome back", loginSub:"Sign in with your Ethio ID.", preview:"UI preview only — account creation is not connected yet.", language:"Language", show:"Show", hide:"Hide"
   }
 };
 
@@ -100,7 +100,7 @@ export default function App() {
             <Field label={t.phone} icon={Phone} value={form.phone} onChangeText={(v:string)=>set("phone",v)} keyboardType="phone-pad"/>
             <Field label={t.email} icon={Mail} value={form.email} onChangeText={(v:string)=>set("email",v)} keyboardType="email-address"/>
             <Field label={t.username} icon={UserRound} value={form.username} onChangeText={(v:string)=>set("username",v)}/>
-            <Field label={t.password} icon={LockKeyhole} value={form.password} onChangeText={(v:string)=>set("password",v)} secureTextEntry={!showPassword}/>
+            <Field label={t.password} icon={LockKeyhole} value={form.password} onChangeText={(v:string)=>set("password",v)} secureTextEntry={!showPassword} trailing={<Pressable onPress={()=>setShowPassword(v=>!v)} accessibilityRole="button" accessibilityLabel={showPassword?t.hide:t.show} hitSlop={10}><View style={s.passwordToggle}><Eye size={17} color={C.muted}/><Text style={s.passwordToggleText}>{showPassword?t.hide:t.show}</Text></View></Pressable>}/>
             <Field label={t.region} icon={Globe2} value={form.region} onChangeText={(v:string)=>set("region",v)}/>
             <Field label={t.city} icon={Globe2} value={form.city} onChangeText={(v:string)=>set("city",v)}/>
             <Pressable style={s.termsRow} onPress={()=>setAccepted(v=>!v)}><View style={[s.checkbox,accepted&&s.checkboxOn]}>{accepted&&<Check size={13} color={C.white}/>}</View><Text style={s.termsText}>{t.terms}</Text></Pressable>
@@ -130,6 +130,6 @@ const s = StyleSheet.create({
   welcomeActions:{marginTop:22,gap:11},primary:{minHeight:56,borderRadius:17,backgroundColor:C.gold,flexDirection:"row",alignItems:"center",justifyContent:"center",gap:12},primaryText:{fontSize:15,fontWeight:"900",color:C.navy2},secondary:{height:52,borderRadius:16,borderWidth:1.5,borderColor:C.navy,alignItems:"center",justifyContent:"center",backgroundColor:C.white},secondaryText:{fontSize:15,fontWeight:"800",color:C.navy},bottomPrompt:{textAlign:"center",fontSize:12,color:C.muted,marginTop:4},inlineLink:{fontWeight:"900",color:C.navy},
   trust:{flexDirection:"row",alignItems:"center",justifyContent:"center",gap:8,marginTop:22},trustText:{fontSize:11,fontWeight:"700",color:C.muted},footer:{textAlign:"center",fontSize:9,fontWeight:"800",letterSpacing:2,color:"#A0AABA",marginTop:26},
   back:{flexDirection:"row",alignItems:"center",gap:8,marginTop:18},backText:{fontSize:13,fontWeight:"700",color:C.navy},formHeading:{marginTop:24,marginBottom:22},formBadge:{width:48,height:48,borderRadius:16,backgroundColor:C.navy,alignItems:"center",justifyContent:"center",marginBottom:14},formTitle:{fontSize:27,fontWeight:"900",color:C.ink},formSub:{fontSize:13,lineHeight:20,color:C.muted,marginTop:6},
-  field:{marginBottom:14},label:{fontSize:12,fontWeight:"800",color:C.ink,marginBottom:7},inputWrap:{height:52,borderRadius:14,borderWidth:1,borderColor:C.line,backgroundColor:C.white,flexDirection:"row",alignItems:"center",paddingHorizontal:14,gap:10},input:{flex:1,fontSize:14,color:C.ink,paddingVertical:0},
+  field:{marginBottom:14},label:{fontSize:12,fontWeight:"800",color:C.ink,marginBottom:7},inputWrap:{height:52,borderRadius:14,borderWidth:1,borderColor:C.line,backgroundColor:C.white,flexDirection:"row",alignItems:"center",paddingHorizontal:14,gap:10},input:{flex:1,fontSize:14,color:C.ink,paddingVertical:0},passwordToggle:{flexDirection:"row",alignItems:"center",gap:4},passwordToggleText:{fontSize:10,fontWeight:"800",color:C.navy},
   termsRow:{flexDirection:"row",alignItems:"center",gap:10,marginVertical:12},checkbox:{width:21,height:21,borderRadius:6,borderWidth:1.5,borderColor:"#B8C2D0",alignItems:"center",justifyContent:"center"},checkboxOn:{backgroundColor:C.navy,borderColor:C.navy},termsText:{flex:1,fontSize:11,lineHeight:17,color:C.muted},previewNote:{fontSize:11,lineHeight:17,color:C.muted,textAlign:"center",marginTop:14}
 });
