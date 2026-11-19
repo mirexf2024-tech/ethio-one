@@ -24,3 +24,18 @@ test("language switch and accessible label are present", () => {
   assert.match(html, /setLanguage\(currentLanguage\)/);
   assert.match(html, /order = \["OM","AM","EN"\]/);
 });
+
+
+test("keyboard users can skip to the main content", () => {
+  assert.match(html, /class="skip-link" href="#mainContent"/);
+  assert.match(html, /<main id="mainContent">/);
+  assert.match(html, /:focus-visible/);
+});
+
+test("reduced-motion preferences are respected", () => {
+  assert.match(html, /prefers-reduced-motion:reduce/);
+});
+
+test("brand artwork has an accessible image role and label", () => {
+  assert.match(html, /role="img" aria-label="Ethio One E1 brand artwork"/);
+});
