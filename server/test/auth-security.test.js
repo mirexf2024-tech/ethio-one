@@ -19,7 +19,7 @@ test("password hashes are salted, verifiable, and never equal plaintext", async 
   assert.equal(await security.verifyPassword("correct horse battery staple", first), true);
   assert.equal(await security.verifyPassword("wrong password", first), false);
   assert.equal(await security.verifyPassword("correct horse battery staple", "invalid"), false);
-  await assert.rejects(security.hashPassword("short"), /between 8 and 128/);
+  await assert.rejects(security.hashPassword("short"), /8-128 characters/);
 });
 
 test("OTP generation and challenge digests are secure and configuration-gated", () => {
