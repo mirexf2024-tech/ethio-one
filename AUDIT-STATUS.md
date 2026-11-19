@@ -17,7 +17,7 @@ Scope: Ethio One only. Legacy Ethio Call repositories and databases are out of s
 - Neon database connection was successfully queried using the application role. Database: `ethio_one`.
 - Database currently reports 16 platform modules, all with status `planned`.
 - Live database migration ledger currently shows `001_initial` and `002_identity_foundation`; `003_identity_hardening` has not been applied to the live database.
-- Migration `003_identity_hardening` was reviewed and successfully tested on a temporary Neon branch. It allows email-or-phone contact, defaults new accounts to `pending_verification`, and adds email/phone verification timestamps plus a terms version. The live `users` table is empty. Production application is awaiting explicit approval.
+- Migration `003_identity_hardening` was reviewed and successfully tested on a temporary Neon branch. It allows email-or-phone contact, defaults new accounts to `pending_verification`, and adds email/phone verification timestamps plus a terms version. The live `users` table is empty. A phone-only test insert on the temporary branch confirmed `pending_verification` as the default and a NULL email with the phone retained; the temporary test row was deleted. Production application is awaiting explicit approval.
 - Database currently contains 0 user rows. No real account registration has been performed.
 
 ## Changes verified in this audit cycle
