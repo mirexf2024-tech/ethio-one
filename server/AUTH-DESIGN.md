@@ -63,6 +63,6 @@ These routes must not be exposed until delivery, secret storage, database migrat
 
 ## External provider dependencies still required
 - The product decision is set: both email OTP and SMS OTP must be supported.
-- Select/configure one email delivery provider and one SMS delivery provider (or a verified provider that supports both channels).
-- Keep provider credentials in Render secrets; never place them in source code or mobile builds.
+- Selected adapters: Resend for email and SMSHub for Ethiopian SMS. Resend requires an API key and a verified sender/domain for production delivery. SMSHub's published API documentation states that API sending is unlocked after account identity/KYC approval; confirm the account is approved before attempting live sends.
+- Provider adapter modules are in `server/providers/`. Configure `RESEND_API_KEY`, `RESEND_FROM`, and `SMSHUB_API_KEY` only in Render secret environment settings; never place them in source code or mobile builds. The adapters are not yet connected to public auth routes.
 - Do not send real OTPs or enable account creation until both required delivery paths are configured and end-to-end delivery is verified.
