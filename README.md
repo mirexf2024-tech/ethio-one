@@ -8,6 +8,7 @@
 - `server/` — Node.js API foundation and PostgreSQL schema.
 - `apps/mobile/` — Expo / React Native Android and iOS application.
 - `.github/workflows/mobile-ci.yml` — mobile dependency and TypeScript validation.
+- `.github/workflows/api-ci.yml` — API syntax and integration tests.
 
 ## Mobile app setup
 
@@ -26,7 +27,7 @@ npx eas-cli build --platform android --profile preview
 
 ## Current implementation status
 
-The API foundation, PostgreSQL module registry and initial mobile welcome / Ethio ID screens are in place. The mobile registration and sign-in screens are UI previews only. Authentication, OTP, identity verification, wallet operations and the 16 service modules must be implemented and tested before production use.
+The API foundation, PostgreSQL module registry, multilingual public landing page, and initial mobile welcome / Ethio ID screens are in place. API health and safe degraded-mode integration tests run in CI. The mobile registration and sign-in screens are UI previews only. Authentication, OTP, identity verification, wallet operations and the 16 service modules must be implemented and tested before production use.
 
 ## Safety
 
