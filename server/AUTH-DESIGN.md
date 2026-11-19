@@ -25,12 +25,12 @@ Status: design only. No registration or sign-in endpoint is enabled by this docu
 These routes must not be exposed until delivery, secret storage, database migrations, and integration tests are ready.
 
 ## Data and credential handling
-- Store passwords only as Argon2id hashes (bcrypt is an acceptable fallback if Argon2id is unavailable).
-- Store OTP/reset challenge digests, never plaintext codes. Use a cryptographically secure random generator, one-time use, short expiry, attempt limits, and invalidation after success.
+- Store passwords only as Argon2id hashes; bcrypt is the approved fallback. The current security helper uses bcryptjs with cost factor 12 and rejects passwords over bcrypt's 72-byte input limit. Never store plaintext passwords.
+- Store OTP/reset challenge digests, never plaintext codes. The security helper creates cryptographically random six-digit codes and HMAC-SHA256 challenge digests using a separately configured `AUTH_CHALLENGE_PEPPER` (minimum 32 characters). Use one-time use, short expiry, attempt limits, and invalidation after success.
 - Bind each challenge to one user, one destination, one purpose, and one channel (`email` or `sms`); never accept a code issued for one channel as proof of another.
 - Normalize phone numbers to E.164 before uniqueness checks. Normalize email consistently before storage and comparison.
 - Do not log passwords, OTPs, authorization headers, refresh tokens, full contact details, or identity documents.
-- Keep refresh tokens hashed at rest, rotate on use, and support revocation by session/device.
+- Keep refresh tokens hashed at rest using SHA-256, rotate on use, and support revocation by session/device. Opaque refresh tokens are generated with a cryptographically secure random generator.
 - Keep secrets only in Render secret environment settings; never commit them or expose them to mobile builds.
 
 ## Abuse and session protections
@@ -64,5 +64,5 @@ These routes must not be exposed until delivery, secret storage, database migrat
 ## External provider dependencies still required
 - The product decision is set: both email OTP and SMS OTP must be supported.
 - Selected adapters: Resend for email and SMSHub for Ethiopian SMS. Resend requires an API key and a verified sender/domain for production delivery. SMSHub's published API documentation states that API sending is unlocked after account identity/KYC approval; confirm the account is approved before attempting live sends.
-- Provider adapter modules are in `server/providers/`. Configure `RESEND_API_KEY`, `RESEND_FROM`, and `SMSHUB_API_KEY` only in Render secret environment settings; never place them in source code or mobile builds. The adapters are not yet connected to public auth routes.
+- Provider adapter modules are in `server/providers/`. Configure `RESEND_API_KEY`, `RESEND_FROM`, `SMSHUB_API_KEY`, and `AUTH_CHALLENGE_PEPPER` only in Render secret environment settings; never place them in source code or mobile builds. Provider adapters and security primitives are tested but are not yet connected to public auth routes.
 - Do not send real OTPs or enable account creation until both required delivery paths are configured and end-to-end delivery is verified.
