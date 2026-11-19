@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#082B59">
-  <meta name="description" content="Ethio One — one identity, many services. A connected digital ecosystem built for Ethiopia.">
+  <meta id="pageDescription" name="description" content="Ethio One — eenyummaa tokko, tajaajiloota hedduu. Waltajjii dijitaalaa Itoophiyaaf ijaaramaa jiru.">
   <title>Ethio One — Waan hunda bakka tokkotti</title>
   <style>
     :root{color-scheme:light;--navy:#082B59;--gold:#D9A928;--ink:#101828;--muted:#667085;--line:#e8edf4}
@@ -103,7 +103,7 @@
       serviceAccess:"Eenyummaa fi nageenya",serviceStudio:"Uumuu fi maxxansuu",serviceReligio:"Amantii fi hawaasa",
       serviceEarn:"Hojii xixiqqaa fi badhaasa",contactTitle:"Egeree dijitaalaa waliin qooddannu as irraa jalqaba.",
       contactTeam:"Garee keenya qunnamaa",footerTagline:"Itoophiyaaf ijaaramaa jira · OM / AM / EN",
-      metaTitle:"Ethio One — Waan hunda bakka tokkotti."
+      metaTitle:"Ethio One — Waan hunda bakka tokkotti.",metaDescription:"Ethio One — eenyummaa tokko, tajaajiloota hedduu. Waltajjii dijitaalaa Itoophiyaaf ijaaramaa jiru."
     },
     AM: {
       navServices:"አገልግሎቶች",navVision:"ራዕያችን",navContact:"ያግኙን",
@@ -122,7 +122,7 @@
       serviceAccess:"ማንነት እና ደህንነት",serviceStudio:"ፍጠር እና አትም",serviceReligio:"እምነት እና ማህበረሰብ",
       serviceEarn:"ተግባራት እና ሽልማቶች",contactTitle:"የጋራ ዲጂታል ወደፊት ከዚህ ይጀምራል።",
       contactTeam:"ቡድኑን ያግኙ",footerTagline:"ለኢትዮጵያ እየተገነባ ነው · OM / AM / EN",
-      metaTitle:"Ethio One — ሁሉም ነገር በአንድ ቦታ።"
+      metaTitle:"Ethio One — ሁሉም ነገር በአንድ ቦታ።",metaDescription:"Ethio One — አንድ መለያ፣ ብዙ አገልግሎቶች። ለኢትዮጵያ የሚገነባ ዲጂታል መድረክ።"
     },
     EN: {
       navServices:"Services",navVision:"Our vision",navContact:"Contact",
@@ -141,7 +141,7 @@
       serviceAccess:"Identity & safety",serviceStudio:"Create & publish",serviceReligio:"Faith & community",
       serviceEarn:"Tasks & rewards",contactTitle:"A shared digital future starts here.",
       contactTeam:"Contact the team",footerTagline:"Built for Ethiopia · OM / AM / EN",
-      metaTitle:"Ethio One — Everything in one place."
+      metaTitle:"Ethio One — Everything in one place.",metaDescription:"Ethio One — one identity, many services. A connected digital ecosystem built for Ethiopia."
     }
   };
   const languageNames = {OM:"Afaan Oromoo",AM:"አማርኛ",EN:"English"};
@@ -152,6 +152,7 @@
     const copy = translations[language];
     document.documentElement.lang = language.toLowerCase();
     document.title = copy.metaTitle;
+    document.getElementById("pageDescription").setAttribute("content", copy.metaDescription);
     document.querySelectorAll("[data-i18n]").forEach((element) => {
       const key = element.getAttribute("data-i18n");
       if (copy[key]) element.textContent = copy[key];
