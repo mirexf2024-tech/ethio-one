@@ -36,15 +36,15 @@ const services = [
 const copy = {
   OM: {
     tagline:"Waan hunda bakka tokkotti.", intro:"Eenummaa dijitaalaa kee tokkoon tajaajiloota hedduu fayyadami.",
-    create:"Ethio ID Uumi", signin:"Seeni", already:"Herrega qabdaa?", start:"Jalqabi", full:"Maqaa guutuu", phone:"Lakkoofsa bilbilaa", email:"Imeelii", password:"Jecha icciitii", country:"Biyya", countryValue:"Itoophiyaa", region:"Naannoo", city:"Magaalaa", username:"Maqaa fayyadamaa", terms:"Haala itti fayyadamaa fi imaammata iccitii nan fudhadha.", continue:"Itti fufi", back:"Duubatti", secure:"Eenummaa kee nageenyaan eegi", subtitle:"Ethio ID kee uumi; tajaajiloota 16 hundaaf furtuu tokko.", loginTitle:"Baga nagaan deebite", loginSub:"Ethio ID kee fayyadamuun seeni.", preview:"Agarsiisa UI qofa — galmeen ammaa hin raawwatamu.", language:"Afaan", show:"Mul'isi", hide:"Dhoksii"
+    create:"Ethio ID Uumi", signin:"Seeni", already:"Herrega qabdaa?", start:"Jalqabi", full:"Maqaa guutuu", phone:"Lakkoofsa bilbilaa", email:"Imeelii", password:"Jecha icciitii", country:"Biyya", countryValue:"Itoophiyaa", region:"Naannoo", city:"Magaalaa", username:"Maqaa fayyadamaa", terms:"Haala itti fayyadamaa fi imaammata iccitii nan fudhadha.", continue:"Itti fufi", back:"Duubatti", secure:"Eenummaa kee nageenyaan eegi", subtitle:"Ethio ID kee uumi; tajaajiloota 16 hundaaf furtuu tokko.", loginTitle:"Baga nagaan deebite", loginSub:"Ethio ID kee fayyadamuun seeni.", preview:"Agarsiisa UI qofa — galmeen ammaa hin raawwatamu.", serviceHeading:"Tajaajiloota walitti hidhaman 16", serviceCaption:"Ethio ID tokko · Waltajjii tokko", language:"Afaan", show:"Mul'isi", hide:"Dhoksii"
   },
   AM: {
     tagline:"ሁሉም ነገር በአንድ ቦታ።", intro:"በአንድ ዲጂታል መለያ ብዙ አገልግሎቶችን ይጠቀሙ።",
-    create:"Ethio ID ፍጠር", signin:"ግባ", already:"መለያ አለዎት?", start:"ጀምር", full:"ሙሉ ስም", phone:"ስልክ ቁጥር", email:"ኢሜይል", password:"የይለፍ ቃል", country:"አገር", countryValue:"ኢትዮጵያ", region:"ክልል", city:"ከተማ", username:"የተጠቃሚ ስም", terms:"የአጠቃቀም ውሎችን እና የግላዊነት ፖሊሲን እቀበላለሁ።", continue:"ቀጥል", back:"ተመለስ", secure:"መለያዎን በደህና ይጠብቁ", subtitle:"Ethio ID ይፍጠሩ፤ ለ16 አገልግሎቶች አንድ ቁልፍ።", loginTitle:"እንኳን ደህና መጡ", loginSub:"በEthio ID ይግቡ።", preview:"የUI ቅድመ እይታ ብቻ — ምዝገባ አልተፈጸመም።", language:"ቋንቋ", show:"አሳይ", hide:"ደብቅ"
+    create:"Ethio ID ፍጠር", signin:"ግባ", already:"መለያ አለዎት?", start:"ጀምር", full:"ሙሉ ስም", phone:"ስልክ ቁጥር", email:"ኢሜይል", password:"የይለፍ ቃል", country:"አገር", countryValue:"ኢትዮጵያ", region:"ክልል", city:"ከተማ", username:"የተጠቃሚ ስም", terms:"የአጠቃቀም ውሎችን እና የግላዊነት ፖሊሲን እቀበላለሁ።", continue:"ቀጥል", back:"ተመለስ", secure:"መለያዎን በደህና ይጠብቁ", subtitle:"Ethio ID ይፍጠሩ፤ ለ16 አገልግሎቶች አንድ ቁልፍ።", loginTitle:"እንኳን ደህና መጡ", loginSub:"በEthio ID ይግቡ።", preview:"የUI ቅድመ እይታ ብቻ — ምዝገባ አልተፈጸመም።", serviceHeading:"16 የተገናኙ አገልግሎቶች", serviceCaption:"አንድ Ethio ID · አንድ መድረክ", language:"ቋንቋ", show:"አሳይ", hide:"ደብቅ"
   },
   EN: {
     tagline:"Everything. In one place.", intro:"One digital identity. A world of Ethiopian services.",
-    create:"Create Ethio ID", signin:"Sign in", already:"Already have an account?", start:"Get started", full:"Full name", phone:"Phone number", email:"Email address", password:"Password", country:"Country", countryValue:"Ethiopia", region:"Region", city:"City", username:"Username", terms:"I agree to the Terms of Service and Privacy Policy.", continue:"Continue", back:"Back", secure:"Your identity, protected", subtitle:"Create your Ethio ID — one key to 16 connected services.", loginTitle:"Welcome back", loginSub:"Sign in with your Ethio ID.", preview:"UI preview only — account creation is not connected yet.", language:"Language", show:"Show", hide:"Hide"
+    create:"Create Ethio ID", signin:"Sign in", already:"Already have an account?", start:"Get started", full:"Full name", phone:"Phone number", email:"Email address", password:"Password", country:"Country", countryValue:"Ethiopia", region:"Region", city:"City", username:"Username", terms:"I agree to the Terms of Service and Privacy Policy.", continue:"Continue", back:"Back", secure:"Your identity, protected", subtitle:"Create your Ethio ID — one key to 16 connected services.", loginTitle:"Welcome back", loginSub:"Sign in with your Ethio ID.", preview:"UI preview only — account creation is not connected yet.", serviceHeading:"16 connected services", serviceCaption:"One Ethio ID · One platform", language:"Language", show:"Show", hide:"Hide"
   }
 };
 
@@ -83,7 +83,7 @@ export default function App() {
             <Text style={s.heroTitle}>ETHIO{"\n"}<Text style={{color:C.gold}}>ONE</Text></Text>
             <Text style={s.tagline}>{t.tagline}</Text>
             <Text style={s.intro}>{t.intro}</Text>
-            <View style={s.serviceHeading}><Text style={s.serviceTitle}>16 connected services</Text><Text style={s.serviceCaption}>One Ethio ID · One platform</Text></View>
+            <View style={s.serviceHeading}><Text style={s.serviceTitle}>{t.serviceHeading}</Text><Text style={s.serviceCaption}>{t.serviceCaption}</Text></View>
             <View style={s.serviceGrid}>{services.map(item=>{const Icon=item.icon;return <View key={item.name} style={s.serviceCard}><View style={[s.serviceIcon,{backgroundColor:item.bg}]}><Icon size={19} color={item.color} strokeWidth={2.25}/></View><Text style={s.serviceName}>{item.name}</Text></View>;})}</View>
           </View>
           <View style={s.welcomeActions}>
@@ -106,7 +106,7 @@ export default function App() {
             <Pressable style={s.termsRow} onPress={()=>setAccepted(v=>!v)}><View style={[s.checkbox,accepted&&s.checkboxOn]}>{accepted&&<Check size={13} color={C.white}/>}</View><Text style={s.termsText}>{t.terms}</Text></Pressable>
           </> : <>
             <Field label={t.phone} icon={Phone} value={form.phone} onChangeText={(v:string)=>set("phone",v)} keyboardType="phone-pad"/>
-            <Field label={t.password} icon={LockKeyhole} value={form.password} onChangeText={(v:string)=>set("password",v)} secureTextEntry={!showPassword}/>
+            <Field label={t.password} icon={LockKeyhole} value={form.password} onChangeText={(v:string)=>set("password",v)} secureTextEntry={!showPassword} trailing={<Pressable onPress={()=>setShowPassword(v=>!v)} accessibilityRole="button" accessibilityLabel={showPassword?t.hide:t.show} hitSlop={10}><View style={s.passwordToggle}><Eye size={17} color={C.muted}/><Text style={s.passwordToggleText}>{showPassword?t.hide:t.show}</Text></View></Pressable>}/>
           </>}
           <PrimaryButton title={t.continue} onPress={submitPreview}/>
           <Text style={s.previewNote}>{t.preview}</Text>
