@@ -20,6 +20,12 @@ const pool = process.env.DATABASE_URL
     })
   : null;
 
+if (pool) {
+  pool.on("error", () => {
+    console.error("Database pool reported an idle-client error.");
+  });
+}
+
 app.disable("x-powered-by");
 // Render terminates TLS at its edge and forwards the original client address.
 // Trust only the single proxy hop so rate limits use the real client IP.
@@ -37,7 +43,18 @@ app.use(express.json({ limit: "100kb" }));
 app.use("/api", rateLimit({ windowMs: 60 * 1000, limit: 120, standardHeaders: "draft-7", legacyHeaders: false }));
 
 app.get("/healthz", (_req, res) => {
+  res.set("Cache-Control", "no-store");
   res.status(200).json({ ok: true, service: "ethio-one-api", version: "0.1.0" });
+});
+
+app.get("/readyz", async (_req, res) => {
+  if (!pool) return res.status(503).json({ ok: false, ready: false });
+  try {
+    await pool.query("SELECT 1");
+    return res.status(200).json({ ok: true, ready: true });
+  } catch {
+    return res.status(503).json({ ok: false, ready: false });
+  }
 });
 
 app.get("/api/v1/modules", async (_req, res) => {
@@ -54,7 +71,8 @@ app.get("/api/v1/modules", async (_req, res) => {
   }
 });
 
-app.get("/api/v1/system/status", async (_req, res) => {\n  res.set("Cache-Control", "no-store");
+app.get("/api/v1/system/status", async (_req, res) => {
+  res.set("Cache-Control", "no-store");
   if (!pool) {
     return res.status(503).json({ ok: false, service: "ethio-one-api", database: "not_configured" });
   }
