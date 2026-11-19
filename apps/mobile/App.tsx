@@ -48,8 +48,8 @@ const copy = {
   }
 };
 
-function Field({label, icon:Icon, value, onChangeText, placeholder, secureTextEntry=false, keyboardType="default"}: any) {
-  return <View style={s.field}><Text style={s.label}>{label}</Text><View style={s.inputWrap}><Icon size={18} color={C.muted}/><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder || label} placeholderTextColor="#A0AABA" secureTextEntry={secureTextEntry} keyboardType={keyboardType} autoCapitalize="none" style={s.input}/></View></View>;
+function Field({label, icon:Icon, value, onChangeText, placeholder, secureTextEntry=false, keyboardType="default", trailing}: any) {
+  return <View style={s.field}><Text style={s.label}>{label}</Text><View style={s.inputWrap}><Icon size={18} color={C.muted}/><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder || label} placeholderTextColor="#A0AABA" secureTextEntry={secureTextEntry} keyboardType={keyboardType} autoCapitalize="none" style={s.input}/>{trailing}</View></View>;
 }
 function PrimaryButton({title,onPress}: {title:string;onPress:()=>void}) {
   return <Pressable onPress={onPress} style={({pressed})=>[s.primary,pressed&&{opacity:.86}]}><Text style={s.primaryText}>{title}</Text><ArrowRight size={19} color={C.navy2}/></Pressable>;
