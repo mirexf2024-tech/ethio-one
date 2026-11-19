@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Ethio One",
+    "slug": "ethio-one",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "ethioone",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ethioone.app"
+    },
+    "android": {
+      "package": "com.ethioone.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#082B59"
+      }
+    },
+    "plugins": [],
+    "extra": {
+      "apiBaseUrl": "https://ethio-one-api.onrender.com"
+    }
+  }
+}
