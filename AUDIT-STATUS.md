@@ -14,11 +14,12 @@ Scope: Ethio One only. Legacy Ethio Call repositories and databases are out of s
 - Mobile CI passed for commit `96aa08e3b5fd024520a1b66a7540e0b3884b41a5`, including Expo dependency compatibility and TypeScript checks.
 - Website CI passed for the accessibility checks added in commit `48dc0fb2d0249dd3e893181aaa1099fa2f880e58` and the latest site changes in commit `c441bf457050555f98ce6da0e83f1d6cfbae6756`.
 - Mobile app source is separate from the root website. Updating the landing page does not create a native APK.
-- Neon database connection was successfully queried using the application role. Database: `ethio_one`.
+- Dedicated Neon database: `ethio_one`, separate from all legacy Ethio Call databases.
 - Database currently reports 16 platform modules, all with status `planned`.
-- Live database migration ledger currently shows `001_initial` and `002_identity_foundation`; `003_identity_hardening` has not been applied to the live database.
-- Migration `003_identity_hardening` was reviewed and successfully tested on a temporary Neon branch. It allows email-or-phone contact, defaults new accounts to `pending_verification`, and adds email/phone verification timestamps plus a terms version. The live `users` table is empty. A phone-only test insert on the temporary branch confirmed `pending_verification` as the default and a NULL email with the phone retained; the temporary test row was deleted. Production application is awaiting explicit approval.
-- Database currently contains 0 user rows. No real account registration has been performed.
+- Live migration ledger confirms `001_initial`, `002_identity_foundation`, and `003_identity_hardening` are applied.
+- Migration 003 was applied to the live Ethio One database after explicit user approval. The temporary migration branch was deleted successfully.
+- Live schema verification confirms `users.email` is nullable, `users.status` defaults to `pending_verification`, email/phone verification timestamps and `terms_version` exist, and a check constraint requires at least one contact method (email or phone).
+- Live database currently contains 0 user rows. No real account registration has been performed.
 
 ## Changes verified in this audit cycle
 
@@ -33,6 +34,7 @@ Scope: Ethio One only. Legacy Ethio Call repositories and databases are out of s
 - Localized the mobile connected-services heading and caption in Afaan Oromoo, Amharic, and English.
 - Added API readiness endpoint that performs a database connectivity check.
 - Added API CI checks for dependency installation and Node syntax validation.
+- Applied and verified production database migration 003 after explicit approval. No user data was modified or created by the migration.
 
 ## Important limitations / blockers
 
@@ -45,14 +47,13 @@ Scope: Ethio One only. Legacy Ethio Call repositories and databases are out of s
 
 ## Required next work, in order
 
-1. Apply the reviewed `003_identity_hardening` migration after explicit approval, then verify the live schema and migration ledger.
-2. Verify live API responses and database readiness using a reliable direct HTTP test path.
-3. Review all mobile screens for localization, accessibility, responsive layout, keyboard behavior, and validation.
-4. Design and implement real authentication only after choosing safe OTP/email delivery providers and finalizing privacy/consent behavior.
-5. Add automated API route tests and database-backed integration tests.
-6. Implement admin controls, audit logging, and role-based authorization before enabling service operations.
-7. Implement service modules incrementally, with each module tested end-to-end before changing its status from `planned`.
-8. Complete security, privacy, performance, and mobile-device testing before any release decision.
+1. Verify live API responses and database readiness using a reliable direct HTTP test path.
+2. Review all mobile screens for localization, accessibility, responsive layout, keyboard behavior, and validation.
+3. Design and implement real authentication only after choosing safe OTP/email delivery providers and finalizing privacy/consent behavior.
+4. Add automated API route tests and database-backed integration tests.
+5. Implement admin controls, audit logging, and role-based authorization before enabling service operations.
+6. Implement service modules incrementally, with each module tested end-to-end before changing its status from `planned`.
+7. Complete security, privacy, performance, and mobile-device testing before any release decision.
 
 ## Release rule
 
