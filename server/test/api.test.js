@@ -60,6 +60,7 @@ test("API health and safe degraded-mode responses", async (t) => {
   const health = await waitForApi(child, `${base}/healthz`);
   assert.equal(health.status, 200);
   assert.equal(health.headers.get("cache-control"), "no-store");
+  assert.equal(health.headers.get("x-content-type-options"), "nosniff");
   assert.deepEqual(await health.json(), {
     ok: true,
     service: "ethio-one-api",
@@ -81,6 +82,7 @@ test("API health and safe degraded-mode responses", async (t) => {
 
   const modules = await fetch(`${base}/api/v1/modules`);
   assert.equal(modules.status, 503);
+  assert.equal(modules.headers.get("cache-control"), "no-store");
   assert.deepEqual(await modules.json(), {
     error: "Service temporarily unavailable"
   });
@@ -88,6 +90,23 @@ test("API health and safe degraded-mode responses", async (t) => {
   const missing = await fetch(`${base}/does-not-exist`);
   assert.equal(missing.status, 404);
   assert.deepEqual(await missing.json(), { error: "Not found" });
+
+  const allowedOrigin = await fetch(`${base}/healthz`, {
+    headers: { Origin: "https://ethio-one.onrender.com" }
+  });
+  assert.equal(allowedOrigin.status, 200);
+  assert.equal(allowedOrigin.headers.get("access-control-allow-origin"), "https://ethio-one.onrender.com");
+
+  const preflight = await fetch(`${base}/api/v1/modules`, {
+    method: "OPTIONS",
+    headers: {
+      Origin: "https://ethio-one.onrender.com",
+      "Access-Control-Request-Method": "GET",
+      "Access-Control-Request-Headers": "content-type"
+    }
+  });
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get("access-control-allow-origin"), "https://ethio-one.onrender.com");
 
   const blockedOrigin = await fetch(`${base}/healthz`, {
     headers: { Origin: "https://untrusted.example" }
