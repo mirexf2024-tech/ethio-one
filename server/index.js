@@ -37,6 +37,20 @@ app.get("/healthz", (_req, res) => {
   res.status(200).json({ ok: true, service: "ethio-one-api", version: "0.1.0" });
 });
 
+app.get("/api/v1/modules", async (_req, res) => {
+  if (!pool) {
+    return res.status(503).json({ error: "Service temporarily unavailable" });
+  }
+  try {
+    const result = await pool.query(
+      "SELECT module_key, display_name, status FROM platform_modules ORDER BY display_name"
+    );
+    return res.json({ modules: result.rows });
+  } catch {
+    return res.status(503).json({ error: "Service temporarily unavailable" });
+  }
+});
+
 app.get("/api/v1/system/status", async (_req, res) => {
   if (!pool) {
     return res.status(503).json({ ok: false, service: "ethio-one-api", database: "not_configured" });
