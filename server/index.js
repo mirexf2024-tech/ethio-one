@@ -40,6 +40,10 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.use(express.json({ limit: "100kb" }));
+app.use("/api", (_req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
 app.use("/api", rateLimit({ windowMs: 60 * 1000, limit: 120, standardHeaders: "draft-7", legacyHeaders: false }));
 
 app.get("/healthz", (_req, res) => {
@@ -48,6 +52,7 @@ app.get("/healthz", (_req, res) => {
 });
 
 app.get("/readyz", async (_req, res) => {
+  res.set("Cache-Control", "no-store");
   if (!pool) return res.status(503).json({ ok: false, ready: false });
   try {
     await pool.query("SELECT 1");
