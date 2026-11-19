@@ -1,8 +1,7 @@
 const crypto = require("node:crypto");
-const { promisify } = require("node:util");
+const bcrypt = require("bcryptjs");
 
-const scrypt = promisify(crypto.scrypt);
-const SCRYPT_OPTIONS = { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
+const BCRYPT_ROUNDS = 12;
 
 function normalizeEmail(value) {
   const email = String(value || "").trim().toLowerCase();
@@ -23,40 +22,22 @@ function normalizePhone(value) {
 }
 
 function validatePassword(password) {
-  if (typeof password !== "string" || password.length < 8 || password.length > 128) {
-    throw new TypeError("Password must be between 8 and 128 characters.");
+  if (typeof password !== "string" || password.length < 8 || password.length > 128 || Buffer.byteLength(password, "utf8") > 72) {
+    throw new TypeError("Password must be 8-128 characters and no more than 72 UTF-8 bytes.");
   }
   return password;
 }
 
 async function hashPassword(password) {
   validatePassword(password);
-  const salt = crypto.randomBytes(16);
-  const derived = await scrypt(password, salt, 64, SCRYPT_OPTIONS);
-  return [
-    "scrypt",
-    SCRYPT_OPTIONS.N,
-    SCRYPT_OPTIONS.r,
-    SCRYPT_OPTIONS.p,
-    salt.toString("base64url"),
-    Buffer.from(derived).toString("base64url")
-  ].join("$");
+  return bcrypt.hash(password, BCRYPT_ROUNDS);
 }
 
 async function verifyPassword(password, encoded) {
   if (typeof password !== "string" || typeof encoded !== "string") return false;
-  const parts = encoded.split("$");
-  if (parts.length !== 6 || parts[0] !== "scrypt") return false;
-  const N = Number(parts[1]);
-  const r = Number(parts[2]);
-  const p = Number(parts[3]);
-  if (N !== SCRYPT_OPTIONS.N || r !== SCRYPT_OPTIONS.r || p !== SCRYPT_OPTIONS.p) return false;
+  if (!/^\\$2[aby]\\$12\\$/.test(encoded)) return false;
   try {
-    const salt = Buffer.from(parts[4], "base64url");
-    const expected = Buffer.from(parts[5], "base64url");
-    if (salt.length !== 16 || expected.length !== 64) return false;
-    const actual = Buffer.from(await scrypt(password, salt, expected.length, SCRYPT_OPTIONS));
-    return crypto.timingSafeEqual(actual, expected);
+    return await bcrypt.compare(password, encoded);
   } catch {
     return false;
   }
