@@ -21,6 +21,9 @@ const pool = process.env.DATABASE_URL
   : null;
 
 app.disable("x-powered-by");
+// Render terminates TLS at its edge and forwards the original client address.
+// Trust only the single proxy hop so rate limits use the real client IP.
+app.set("trust proxy", 1);
 app.use(helmet());
 app.use(cors({
   origin(origin, callback) {
@@ -51,7 +54,7 @@ app.get("/api/v1/modules", async (_req, res) => {
   }
 });
 
-app.get("/api/v1/system/status", async (_req, res) => {
+app.get("/api/v1/system/status", async (_req, res) => {\n  res.set("Cache-Control", "no-store");
   if (!pool) {
     return res.status(503).json({ ok: false, service: "ethio-one-api", database: "not_configured" });
   }
