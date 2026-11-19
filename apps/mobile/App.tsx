@@ -48,8 +48,8 @@ const copy = {
   }
 };
 
-function Field({label, icon:Icon, value, onChangeText, placeholder, secureTextEntry=false, keyboardType="default", trailing}: any) {
-  return <View style={s.field}><Text style={s.label}>{label}</Text><View style={s.inputWrap}><Icon size={18} color={C.muted}/><TextInput value={value} onChangeText={onChangeText} accessibilityLabel={label} placeholder={placeholder || label} placeholderTextColor="#A0AABA" secureTextEntry={secureTextEntry} keyboardType={keyboardType} autoCapitalize="none" style={s.input}/>{trailing}</View></View>;
+function Field({label, icon:Icon, value, onChangeText, placeholder, secureTextEntry=false, keyboardType="default", autoCapitalize="none", trailing}: any) {
+  return <View style={s.field}><Text style={s.label}>{label}</Text><View style={s.inputWrap}><Icon size={18} color={C.muted}/><TextInput value={value} onChangeText={onChangeText} accessibilityLabel={label} placeholder={placeholder || label} placeholderTextColor="#A0AABA" secureTextEntry={secureTextEntry} keyboardType={keyboardType} autoCapitalize={autoCapitalize} autoCorrect={false} style={s.input}/>{trailing}</View></View>;
 }
 function PrimaryButton({title,onPress}: {title:string;onPress:()=>void}) {
   return <Pressable onPress={onPress} style={({pressed})=>[s.primary,pressed&&{opacity:.86}]}><Text style={s.primaryText}>{title}</Text><ArrowRight size={19} color={C.navy2}/></Pressable>;
@@ -127,17 +127,17 @@ export default function App() {
           <Pressable style={s.back} onPress={()=>setScreen("welcome")}><ArrowLeft size={18} color={C.navy}/><Text style={s.backText}>{t.back}</Text></Pressable>
           <View style={s.formHeading}><View style={s.formBadge}><UserRound size={22} color={C.gold}/></View><Text style={s.formTitle}>{screen==="register"?t.create:t.loginTitle}</Text><Text style={s.formSub}>{screen==="register"?t.subtitle:t.loginSub}</Text></View>
           {screen==="register" ? <>
-            <Field label={t.full} icon={UserRound} value={form.full} onChangeText={(v:string)=>set("full",v)}/>
+            <Field label={t.full} icon={UserRound} value={form.full} onChangeText={(v:string)=>set("full",v)} autoCapitalize="words"/>
             <Field label={t.phone} icon={Phone} value={form.phone} onChangeText={(v:string)=>set("phone",v)} keyboardType="phone-pad"/>
-            <Field label={t.email} icon={Mail} value={form.email} onChangeText={(v:string)=>set("email",v)} keyboardType="email-address"/>
+            <Field label={t.email} icon={Mail} value={form.email} onChangeText={(v:string)=>set("email",v)} keyboardType="email-address" autoCapitalize="none"/>
             <Field label={t.username} icon={UserRound} value={form.username} onChangeText={(v:string)=>set("username",v)}/>
             <Field label={t.password} icon={LockKeyhole} value={form.password} onChangeText={(v:string)=>set("password",v)} secureTextEntry={!showPassword} trailing={<Pressable onPress={()=>setShowPassword(v=>!v)} accessibilityRole="button" accessibilityLabel={showPassword?t.hide:t.show} hitSlop={10}><View style={s.passwordToggle}>{showPassword?<EyeOff size={17} color={C.muted}/>:<Eye size={17} color={C.muted}/>}<Text style={s.passwordToggleText}>{showPassword?t.hide:t.show}</Text></View></Pressable>}/>
-            <Field label={t.country} icon={Globe2} value={form.country} onChangeText={(v:string)=>set("country",v)} placeholder={t.countryValue}/>
-            <Field label={t.region} icon={Globe2} value={form.region} onChangeText={(v:string)=>set("region",v)}/>
-            <Field label={t.city} icon={Globe2} value={form.city} onChangeText={(v:string)=>set("city",v)}/>
+            <Field label={t.country} icon={Globe2} value={form.country} onChangeText={(v:string)=>set("country",v)} placeholder={t.countryValue} autoCapitalize="words"/>
+            <Field label={t.region} icon={Globe2} value={form.region} onChangeText={(v:string)=>set("region",v)} autoCapitalize="words"/>
+            <Field label={t.city} icon={Globe2} value={form.city} onChangeText={(v:string)=>set("city",v)} autoCapitalize="words"/>
             <Pressable style={s.termsRow} onPress={()=>setAccepted(v=>!v)} accessibilityRole="checkbox" accessibilityState={{checked:accepted}}><View style={[s.checkbox,accepted&&s.checkboxOn]}>{accepted&&<Check size={13} color={C.white}/>}</View><Text style={s.termsText}>{t.terms}</Text></Pressable>
           </> : <>
-            <Field label={t.identity} icon={UserRound} value={form.phone} onChangeText={(v:string)=>set("phone",v)} keyboardType="default"/>
+            <Field label={t.identity} icon={UserRound} value={form.phone} onChangeText={(v:string)=>set("phone",v)} keyboardType="email-address"/>
             <Field label={t.password} icon={LockKeyhole} value={form.password} onChangeText={(v:string)=>set("password",v)} secureTextEntry={!showPassword} trailing={<Pressable onPress={()=>setShowPassword(v=>!v)} accessibilityRole="button" accessibilityLabel={showPassword?t.hide:t.show} hitSlop={10}><View style={s.passwordToggle}>{showPassword?<EyeOff size={17} color={C.muted}/>:<Eye size={17} color={C.muted}/>}<Text style={s.passwordToggleText}>{showPassword?t.hide:t.show}</Text></View></Pressable>}/>
           </>}
           <PrimaryButton title={t.continue} onPress={submitPreview}/>
