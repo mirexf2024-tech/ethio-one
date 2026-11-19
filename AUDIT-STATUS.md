@@ -10,7 +10,7 @@ Scope: Ethio One only. Legacy Ethio Call repositories and databases are out of s
 - API startup log confirms the Express server starts and listens on the configured Render port.
 - API routes currently present: `/healthz`, `/readyz`, `/api/v1/system/status`, and `/api/v1/modules`.
 - API middleware includes Helmet, configured CORS, JSON body size limit, API rate limiting, proxy trust for Render, and sanitized database-pool error handling.
-- API CI workflow passed for commit `10c8ab6b60f3b8aa3b2202cb6d72555538bd08ec`.
+- API CI passed after adding integration tests; the run verified JavaScript syntax and executed `npm test` successfully.
 - Mobile CI passed for commit `2398a14612138934167e76e069052964648306d7`, including Expo dependency compatibility and TypeScript checks.
 - Mobile app source is separate from the root website. Updating the landing page does not create a native APK.
 - Neon database connection was successfully queried using the application role. Database: `ethio_one`.
@@ -21,6 +21,9 @@ Scope: Ethio One only. Legacy Ethio Call repositories and databases are out of s
 
 - Added the Ethio One E1 brand mark and color-coded service icon grid to the website.
 - Added mobile password visibility controls for both registration and sign-in.
+- Added accessible labels to mobile form inputs, language control, and terms checkbox.
+- Added a working landing-page language switch for Afaan Oromoo, Amharic, and English, including navigation, service descriptions, contact section, footer, title, and page description.
+- Added automated API integration tests for health, readiness, database-unconfigured behavior, 404 handling, and CORS rejection; API CI runs these tests.
 - Localized the mobile connected-services heading and caption in Afaan Oromoo, Amharic, and English.
 - Added API readiness endpoint that performs a database connectivity check.
 - Added API CI checks for dependency installation and Node syntax validation.
