@@ -13,7 +13,6 @@ ALTER TABLE users
   ADD COLUMN IF NOT EXISTS terms_version VARCHAR(40) NOT NULL DEFAULT 'terms-v1';
 
 ALTER TABLE users
-  DROP CONSTRAINT IF EXISTS users_contact_method_required,
   ADD CONSTRAINT users_contact_method_required
   CHECK (email IS NOT NULL OR phone IS NOT NULL);
 
