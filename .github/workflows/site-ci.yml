@@ -1,0 +1,24 @@
+name: Ethio One Website CI
+
+on:
+  push:
+    paths:
+      - "index.html"
+      - "scripts/site-check.test.js"
+      - ".github/workflows/site-ci.yml"
+  pull_request:
+    paths:
+      - "index.html"
+      - "scripts/site-check.test.js"
+      - ".github/workflows/site-ci.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check landing page content and translations
+        run: node --test scripts/site-check.test.js
