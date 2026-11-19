@@ -3,7 +3,7 @@
 Node.js API foundation for the Ethio One platform.
 
 ## Runtime
-- Node.js 20+
+- Node.js 22.x (aligned with the Render runtime and CI)
 - Express
 - PostgreSQL (Neon)
 - Render Web Service
@@ -12,6 +12,7 @@ Node.js API foundation for the Ethio One platform.
 - `GET /healthz` — process health
 - `GET /readyz` — database readiness check
 - `GET /api/v1/system/status` — API and database connectivity
+- `GET /api/v1/modules` — planned service registry (database required)
 
 ## Environment
 - `DATABASE_URL` — Neon PostgreSQL connection string
@@ -29,4 +30,4 @@ Database migrations are versioned under `schema/` and tracked in `schema_migrati
 Migrations 001, 002, and 003 are applied to the live Ethio One database. Migration 003 was applied after explicit approval and verified against the live schema and migration ledger. The migration requires at least one contact method (email or phone). The live users table currently has zero rows.
 
 ## Authentication status
-The schema is prepared for a safer verification lifecycle, but real registration and sign-in are not implemented yet. OTP delivery, email verification, password recovery, secure session handling, and end-to-end authentication tests remain future work. Never store plaintext passwords or mark an unverified account active.
+The schema is prepared for a safer verification lifecycle, but real registration and sign-in are not implemented yet. OTP delivery, email verification, password recovery, secure session handling, rate-limited authentication routes, and end-to-end authentication tests remain future work. Never store plaintext passwords or mark an unverified account active.
