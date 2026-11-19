@@ -20,7 +20,9 @@ Scope: Ethio One only. Legacy Ethio Call repositories and databases are out of s
 ## Changes verified in this audit cycle
 
 - Added the Ethio One E1 brand mark and color-coded service icon grid to the website.
-- Added mobile password visibility controls for both registration and sign-in.
+- Added mobile password visibility controls for both registration and sign-in, with matching eye / eye-off states.
+- Added client-side registration checks for required profile/location fields, at least one contact method, email and phone format, password length, and terms acceptance. Sign-in now labels its identifier as email or phone. These checks are UI validation only and do not create or authenticate accounts.
+- Added a country text field to the registration preview and removed a minimum-width constraint that could force the service cards to overflow on narrow phones.
 - Added accessible labels to mobile form inputs, language control, and terms checkbox.
 - Added a working landing-page language switch for Afaan Oromoo, Amharic, and English, including navigation, service descriptions, contact section, footer, title, and page description.
 - Added automated API integration tests for health, readiness, database-unconfigured behavior, 404 handling, and CORS rejection; API CI runs these tests.
@@ -34,7 +36,7 @@ Scope: Ethio One only. Legacy Ethio Call repositories and databases are out of s
 2. **Live API endpoint responses have not yet been independently verified.** Render confirms successful startup and deployment, but the available external page fetch could not retrieve the API endpoints during this review. The empty Render request-log query also provided no endpoint response evidence.
 3. **The 16 service modules are roadmap records, not functioning services.** All 16 database module statuses remain `planned`.
 4. **KYC, OTP delivery, email verification, account recovery, payments, wallets, and service workflows are not yet implemented.**
-5. The current registration location fields are free-text fields; country/region/city cascading selection is not implemented.
+5. Registration country, region, and city are still free-text fields; verified country/region/city cascading selection is not implemented. Terms are not yet linked to versioned legal documents or stored as a server-side consent record.
 6. A production release or APK build is not approved by this audit. Continue web and code validation first.
 
 ## Required next work, in order
