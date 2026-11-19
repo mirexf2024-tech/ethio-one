@@ -35,7 +35,7 @@ async function hashPassword(password) {
 
 async function verifyPassword(password, encoded) {
   if (typeof password !== "string" || typeof encoded !== "string") return false;
-  if (!/^\\$2[aby]\\$12\\$/.test(encoded)) return false;
+  if (!/^\$2[aby]\$12\$/.test(encoded)) return false;
   try {
     return await bcrypt.compare(password, encoded);
   } catch {
