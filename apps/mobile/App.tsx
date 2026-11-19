@@ -67,7 +67,7 @@ export default function App() {
 
   const submitPreview = () => Alert.alert("Ethio One", t.preview);
   return <SafeAreaView style={s.safe}>
-    <StatusBar barStyle="dark-content" backgroundColor={C.bg}/>
+    <StatusBar barStyle="dark-content"/>
     <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==="ios"?"padding":undefined}>
       <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
         <View style={s.topbar}>
