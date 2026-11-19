@@ -15,6 +15,7 @@ test("password hashes are salted, verifiable, and never equal plaintext", async 
   const first = await security.hashPassword("correct horse battery staple");
   const second = await security.hashPassword("correct horse battery staple");
   assert.notEqual(first, "correct horse battery staple");
+  assert.match(first, /^\\$2[aby]\\$12\\$/);
   assert.notEqual(first, second);
   assert.equal(await security.verifyPassword("correct horse battery staple", first), true);
   assert.equal(await security.verifyPassword("wrong password", first), false);
