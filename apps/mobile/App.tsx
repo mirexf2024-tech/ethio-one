@@ -49,7 +49,7 @@ const copy = {
 };
 
 function Field({label, icon:Icon, value, onChangeText, placeholder, secureTextEntry=false, keyboardType="default", trailing}: any) {
-  return <View style={s.field}><Text style={s.label}>{label}</Text><View style={s.inputWrap}><Icon size={18} color={C.muted}/><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder || label} placeholderTextColor="#A0AABA" secureTextEntry={secureTextEntry} keyboardType={keyboardType} autoCapitalize="none" style={s.input}/>{trailing}</View></View>;
+  return <View style={s.field}><Text style={s.label}>{label}</Text><View style={s.inputWrap}><Icon size={18} color={C.muted}/><TextInput value={value} onChangeText={onChangeText} accessibilityLabel={label} placeholder={placeholder || label} placeholderTextColor="#A0AABA" secureTextEntry={secureTextEntry} keyboardType={keyboardType} autoCapitalize="none" style={s.input}/>{trailing}</View></View>;
 }
 function PrimaryButton({title,onPress}: {title:string;onPress:()=>void}) {
   return <Pressable onPress={onPress} style={({pressed})=>[s.primary,pressed&&{opacity:.86}]}><Text style={s.primaryText}>{title}</Text><ArrowRight size={19} color={C.navy2}/></Pressable>;
@@ -72,7 +72,7 @@ export default function App() {
       <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
         <View style={s.topbar}>
           <View style={s.brand}><View style={s.brandMark}><Text style={s.brandMarkE}>E</Text><Text style={s.brandMarkOne}>1</Text></View><Text style={s.brandName}>ETHIO <Text style={{color:C.gold}}>ONE</Text></Text></View>
-          <Pressable style={s.language} onPress={()=>setLanguage(v=>v==="OM"?"AM":v==="AM"?"EN":"OM")}><Globe2 size={15} color={C.navy}/><Text style={s.languageText}>{language}</Text><ChevronDown size={13} color={C.navy}/></Pressable>
+          <Pressable style={s.language} onPress={()=>setLanguage(v=>v==="OM"?"AM":v==="AM"?"EN":"OM")} accessibilityRole="button" accessibilityLabel={t.language}><Globe2 size={15} color={C.navy}/><Text style={s.languageText}>{language}</Text><ChevronDown size={13} color={C.navy}/></Pressable>
         </View>
 
         {screen==="welcome" ? <>
@@ -103,7 +103,7 @@ export default function App() {
             <Field label={t.password} icon={LockKeyhole} value={form.password} onChangeText={(v:string)=>set("password",v)} secureTextEntry={!showPassword} trailing={<Pressable onPress={()=>setShowPassword(v=>!v)} accessibilityRole="button" accessibilityLabel={showPassword?t.hide:t.show} hitSlop={10}><View style={s.passwordToggle}><Eye size={17} color={C.muted}/><Text style={s.passwordToggleText}>{showPassword?t.hide:t.show}</Text></View></Pressable>}/>
             <Field label={t.region} icon={Globe2} value={form.region} onChangeText={(v:string)=>set("region",v)}/>
             <Field label={t.city} icon={Globe2} value={form.city} onChangeText={(v:string)=>set("city",v)}/>
-            <Pressable style={s.termsRow} onPress={()=>setAccepted(v=>!v)}><View style={[s.checkbox,accepted&&s.checkboxOn]}>{accepted&&<Check size={13} color={C.white}/>}</View><Text style={s.termsText}>{t.terms}</Text></Pressable>
+            <Pressable style={s.termsRow} onPress={()=>setAccepted(v=>!v)} accessibilityRole="checkbox" accessibilityState={{checked:accepted}}><View style={[s.checkbox,accepted&&s.checkboxOn]}>{accepted&&<Check size={13} color={C.white}/>}</View><Text style={s.termsText}>{t.terms}</Text></Pressable>
           </> : <>
             <Field label={t.phone} icon={Phone} value={form.phone} onChangeText={(v:string)=>set("phone",v)} keyboardType="phone-pad"/>
             <Field label={t.password} icon={LockKeyhole} value={form.password} onChangeText={(v:string)=>set("password",v)} secureTextEntry={!showPassword} trailing={<Pressable onPress={()=>setShowPassword(v=>!v)} accessibilityRole="button" accessibilityLabel={showPassword?t.hide:t.show} hitSlop={10}><View style={s.passwordToggle}><Eye size={17} color={C.muted}/><Text style={s.passwordToggleText}>{showPassword?t.hide:t.show}</Text></View></Pressable>}/>
