@@ -10,6 +10,7 @@ Node.js API foundation for the Ethio One platform.
 
 ## Endpoints
 - `GET /healthz` — process health
+- `GET /readyz` — database readiness check
 - `GET /api/v1/system/status` — API and database connectivity
 
 ## Environment
@@ -25,4 +26,7 @@ Database migrations are versioned under `schema/` and tracked in `schema_migrati
 - `002_identity_foundation.sql` — creates the user identity table with hashed-password storage.
 - `003_identity_hardening.sql` — makes email optional when a phone is supplied, defaults new users to pending verification, and records contact verification timestamps and terms version.
 
-The live database currently has migrations 001 and 002 applied. Migration 003 has been tested on a temporary Neon branch and is awaiting explicit approval before production application. Never store plaintext passwords or mark an unverified account active.
+Migrations 001, 002, and 003 are applied to the live Ethio One database. Migration 003 was applied after explicit approval and verified against the live schema and migration ledger. The migration requires at least one contact method (email or phone). The live users table currently has zero rows.
+
+## Authentication status
+The schema is prepared for a safer verification lifecycle, but real registration and sign-in are not implemented yet. OTP delivery, email verification, password recovery, secure session handling, and end-to-end authentication tests remain future work. Never store plaintext passwords or mark an unverified account active.
