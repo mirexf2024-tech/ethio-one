@@ -130,7 +130,7 @@ export default function App() {
           </View>
           <View style={s.trust}><ShieldCheck size={17} color={C.gold}/><Text style={s.trustText}>{t.secure}</Text></View>
         </> : <>
-          <Pressable style={s.back} onPress={()=>setScreen(screen==="verify"?"register":screen==="reset"?"signin":"welcome")}><ArrowLeft size={18} color={C.navy}/><Text style={s.backText}>{t.back}</Text></Pressable>
+          <Pressable style={s.back} onPress={()=>setScreen(screen==="verify"?"register":(screen==="reset"||screen==="forgot")?"signin":"welcome")}><ArrowLeft size={18} color={C.navy}/><Text style={s.backText}>{t.back}</Text></Pressable>
           <View style={s.formHeading}><View style={s.formBadge}><UserRound size={22} color={C.gold}/></View><Text style={s.formTitle}>{screen==="register"?t.create:screen==="verify"?t.verifyTitle:screen==="reset"?t.newPassword:screen==="forgot"?t.forgot:screen==="account"?t.accountReady:t.loginTitle}</Text><Text style={s.formSub}>{screen==="register"?t.subtitle:screen==="verify"?t.verifyHint:screen==="reset"?"":screen==="forgot"?t.forgot:screen==="account"?"":t.loginSub}</Text></View>
           {screen==="register" ? <>
             <Field label={t.full} icon={UserRound} value={form.full} onChangeText={(v:string)=>set("full",v)} autoCapitalize="words"/>
