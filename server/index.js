@@ -6,6 +6,7 @@ const rateLimit = require("express-rate-limit");
 const { Pool } = require("pg");
 const authRouter = require("./auth/routes");
 const adminRouter = require("./admin/routes");
+const { recordSecurityEvent } = require("./admin/audit");
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -50,7 +51,20 @@ app.use("/api", (_req, res, next) => {
 });
 app.use("/api", rateLimit({ windowMs: 60 * 1000, limit: 120, standardHeaders: "draft-7", legacyHeaders: false }));
 
-app.use("/api/v1/auth", rateLimit({ windowMs: 15 * 60 * 1000, limit: 15, standardHeaders: "draft-7", legacyHeaders: false }));
+app.use("/api/v1/auth", rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 15,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: async (req, res) => {
+    await recordSecurityEvent(req, {
+      type: "auth_rate_limited",
+      severity: "high",
+      metadata: { route: req.path, method: req.method }
+    });
+    return res.status(429).json({ error: "Too many authentication attempts. Please wait and try again." });
+  }
+}));
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/admin", rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: "draft-7", legacyHeaders: false }));
 app.use("/api/v1/admin", adminRouter);
