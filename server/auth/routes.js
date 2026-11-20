@@ -2,7 +2,7 @@ const express = require("express");
 const crypto = require("node:crypto");
 const security = require("./security");
 const { recordSecurityEvent } = require("../admin/audit");
-const { sendVerificationEmail, sendVerificationSms } = require("../providers");
+const { sendVerificationEmail } = require("../providers");
 
 const router = express.Router();
 const ACCESS_TTL = 900;
@@ -57,14 +57,14 @@ router.post("/register", async (req,res) => {
   const db=req.app.locals.db, env=req.app.locals.authEnv||process.env, b=req.body||{};
   try {
     const email=b.email ? security.normalizeEmail(b.email) : null;
-    const phone=b.phone ? security.normalizePhone(b.phone) : null;
-    if (!email && !phone) return res.status(400).json({error:"Email or phone is required."});
+    const phone=null;
+    if (!email) return res.status(400).json({error:"A valid email address is required."});
     if (typeof b.fullName!=="string" || b.fullName.trim().length<2 || b.fullName.trim().length>120 ||
         typeof b.username!=="string" || !/^[a-zA-Z0-9_]{3,30}$/.test(b.username) || b.termsAccepted!==true) {
       return res.status(400).json({error:"Please check the required registration details."});
     }
     const channel=b.channel;
-    if (!["email","sms"].includes(channel) || (channel==="email"&&!email) || (channel==="sms"&&!phone)) {
+    if (channel !== "email" || !email) {
       return res.status(400).json({error:"Choose a verification method you provided."});
     }
     const passwordHash=await security.hashPassword(b.password);
@@ -88,8 +88,7 @@ router.post("/register", async (req,res) => {
       throw e;
     } finally { c.release(); }
     try {
-      if(channel==="email") await sendVerificationEmail({to:email,code,expiresMinutes:5});
-      else await sendVerificationSms({to:phone,code,expiresMinutes:5});
+      await sendVerificationEmail({to:email,code,expiresMinutes:5});
     } catch {
       await db.query("UPDATE auth_challenges SET consumed_at=NOW() WHERE user_id=$1 AND purpose='verify_contact' AND consumed_at IS NULL",[user.id]).catch(()=>{});
       return res.status(503).json({error:"We could not send the verification code. Please try again later.",userId:user.id,channel});
@@ -104,7 +103,7 @@ router.post("/register", async (req,res) => {
 
 router.post("/verify", async (req,res) => {
   const db=req.app.locals.db, env=req.app.locals.authEnv||process.env, b=req.body||{};
-  if(typeof b.userId!=="string" || !/^[0-9a-f-]{36}$/i.test(b.userId) || !["email","sms"].includes(b.channel) || !/^\d{6}$/.test(String(b.code||""))) {
+  if(typeof b.userId!=="string" || !/^[0-9a-f-]{36}$/i.test(b.userId) || b.channel !== "email" || !/^\d{6}$/.test(String(b.code||""))) {
     return res.status(400).json({error:"Invalid verification request."});
   }
   const c=await db.connect();
@@ -227,7 +226,7 @@ router.post("/logout", async (req,res) => {
 
 router.post("/verification/resend", async (req,res) => {
   const db=req.app.locals.db, env=req.app.locals.authEnv||process.env, b=req.body||{};
-  if(typeof b.userId!=="string" || !/^[0-9a-f-]{36}$/i.test(b.userId) || !["email","sms"].includes(b.channel)) {
+  if(typeof b.userId!=="string" || !/^[0-9a-f-]{36}$/i.test(b.userId) || b.channel !== "email") {
     return res.status(400).json({error:"Invalid verification request."});
   }
   try {
@@ -247,8 +246,7 @@ router.post("/verification/resend", async (req,res) => {
     await db.query("INSERT INTO auth_challenges (user_id,channel,purpose,code_digest,expires_at) VALUES ($1,$2,'verify_contact',$3,NOW()+INTERVAL '5 minutes')",
       [user.id,b.channel,security.digestChallenge(code,env.AUTH_CHALLENGE_PEPPER)]);
     try {
-      if(b.channel==="email") await sendVerificationEmail({to:user.destination,code,expiresMinutes:5});
-      else await sendVerificationSms({to:user.destination,code,expiresMinutes:5});
+      await sendVerificationEmail({to:user.destination,code,expiresMinutes:5});
     } catch {
       await db.query("UPDATE auth_challenges SET consumed_at=NOW() WHERE user_id=$1 AND channel=$2 AND purpose='verify_contact' AND consumed_at IS NULL",[user.id,b.channel]).catch(()=>{});
       return res.status(503).json({error:"We could not send the verification code. Please try again later."});
@@ -261,7 +259,7 @@ router.post("/verification/resend", async (req,res) => {
 
 router.post("/password/forgot", async (req,res) => {
   const db=req.app.locals.db, env=req.app.locals.authEnv||process.env, b=req.body||{};
-  if(typeof b.channel!=="string" || !["email","sms"].includes(b.channel) || typeof b.destination!=="string") {
+  if(typeof b.channel!=="string" || b.channel !== "email" || typeof b.destination!=="string") {
     return res.status(400).json({error:"Enter the email address or phone number linked to your account."});
   }
   try {
@@ -279,8 +277,7 @@ router.post("/password/forgot", async (req,res) => {
         await db.query("INSERT INTO auth_challenges (user_id,channel,purpose,code_digest,expires_at) VALUES ($1,$2,'password_reset',$3,NOW()+INTERVAL '5 minutes')",
           [user.id,b.channel,security.digestChallenge(code,env.AUTH_CHALLENGE_PEPPER)]);
         try {
-          if(b.channel==="email") await sendVerificationEmail({to:destination,code,expiresMinutes:5});
-          else await sendVerificationSms({to:destination,code,expiresMinutes:5});
+          await sendVerificationEmail({to:destination,code,expiresMinutes:5});
         } catch {
           await db.query("UPDATE auth_challenges SET consumed_at=NOW() WHERE user_id=$1 AND channel=$2 AND purpose='password_reset' AND consumed_at IS NULL",[user.id,b.channel]).catch(()=>{});
         }
@@ -294,7 +291,7 @@ router.post("/password/forgot", async (req,res) => {
 
 router.post("/password/reset", async (req,res) => {
   const db=req.app.locals.db, env=req.app.locals.authEnv||process.env, b=req.body||{};
-  if(typeof b.destination!=="string" || !["email","sms"].includes(b.channel) || !/^\d{6}$/.test(String(b.code||""))) {
+  if(typeof b.destination!=="string" || b.channel !== "email" || !/^\d{6}$/.test(String(b.code||""))) {
     return res.status(400).json({error:"Invalid password reset request."});
   }
   try { security.validatePassword(b.newPassword); }
