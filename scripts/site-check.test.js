@@ -39,3 +39,10 @@ test("reduced-motion preferences are respected", () => {
 test("brand artwork has an accessible image role and label", () => {
   assert.match(html, /role="img" aria-label="Ethio One E1 brand artwork"/);
 });
+
+test("runtime telemetry reports only fixed event types and no error payloads", () => {
+  assert.match(html, /api\/v1\/telemetry\/client-error/);
+  assert.match(html, /window_error/);
+  assert.match(html, /unhandled_rejection/);
+  assert.doesNotMatch(html, /error\.stack|event\.message|event\.reason/);
+});
