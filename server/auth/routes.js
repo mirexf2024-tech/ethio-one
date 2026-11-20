@@ -74,9 +74,10 @@ router.post("/register", async (req,res) => {
     try {
       await c.query("BEGIN");
       const inserted=await c.query(
-        "INSERT INTO users (full_name,username,email,phone,password_hash,account_type,status,terms_accepted_at,terms_version) VALUES ($1,$2,$3,$4,$5,'member','pending_verification',NOW(),$6) RETURNING id,full_name,username,email,phone",
+        "WITH identity AS (SELECT gen_random_uuid() AS id) INSERT INTO users (id,ethio_id,full_name,username,email,phone,password_hash,account_type,status,terms_accepted_at,terms_version) SELECT id,'E1-' || UPPER(SUBSTRING(REPLACE(id::text,'-','') FROM 1 FOR 12)),$1,$2,$3,$4,$5,'member','pending_verification',NOW(),$6 FROM identity RETURNING id,ethio_id,full_name,username,email,phone",
         [b.fullName.trim(),b.username.trim().toLowerCase(),email,phone,passwordHash,TERMS_VERSION]);
       user=inserted.rows[0];
+      await c.query("INSERT INTO user_profiles (user_id,locale) VALUES ($1,'om') ON CONFLICT (user_id) DO NOTHING",[user.id]);
       await c.query("INSERT INTO user_roles (user_id,role_key) VALUES ($1,'member') ON CONFLICT DO NOTHING",[user.id]);
       await c.query("INSERT INTO auth_challenges (user_id,channel,purpose,code_digest,expires_at) VALUES ($1,$2,'verify_contact',$3,NOW()+INTERVAL '5 minutes')",
         [user.id,channel,security.digestChallenge(code,env.AUTH_CHALLENGE_PEPPER)]);
@@ -126,7 +127,7 @@ router.post("/verify", async (req,res) => {
     }
     await c.query("UPDATE auth_challenges SET consumed_at=NOW() WHERE id=$1",[ch.id]);
     const col=b.channel==="email"?"email_verified_at":"phone_verified_at";
-    const updated=await c.query("UPDATE users SET "+col+"=NOW(),status='active',updated_at=NOW() WHERE id=$1 AND status IN ('pending_verification','active') RETURNING id,full_name,username,email,phone,account_type,status,email_verified_at,phone_verified_at,created_at",[b.userId]);
+    const updated=await c.query("UPDATE users SET "+col+"=NOW(),status='active',updated_at=NOW() WHERE id=$1 AND status IN ('pending_verification','active') RETURNING id,ethio_id,full_name,username,email,phone,account_type,status,email_verified_at,phone_verified_at,created_at",[b.userId]);
     if(!updated.rows[0]) { await c.query("ROLLBACK"); return res.status(400).json({error:"This account cannot be verified."}); }
     await c.query("COMMIT");
     const session=await newSession(db,updated.rows[0],env);
@@ -147,7 +148,7 @@ router.post("/login", async (req,res) => {
     else if(/^[+0-9()\s-]+$/.test(value)) {
       let phone=null; try { phone=security.normalizePhone(value); } catch {}
       result=phone ? await db.query("SELECT * FROM users WHERE phone=$1 LIMIT 1",[phone]) : await db.query("SELECT * FROM users WHERE lower(username)=lower($1) LIMIT 1",[value]);
-    } else result=await db.query("SELECT * FROM users WHERE lower(username)=lower($1) LIMIT 1",[value]);
+    } else result=await db.query("SELECT * FROM users WHERE lower(ethio_id)=lower($1) OR lower(username)=lower($1) LIMIT 1",[value]);
     const user=result.rows[0];
     const valid=user ? await security.verifyPassword(b.password,user.password_hash) : false;
     if(!user || !valid) {
