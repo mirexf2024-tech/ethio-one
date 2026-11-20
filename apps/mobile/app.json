@@ -16,7 +16,9 @@
         "backgroundColor": "#082B59"
       }
     },
-    "plugins": [],
+    "plugins": [
+      "expo-secure-store"
+    ],
     "extra": {
       "apiBaseUrl": "https://ethio-one-api.onrender.com"
     }
