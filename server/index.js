@@ -112,8 +112,28 @@ app.get("/api/v1/system/status", async (_req, res) => {
   }
 });
 
-app.use((_req, res) => res.status(404).json({ error: "Not found" }));
-app.use((err, _req, res, _next) => {
+app.use(async (req, res) => {
+  if (req.path.startsWith("/api/")) {
+    await recordSecurityEvent(req, {
+      type: "api_not_found",
+      severity: "info",
+      metadata: { route: req.path, method: req.method, reason: "route_not_found" }
+    });
+  }
+  return res.status(404).json({ error: "Not found" });
+});
+app.use(async (err, req, res, _next) => {
+  if (req.path.startsWith("/api/")) {
+    await recordSecurityEvent(req, {
+      type: "api_error",
+      severity: "warning",
+      metadata: {
+        route: req.path,
+        method: req.method,
+        reason: err && err.message === "Origin not allowed" ? "origin_not_allowed" : "invalid_request"
+      }
+    });
+  }
   if (err && err.message === "Origin not allowed") {
     return res.status(403).json({ error: "Request origin not allowed" });
   }
