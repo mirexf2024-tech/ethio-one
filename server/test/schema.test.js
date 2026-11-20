@@ -30,3 +30,11 @@ test("security audit migration stores only minimized event metadata", () => {
   assert.doesNotMatch(sql, /password|otp_code|refresh_token|message_body/i);
   assert.match(sql, /005_security_events/);
 });
+
+test("18-service registry migration adds Ethio Email and Ethio Sport safely", () => {
+  const sql = fs.readFileSync(path.join(__dirname, "../schema/007_complete_18_service_registry.sql"), "utf8");
+  assert.match(sql, /\('email', 'Ethio Email', 'planned'\)/);
+  assert.match(sql, /\('sport', 'Ethio Sport', 'planned'\)/);
+  assert.match(sql, /ON CONFLICT \(module_key\) DO NOTHING/i);
+  assert.match(sql, /007_complete_18_service_registry/);
+});
