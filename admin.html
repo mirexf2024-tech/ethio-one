@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="om">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#082b59">
+  <title>Ethio One · Super Admin</title>
+  <style>
+    :root{color-scheme:dark;--navy:#082b59;--deep:#061d3d;--gold:#d9a928;--ink:#edf3fc;--muted:#a8b8ce;--panel:#102f55;--line:#29496e;--green:#35c58b;--red:#ff6d79;--amber:#f3c75b}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 12% 0%,#153d6b 0,transparent 40%),var(--deep);color:var(--ink);font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
+    button,input,select{font:inherit}button{cursor:pointer;border:0;border-radius:12px;padding:11px 16px;background:var(--gold);color:#18253a;font-weight:750}button:disabled{opacity:.5;cursor:not-allowed}
+    .shell{max-width:1180px;margin:auto;padding:24px}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:28px}.brand{display:flex;align-items:center;gap:12px}.mark{width:44px;height:44px;border-radius:14px;background:var(--gold);color:#082b59;display:grid;place-items:center;font-weight:900;font-size:20px}.brand b{display:block;font-size:17px;letter-spacing:.2px}.brand small{color:var(--muted)}.top-actions{display:flex;gap:8px;align-items:center}.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}select{background:#0c2748;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px}
+    .panel{background:linear-gradient(145deg,rgba(18,49,85,.96),rgba(10,34,64,.96));border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:0 18px 55px #0002}.login{max-width:430px;margin:7vh auto}.eyebrow{color:var(--gold);font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase}.login h1{font-size:27px;margin:8px 0}.muted{color:var(--muted)}.field{display:grid;gap:7px;margin:16px 0}.field label{font-size:13px;color:var(--muted)}input{width:100%;padding:13px 14px;border-radius:11px;border:1px solid var(--line);background:#071f3c;color:var(--ink);outline:none}input:focus,select:focus{border-color:var(--gold)}.wide{width:100%;margin-top:8px}.notice{padding:12px 14px;border-radius:12px;background:#071f3c;border:1px solid var(--line);color:var(--muted);margin-top:14px;font-size:13px}.error{color:#ffc0c5}.hidden{display:none!important}
+    .heading{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin:22px 0 16px}.heading h1{font-size:26px;margin:0}.heading p{margin:4px 0 0;color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.stat{padding:18px}.stat span{display:block;color:var(--muted);font-size:13px}.stat strong{display:block;font-size:29px;margin-top:6px;font-variant-numeric:tabular-nums}.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:7px}.status-dot.warn{background:var(--amber)}.status-dot.bad{background:var(--red)}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.panel h2{font-size:17px;margin:0 0 14px}.service-list{display:grid;gap:10px}.service{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #29496e88}.service:last-child{border:0}.pill{font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:4px 8px;border-radius:99px;background:#1c456e;color:#d7e6f8}.events{overflow:auto}table{border-collapse:collapse;width:100%;min-width:520px;font-size:13px}th,td{text-align:left;padding:11px 10px;border-bottom:1px solid #29496e88;vertical-align:top}th{color:var(--muted);font-weight:600}.sev{font-weight:800;text-transform:uppercase;font-size:10px}.sev.high,.sev.critical{color:var(--red)}.sev.warning{color:var(--amber)}.sev.info{color:var(--green)}.footer{color:#8299b5;text-align:center;font-size:12px;padding:28px 0 8px}
+    @media(max-width:760px){.shell{padding:16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.two{grid-template-columns:1fr}.top{align-items:flex-start}.heading{align-items:flex-start;flex-direction:column}.stat strong{font-size:25px}.panel{padding:17px}}
+    @media(max-width:420px){.top{flex-wrap:wrap}.top-actions{width:100%;justify-content:flex-end}.brand b{font-size:15px}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="top">
+      <div class="brand"><div class="mark">E</div><div><b>ETHIO ONE <span style="color:var(--gold)">/</span> ADMIN</b><small id="brandSub">Super Admin monitoring</small></div></div>
+      <div class="top-actions"><select id="language" aria-label="Language"><option value="om">Afaan Oromoo</option><option value="am">አማርኛ</option><option value="en">English</option></select><button id="logout" class="ghost hidden">Logout</button></div>
+    </header>
+
+    <main>
+      <section id="loginView" class="panel login">
+        <div class="eyebrow">SECURE CONTROL CENTER</div>
+        <h1 id="loginTitle">Super Admin seeni</h1>
+        <p class="muted" id="loginHint">Email fi password account Super Admin mirkanaa'e fayyadami.</p>
+        <form id="loginForm">
+          <div class="field"><label id="identityLabel" for="identity">Email / Ethio ID</label><input id="identity" name="identity" type="text" autocomplete="username" required></div>
+          <div class="field"><label id="passwordLabel" for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required></div>
+          <button class="wide" id="loginButton" type="submit">Seeni</button>
+        </form>
+        <div id="loginMessage" class="notice" role="status">Nageenyaaf token browser keessatti yeroo gabaabaa qofa tura; local storage keessatti hin kuufamu.</div>
+      </section>
+
+      <section id="dashboardView" class="hidden">
+        <div class="heading"><div><div class="eyebrow" id="dashEyebrow">SYSTEM OVERVIEW</div><h1 id="dashTitle">To'annoo Ethio One</h1><p id="lastUpdated">Hanga ammaatti hin haaromfamne</p></div><button id="refreshButton">↻ <span id="refreshText">Haaromsi</span></button></div>
+        <div class="grid">
+          <div class="panel stat"><span id="statWeb">Website</span><strong id="webValue"><i class="status-dot warn"></i>—</strong></div>
+          <div class="panel stat"><span id="statApi">API</span><strong id="apiValue"><i class="status-dot warn"></i>—</strong></div>
+          <div class="panel stat"><span id="statDb">Database</span><strong id="dbValue"><i class="status-dot warn"></i>—</strong></div>
+          <div class="panel stat"><span id="statUsers">Users waliigalaa</span><strong id="usersValue">—</strong></div>
+          <div class="panel stat"><span id="statActive">Users active</span><strong id="activeValue">—</strong></div>
+          <div class="panel stat"><span id="statPending">Eeggataa</span><strong id="pendingValue">—</strong></div>
+          <div class="panel stat"><span id="statSuspended">Ugguraman</span><strong id="suspendedValue">—</strong></div>
+          <div class="panel stat"><span id="statEvents">Security events / 24h</span><strong id="eventsValue">—</strong></div>
+          <div class="panel stat"><span id="statHigh">High / Critical</span><strong id="highValue">—</strong></div>
+        </div>
+        <div class="two">
+          <section class="panel"><h2 id="modulesTitle">Haala tajaajiloota</h2><div id="moduleList" class="service-list"><p class="muted">Loading…</p></div></section>
+          <section class="panel"><h2 id="securityTitle">Nageenya yeroo dhiyoo</h2><div id="eventList" class="service-list"><p class="muted">Loading…</p></div></section>
+        </div>
+        <section class="panel" style="margin-top:14px"><div class="heading" style="margin:0 0 8px"><div><h2 id="eventsTitle">Security event history</h2><p class="muted" id="privacyNote">Odeeffannoo dhuunfaa, password, OTP fi ergaa hin agarsiisu.</p></div><select id="severityFilter" aria-label="Severity"><option value="">All severity</option><option value="critical">Critical</option><option value="high">High</option><option value="warning">Warning</option><option value="info">Info</option></select></div><div class="events"><table><thead><tr><th id="thType">Event</th><th id="thSeverity">Severity</th><th id="thTime">Yeroo</th><th id="thMeta">Details</th></tr></thead><tbody id="eventRows"><tr><td colspan="4" class="muted">No data</td></tr></tbody></table></div></section>
+      </section>
+    </main>
+    <footer class="footer">Ethio One · Private Super Admin workspace · Security events contain minimized diagnostic metadata only.</footer>
+  </div>
+<script>
+(() => {
+  const API = "https://ethio-one-api.onrender.com/api/v1";
+  const $ = (id) => document.getElementById(id);
+  let accessToken = null;
+  let refreshToken = null;
+  let monitorTimer = null;
+  let lang = "om";
+  const words = {
+    om: {login:"Super Admin seeni",hint:"Email fi password account Super Admin mirkanaa'e fayyadami.",identity:"Email / Ethio ID",password:"Password",enter:"Seeni",locked:"Authentication ammaaf cufameera. Admin API banuun dura email mirkanaa'e, hayyama Super Admin fi sirreeffamni nageenyaa xumuramuu qabu.",denied:"Account kanaaf Super Admin hayyamni hin jiru.",loading:"Odeeffannoo fe'aa jira…",refresh:"Haaromsi",title:"To'annoo Ethio One",overview:"HAALA SIRNICHAA",web:"Website",api:"API",db:"Database",users:"Users waliigalaa",active:"Users active",pending:"Eeggataa",suspended:"Ugguraman",events:"Security events / 24h",high:"High / Critical",modules:"Haala tajaajiloota",security:"Nageenya yeroo dhiyoo",history:"Seenaa security events",privacy:"Odeeffannoo dhuunfaa, password, OTP fi ergaa hin agarsiisu.",type:"Event",severity:"Sadarkaa",time:"Yeroo",details:"Ibsa",logout:"Ba'i",updated:"Haaromfame:",none:"Ragaan hin jiru",online:"Online",offline:"Offline",ready:"Ready",notReady:"Hin qophoofne",filter:"Sadarkaa hunda",expired:"Session xumurame. Irra deebi'ii seeni."},
+    en: {login:"Super Admin sign in",hint:"Use the verified Super Admin account email and password.",identity:"Email / Ethio ID",password:"Password",enter:"Sign in",locked:"Authentication is currently disabled. Verified email, Super Admin authorization and security setup are required before admin access can open.",denied:"This account is not authorized as Super Admin.",loading:"Loading monitoring data…",refresh:"Refresh",title:"Ethio One Control Center",overview:"SYSTEM OVERVIEW",web:"Website",api:"API",db:"Database",users:"Total users",active:"Active users",pending:"Pending",suspended:"Suspended",events:"Security events / 24h",high:"High / Critical",modules:"Service modules",security:"Recent security events",history:"Security event history",privacy:"Private content, passwords, OTPs and messages are never displayed.",type:"Event",severity:"Severity",time:"Time",details:"Details",logout:"Logout",updated:"Updated:",none:"No records",online:"Online",offline:"Offline",ready:"Ready",notReady:"Not ready",filter:"All severity",expired:"Session expired. Please sign in again."},
+    am: {login:"የSuper Admin መግቢያ",hint:"የተረጋገጠውን የSuper Admin ኢሜይልና የይለፍ ቃል ይጠቀሙ።",identity:"ኢሜይል / Ethio ID",password:"የይለፍ ቃል",enter:"ግባ",locked:"የመግቢያ አገልግሎቱ አሁን ተዘግቷል። የተረጋገጠ ኢሜይልና የSuper Admin ፈቃድ ያስፈልጋል።",denied:"ይህ መለያ የSuper Admin ፈቃድ የለውም።",loading:"መረጃ በመጫን ላይ…",refresh:"አድስ",title:"Ethio One መቆጣጠሪያ",overview:"የስርዓት አጠቃላይ ሁኔታ",web:"Website",api:"API",db:"Database",users:"ጠቅላላ ተጠቃሚዎች",active:"ንቁ ተጠቃሚዎች",pending:"በመጠባበቅ ላይ",suspended:"የታገዱ",events:"የደህንነት ክስተቶች / 24 ሰዓት",high:"ከፍተኛ / ወሳኝ",modules:"የአገልግሎት ሁኔታ",security:"የቅርብ ጊዜ የደህንነት ክስተቶች",history:"የደህንነት ታሪክ",privacy:"የግል መልዕክቶች፣ የይለፍ ቃላትና OTP አይታዩም።",type:"ክስተት",severity:"ደረጃ",time:"ጊዜ",details:"ዝርዝር",logout:"ውጣ",updated:"የታደሰ:",none:"መረጃ የለም",online:"በመስመር ላይ",offline:"ከመስመር ውጭ",ready:"ዝግጁ",notReady:"ዝግጁ አይደለም",filter:"ሁሉም ደረጃዎች",expired:"Session ጊዜው አልፏል። እንደገና ይግቡ።"}
+  };
+  function tr(key){return words[lang][key] || words.om[key] || key}
+  function setText(id,key){$(id).textContent=tr(key)}
+  function setLanguage(next){
+    lang=next; document.documentElement.lang=lang;
+    const map={loginTitle:"login",loginHint:"hint",identityLabel:"identity",passwordLabel:"password",loginButton:"enter",dashEyebrow:"overview",dashTitle:"title",refreshText:"refresh",statWeb:"web",statApi:"api",statDb:"db",statUsers:"users",statActive:"active",statPending:"pending",statSuspended:"suspended",statEvents:"events",statHigh:"high",modulesTitle:"modules",securityTitle:"security",eventsTitle:"history",privacyNote:"privacy",thType:"type",thSeverity:"severity",thTime:"time",thMeta:"details",logout:"logout"};
+    Object.entries(map).forEach(([id,key])=>setText(id,key));
+    $("severityFilter").options[0].text=tr("filter");
+    if(!$("dashboardView").classList.contains("hidden")) refresh();
+  }
+  $("language").addEventListener("change",e=>setLanguage(e.target.value));
+  function showMessage(message,isError=false){$("loginMessage").textContent=message;$("loginMessage").classList.toggle("error",isError)}
+  async function request(path, options={}, retry=true){
+    const headers={"Content-Type":"application/json",...(options.headers||{})};
+    if(accessToken) headers.Authorization="Bearer "+accessToken;
+    let response=await fetch(API+path,{...options,headers,cache:"no-store"});
+    if(response.status===401 && retry && refreshToken && path!=="/auth/refresh" && path!=="/auth/login"){
+      const renewed=await fetch(API+"/auth/refresh",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({refreshToken}),cache:"no-store"});
+      let session={};try{session=await renewed.json()}catch{}
+      if(renewed.ok && session.accessToken && session.refreshToken){
+        accessToken=session.accessToken;refreshToken=session.refreshToken;
+        return request(path,options,false);
+      }
+      accessToken=null;refreshToken=null;
+    }
+    let data={}; try{data=await response.json()}catch{}
+    if(!response.ok){const error=new Error(data.error||("HTTP "+response.status));error.status=response.status;throw error}
+    return data;
+  }
+  $("loginForm").addEventListener("submit",async e=>{
+    e.preventDefault(); const button=$("loginButton");button.disabled=true;showMessage(tr("loading"));
+    try{
+      const session=await request("/auth/login",{method:"POST",body:JSON.stringify({identity:$("identity").value.trim(),password:$("password").value})});
+      accessToken=session.accessToken;refreshToken=session.refreshToken;$("password").value="";
+      await loadDashboard();
+    }catch(err){
+      accessToken=null;refreshToken=null;
+      showMessage(err.status===503?tr("locked"):err.status===403?tr("denied"):err.message,true);
+    }finally{button.disabled=false}
+  });
+  async function loadDashboard(){
+    const overview=await request("/admin/overview");
+    $("loginView").classList.add("hidden");$("dashboardView").classList.remove("hidden");$("logout").classList.remove("hidden");
+    renderOverview(overview);await refreshServices();startPolling();
+  }
+  function startPolling(){
+    if(monitorTimer!==null) return;
+    monitorTimer=setInterval(()=>{
+      if(document.visibilityState==="visible" && !$("dashboardView").classList.contains("hidden")) refresh();
+    },30000);
+  }
+  function renderOverview(data){
+    const u=data.users||{},s=data.security||{};
+    $("usersValue").textContent=u.total??"—";$("activeValue").textContent=u.active??"—";$("pendingValue").textContent=u.pending??"—";$("suspendedValue").textContent=u.suspended??"—";$("eventsValue").textContent=s.total_24h??"—";$("highValue").textContent=s.high_24h??"—";
+    $("lastUpdated").textContent=tr("updated")+" "+new Date(data.generatedAt||Date.now()).toLocaleString();
+    renderEvents(data.recentEvents||[]);renderEventRows(data.recentEvents||[]);
+    $("moduleList").innerHTML=(data.modules||[]).map(m=>'<div class="service"><span>'+escapeHtml(m.status)+'</span><span class="pill">'+escapeHtml(m.count)+'</span></div>').join("")||'<p class="muted">'+tr("none")+'</p>';
+  }
+  async function refreshServices(){
+    const [website,health,ready,modules]=await Promise.allSettled([
+      fetch(location.origin+"/",{cache:"no-store"}),
+      fetch("https://ethio-one-api.onrender.com/healthz",{cache:"no-store"}),
+      fetch("https://ethio-one-api.onrender.com/readyz",{cache:"no-store"}),
+      request("/admin/modules")
+    ]);
+    setStatus("webValue",website.status==="fulfilled"&&website.value.ok,tr("online"),tr("offline"));
+    setStatus("apiValue",health.status==="fulfilled"&&health.value.ok,tr("online"),tr("offline"));
+    let dbOk=false;if(ready.status==="fulfilled"&&ready.value.ok){try{dbOk=(await ready.value.json()).ready===true}catch{}}
+    setStatus("dbValue",dbOk,tr("ready"),tr("notReady"));
+    if(modules.status==="fulfilled")$("moduleList").innerHTML=modules.value.modules.map(m=>'<div class="service"><span>'+escapeHtml(m.display_name)+'</span><span class="pill">'+escapeHtml(m.status)+'</span></div>').join("")||'<p class="muted">'+tr("none")+'</p>';
+  }
+  function setStatus(id,ok,yes,no){$(id).innerHTML='<i class="status-dot '+(ok?'':'bad')+'"></i>'+escapeHtml(ok?yes:no)}
+  function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+  function renderEvents(events){
+    $("eventList").innerHTML=events.slice(0,5).map(e=>'<div class="service"><span>'+escapeHtml(e.event_type)+'</span><span class="sev '+escapeHtml(e.severity)+'">'+escapeHtml(e.severity)+'</span></div>').join("")||'<p class="muted">'+tr("none")+'</p>';
+  }
+  function renderEventRows(events){
+    $("eventRows").innerHTML=events.map(e=>'<tr><td>'+escapeHtml(e.event_type)+'</td><td><span class="sev '+escapeHtml(e.severity)+'">'+escapeHtml(e.severity)+'</span></td><td>'+escapeHtml(new Date(e.created_at).toLocaleString())+'</td><td>'+escapeHtml(Object.entries(e.metadata||{}).map(([k,v])=>k+': '+v).join(' · '))+'</td></tr>').join("")||'<tr><td colspan="4" class="muted">'+tr("none")+'</td></tr>';
+  }
+  async function refresh(){
+    $("refreshButton").disabled=true;
+    try{await loadDashboard()}catch(err){if(err.status===401||err.status===403){showLogin(tr("expired"));return}showMessage(err.message,true)}
+    finally{$("refreshButton").disabled=false}
+  }
+  function showLogin(message){
+    accessToken=null;refreshToken=null;if(monitorTimer!==null){clearInterval(monitorTimer);monitorTimer=null;}$("dashboardView").classList.add("hidden");$("loginView").classList.remove("hidden");$("logout").classList.add("hidden");showMessage(message,true);
+  }
+  $("refreshButton").addEventListener("click",refresh);
+  $("severityFilter").addEventListener("change",async()=>{
+    try{const q=$("severityFilter").value;const data=await request("/admin/events?limit=100"+(q?"&severity="+encodeURIComponent(q):""));renderEventRows(data.events)}
+    catch(err){if(err.status===401||err.status===403)showLogin(tr("expired"))}
+  });
+  $("logout").addEventListener("click",async()=>{
+    try{if(refreshToken)await request("/auth/logout",{method:"POST",body:JSON.stringify({refreshToken})})}catch{}
+    $("password").value="";showLogin(tr("expired"));
+  });
+  setLanguage("om");
+})();
+</script>
+</body>
+</html>

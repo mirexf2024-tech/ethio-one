@@ -1,6 +1,7 @@
 const express = require("express");
 const crypto = require("node:crypto");
 const security = require("./security");
+const { recordSecurityEvent } = require("../admin/audit");
 const { sendVerificationEmail, sendVerificationSms } = require("../providers");
 
 const router = express.Router();
@@ -110,13 +111,17 @@ router.post("/verify", async (req,res) => {
     const found=await c.query("SELECT id,code_digest,expires_at,failed_attempts,max_attempts FROM auth_challenges WHERE user_id=$1 AND channel=$2 AND purpose='verify_contact' AND consumed_at IS NULL ORDER BY created_at DESC LIMIT 1 FOR UPDATE",[b.userId,b.channel]);
     const ch=found.rows[0];
     if(!ch || new Date(ch.expires_at)<=new Date() || ch.failed_attempts>=ch.max_attempts) {
-      await c.query("ROLLBACK"); return res.status(400).json({error:"The code is invalid or expired. Request a new one."});
+      await c.query("ROLLBACK");
+      await recordSecurityEvent(req, { type: "otp_expired", severity: "warning", userId: b.userId, metadata: { channel: b.channel, reason: "missing_expired_or_locked" } });
+      return res.status(400).json({error:"The code is invalid or expired. Request a new one."});
     }
     const actual=Buffer.from(security.digestChallenge(b.code,env.AUTH_CHALLENGE_PEPPER),"hex");
     const expected=Buffer.from(ch.code_digest,"hex");
     if(actual.length!==expected.length || !crypto.timingSafeEqual(actual,expected)) {
       await c.query("UPDATE auth_challenges SET failed_attempts=failed_attempts+1 WHERE id=$1",[ch.id]);
-      await c.query("COMMIT"); return res.status(400).json({error:"The code is invalid or expired. Request a new one."});
+      await c.query("COMMIT");
+      await recordSecurityEvent(req, { type: "otp_invalid", severity: "warning", userId: b.userId, metadata: { channel: b.channel, reason: "incorrect_code" } });
+      return res.status(400).json({error:"The code is invalid or expired. Request a new one."});
     }
     await c.query("UPDATE auth_challenges SET consumed_at=NOW() WHERE id=$1",[ch.id]);
     const col=b.channel==="email"?"email_verified_at":"phone_verified_at";
@@ -144,7 +149,10 @@ router.post("/login", async (req,res) => {
     } else result=await db.query("SELECT * FROM users WHERE lower(username)=lower($1) LIMIT 1",[value]);
     const user=result.rows[0];
     const valid=user ? await security.verifyPassword(b.password,user.password_hash) : false;
-    if(!user || !valid) return res.status(401).json({error:"The sign-in details are incorrect."});
+    if(!user || !valid) {
+      await recordSecurityEvent(req, { type: "login_failed", severity: "warning", userId: user?.id || null, metadata: { reason: "invalid_credentials", route: "/auth/login" } });
+      return res.status(401).json({error:"The sign-in details are incorrect."});
+    }
     if(user.status!=="active") return res.status(403).json({error:"Verify your contact method before signing in."});
     return res.json({ok:true,user:profile(user),...(await newSession(db,user,env))});
   } catch(e) {
@@ -182,6 +190,7 @@ router.post("/refresh", async (req,res) => {
     if(session.revoked_at || session.replaced_by_digest) {
       await c.query("UPDATE auth_sessions SET revoked_at=COALESCE(revoked_at,NOW()) WHERE family_id=$1",[session.family_id]);
       await c.query("COMMIT");
+      await recordSecurityEvent(req, { type: "refresh_reuse", severity: "high", userId: session.user_id, metadata: { reason: "rotated_token_reuse", route: "/auth/refresh" } });
       return res.status(401).json({error:"Session expired. Sign in again."});
     }
     if(new Date(session.expires_at)<=new Date() || session.status!=="active") {
