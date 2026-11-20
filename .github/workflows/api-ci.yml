@@ -1,6 +1,7 @@
 name: Ethio One API CI
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - "server/**"
