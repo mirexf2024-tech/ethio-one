@@ -1,6 +1,6 @@
 # Ethio One authentication design
 
-Status: design only. No registration or sign-in endpoint is enabled by this document.
+Status: partially implemented. Registration, OTP verification, login, profile lookup, refresh rotation, and logout routes exist behind `AUTH_ENABLED=true`. They must remain disabled until both delivery providers and production secrets are verified. Mobile UI integration, resend, and password recovery remain outstanding.
 
 ## Goals
 - One Ethio ID for the platform; default account type is `member`.
@@ -13,16 +13,17 @@ Status: design only. No registration or sign-in endpoint is enabled by this docu
 - Keep the delivery provider replaceable; do not bind identity records to one SMS/email vendor.
 
 ## Proposed API contract
-- `POST /api/v1/auth/register` — validate input, hash password with Argon2id, create pending account, issue a short-lived one-time verification challenge for the selected channel.
-- `POST /api/v1/auth/verify` — verify a challenge and mark only the matching contact method as verified; activate only when the account's required verification policy is satisfied.
+- `POST /api/v1/auth/register` — implemented; validates input, hashes the password with bcryptjs cost 12, creates a pending account, and issues a five-minute OTP for the selected channel.
+- `POST /api/v1/auth/verify` — implemented; verifies a challenge and marks only the matching contact method as verified.
 - `POST /api/v1/auth/verification/resend` — issue a fresh challenge for an already registered, unverified contact, subject to strict rate limits.
-- `POST /api/v1/auth/login` — verify password and account status, then issue a short-lived access session and rotating refresh credential.
-- `POST /api/v1/auth/refresh` — rotate refresh credentials; revoke the token family if reuse is detected.
-- `POST /api/v1/auth/logout` — revoke the current refresh-token family/session.
-- `POST /api/v1/auth/password/forgot` and `POST /api/v1/auth/password/reset` — generic responses to prevent account enumeration; single-use, short-lived reset challenges delivered through a verified email or phone.
-- `GET /api/v1/auth/me` — return the authenticated user's safe profile, never password hashes or challenge data.
+- `POST /api/v1/auth/login` — implemented; verifies password/account status and issues a 15-minute access token plus a refresh credential.
+- `POST /api/v1/auth/refresh` — implemented; rotates refresh credentials and revokes the token family if a rotated token is reused.
+- `POST /api/v1/auth/logout` — implemented; revokes the supplied refresh credential.
+- `POST /api/v1/auth/password/forgot` and `POST /api/v1/auth/password/reset` — planned only; not implemented.
+- `POST /api/v1/auth/verification/resend` — planned only; not implemented.
+- `GET /api/v1/auth/me` — implemented; returns the authenticated user's safe profile, never password hashes or challenge data.
 
-These routes must not be exposed until delivery, secret storage, database migrations, and integration tests are ready.
+The router is mounted but returns HTTP 503 unless `AUTH_ENABLED=true`, `AUTH_CHALLENGE_PEPPER`, and `ACCESS_TOKEN_SECRET` are configured. Provider credentials are also required for real OTP delivery. Keep the feature gate off until both delivery providers have been verified.
 
 ## Data and credential handling
 - Store passwords only as Argon2id hashes; bcrypt is the approved fallback. The current security helper uses bcryptjs with cost factor 12 and rejects passwords over bcrypt's 72-byte input limit. Never store plaintext passwords.
@@ -64,5 +65,5 @@ These routes must not be exposed until delivery, secret storage, database migrat
 ## External provider dependencies still required
 - The product decision is set: both email OTP and SMS OTP must be supported.
 - Selected adapters: Resend for email and SMSHub for Ethiopian SMS. Resend requires an API key and a verified sender/domain for production delivery. SMSHub's published API documentation states that API sending is unlocked after account identity/KYC approval; confirm the account is approved before attempting live sends.
-- Provider adapter modules are in `server/providers/`. Configure `RESEND_API_KEY`, `RESEND_FROM`, `SMSHUB_API_KEY`, and `AUTH_CHALLENGE_PEPPER` only in Render secret environment settings; never place them in source code or mobile builds. Provider adapters and security primitives are tested but are not yet connected to public auth routes.
+- Provider adapter modules are in `server/providers/`. Configure `RESEND_API_KEY`, `RESEND_FROM`, `SMSHUB_API_KEY`, and `AUTH_CHALLENGE_PEPPER` only in Render secret environment settings; never place them in source code or mobile builds. Provider adapters and security primitives are connected to the gated registration route. CI verifies that auth remains disabled without production configuration; real delivery and full database-backed end-to-end tests still need to be completed.
 - Do not send real OTPs or enable account creation until both required delivery paths are configured and end-to-end delivery is verified.
