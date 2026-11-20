@@ -100,7 +100,7 @@ app.use("/api/v1/auth", rateLimit({
   }
 }));
 app.use("/api/v1/auth", authRouter);
-app.use("/api/v1/telegram", rateLimit({ windowMs: 10 * 60 * 1000, limit: 10, standardHeaders: "draft-7", legacyHeaders: false }));
+app.use("/api/v1/telegram/link/start", rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: "draft-7", legacyHeaders: false }));
 app.use("/api/v1/telegram", telegramRouter);
 app.use("/api/v1/admin", rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: "draft-7", legacyHeaders: false }));
 app.use("/api/v1/admin", adminRouter);
