@@ -76,7 +76,8 @@ export default function App() {
   const submitAction=async()=>{if(busy)return;try{setBusy(true);setNotice("");
     if(screen==="register"){
       if(!form.full.trim()||!form.username.trim()||!form.password)throw new Error(t.required);
-      if(channel==="email"&&!form.email.trim())throw new Error(t.contactRequired);\n      if(channel==="sms"&&!form.phone.trim())throw new Error(t.contactRequired);
+      if(channel==="email"&&!form.email.trim())throw new Error(t.contactRequired);
+      if(channel==="sms"&&!form.phone.trim())throw new Error(t.contactRequired);
       if(form.email.trim()&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))throw new Error(t.emailInvalid);
       if(form.phone.trim()&&!/^\+?[0-9\s()-]{7,20}$/.test(form.phone.trim()))throw new Error(t.phoneInvalid);
       if(form.password.length<8)throw new Error(t.passwordShort);if(!accepted)throw new Error(t.termsRequired);
