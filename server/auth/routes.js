@@ -120,7 +120,7 @@ router.post("/verify", async (req,res) => {
     }
     await c.query("UPDATE auth_challenges SET consumed_at=NOW() WHERE id=$1",[ch.id]);
     const col=b.channel==="email"?"email_verified_at":"phone_verified_at";
-    const updated=await c.query("UPDATE users SET "+col+"=NOW(),status='active',updated_at=NOW() WHERE id=$1 RETURNING id,full_name,username,email,phone,account_type,status,email_verified_at,phone_verified_at,created_at",[b.userId]);
+    const updated=await c.query("UPDATE users SET "+col+"=NOW(),status='active',updated_at=NOW() WHERE id=$1 AND status IN ('pending_verification','active') RETURNING id,full_name,username,email,phone,account_type,status,email_verified_at,phone_verified_at,created_at",[b.userId]);
     if(!updated.rows[0]) { await c.query("ROLLBACK"); return res.status(400).json({error:"This account cannot be verified."}); }
     await c.query("COMMIT");
     const session=await newSession(db,updated.rows[0],env);
