@@ -91,7 +91,7 @@ export default function App() {
       if(!/^\d{6}$/.test(otp))throw new Error(t.code+" — 6 digits");
       await saveSession(await request("/verify",{userId,channel,code:otp}));
     }else if(screen==="forgot"){
-      const ch=channel;const dest=ch==="email"?form.email.trim():form.phone.trim();if(!dest)throw new Error(t.contactRequired);if(ch==="email"&&!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(dest))throw new Error(t.emailInvalid);if(ch==="sms"&&!/^\\+?[0-9\\s()-]{7,20}$/.test(dest))throw new Error(t.phoneInvalid);
+      const ch=channel;const dest=ch==="email"?form.email.trim():form.phone.trim();if(!dest)throw new Error(t.contactRequired);if(ch==="email"&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dest))throw new Error(t.emailInvalid);if(ch==="sms"&&!/^\+?[0-9\s()-]{7,20}$/.test(dest))throw new Error(t.phoneInvalid);
       await request("/password/forgot",{destination:dest,channel:ch});setResetDestination(dest);setChannel(ch);setOtp("");setNotice(t.sent);setScreen("reset");
     }else if(screen==="reset"){
       if(!/^\d{6}$/.test(otp))throw new Error(t.code+" — 6 digits");if(resetPassword.length<8)throw new Error(t.passwordShort);
@@ -142,7 +142,7 @@ export default function App() {
             <Pressable style={s.termsRow} onPress={()=>setAccepted(v=>!v)} accessibilityRole="checkbox" accessibilityState={{checked:accepted}}><View style={[s.checkbox,accepted&&s.checkboxOn]}>{accepted&&<Check size={13} color={C.white}/>}</View><Text style={s.termsText}>{t.terms}</Text></Pressable>
           </> : screen==="signin" ? <>
             <Field label={t.identity} icon={UserRound} value={form.phone} onChangeText={(v:string)=>set("phone",v)} keyboardType="email-address"/>
-            <Field label={t.password} icon={LockKeyhole} value={form.password} onChangeText={(v:string)=>set("password",v)} secureTextEntry={!showPassword} trailing={<Pressable onPress={()=>setShowPassword(v=>!v)} accessibilityRole="button" accessibilityLabel={showPassword?t.hide:t.show} hitSlop={10}><View style={s.passwordToggle}>{showPassword?<EyeOff size={17} color={C.muted}/>:<Eye size={17} color={C.muted}/>}<Text style={s.passwordToggleText}>{showPassword?t.hide:t.show}</Text></View></Pressable>}/>
+            <Field label={t.password} icon={LockKeyhole} value={form.password} onChangeText={(v:string)=>set("password",v)} secureTextEntry={!showPassword} trailing={<Pressable onPress={()=>setShowPassword(v=>!v)} accessibilityRole="button" accessibilityLabel={showPassword?t.hide:t.show} hitSlop={10}><View style={s.passwordToggle}>{showPassword?<EyeOff size={17} color={C.gold}/>:<Eye size={17} color={C.gold}/>}<Text style={s.passwordToggleText}>{showPassword?t.hide:t.show}</Text></View></Pressable>}/>
           </> : screen==="verify" ? <>
             <Text style={s.formSub}>{t.verifyHint}</Text><Field label={t.code} icon={ShieldCheck} value={otp} onChangeText={setOtp} keyboardType="number-pad"/>
             {!!notice&&<Text style={s.notice}>{notice}</Text>}<Pressable onPress={resendCode} style={s.textAction}><Text style={s.inlineLink}>{t.resend}</Text></Pressable>
