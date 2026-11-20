@@ -3,7 +3,7 @@ const crypto = require("node:crypto");
 const router = express.Router();
 
 function tokenPayload(req, env) {
-  const match = /^Bearer\\s+(.+)$/i.exec(req.get("authorization") || "");
+  const header = req.get("authorization") || "";\n  const match = /^Bearer /i.test(header) ? [header, header.slice(7).trim()] : null;
   if (!match || !env.ACCESS_TOKEN_SECRET || String(env.ACCESS_TOKEN_SECRET).length < 32) return null;
   const parts = match[1].split(".");
   if (parts.length !== 3) return null;
