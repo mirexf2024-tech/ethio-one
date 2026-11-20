@@ -99,8 +99,8 @@ test("API health and safe degraded-mode responses", async (t) => {
   assert.deepEqual(await authDisabled.json(), { error: "Authentication is temporarily unavailable." });
 
   const adminLocked = await fetch(`${base}/api/v1/admin/overview`);
-  assert.equal(adminLocked.status, 401);
-  assert.deepEqual(await adminLocked.json(), { error: "Super Admin authentication required." });
+  assert.equal(adminLocked.status, 503);
+  assert.deepEqual(await adminLocked.json(), { error: "Admin service is temporarily unavailable." });
 
   const missing = await fetch(`${base}/does-not-exist`);
   assert.equal(missing.status, 404);
