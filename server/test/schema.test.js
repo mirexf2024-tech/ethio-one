@@ -38,3 +38,15 @@ test("18-service registry migration adds Ethio Email and Ethio Sport safely", ()
   assert.match(sql, /ON CONFLICT \(module_key\) DO NOTHING/i);
   assert.match(sql, /007_complete_18_service_registry/);
 });
+
+test("foundation migration creates Ethio ID, roles, profiles, notifications and media metadata", () => {
+  const sql = fs.readFileSync(path.join(__dirname, "../schema/008_identity_roles_profile_notifications_media.sql"), "utf8");
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS ethio_id/i);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS user_profiles/i);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS roles/i);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS permissions/i);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS user_roles/i);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS notifications/i);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS media_assets/i);
+  assert.match(sql, /008_identity_roles_profile_notifications_media/);
+});
