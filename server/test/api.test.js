@@ -38,7 +38,10 @@ test("API health and safe degraded-mode responses", async (t) => {
       ...process.env,
       PORT: String(port),
       DATABASE_URL: "",
-      CORS_ORIGINS: "https://ethio-one.onrender.com"
+      CORS_ORIGINS: "https://ethio-one.onrender.com",
+      AUTH_ENABLED: "false",
+      AUTH_CHALLENGE_PEPPER: "",
+      ACCESS_TOKEN_SECRET: ""
     },
     stdio: ["ignore", "pipe", "pipe"]
   });
@@ -86,6 +89,14 @@ test("API health and safe degraded-mode responses", async (t) => {
   assert.deepEqual(await modules.json(), {
     error: "Service temporarily unavailable"
   });
+
+  const authDisabled = await fetch(`${base}/api/v1/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fullName: "Test User", username: "test_user", email: "test@example.com", password: "long-password", termsAccepted: true, channel: "email" })
+  });
+  assert.equal(authDisabled.status, 503);
+  assert.deepEqual(await authDisabled.json(), { error: "Authentication is temporarily unavailable." });
 
   const missing = await fetch(`${base}/does-not-exist`);
   assert.equal(missing.status, 404);
