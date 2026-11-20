@@ -10,7 +10,7 @@ test("Super Admin page contains a parseable browser script and secure session ha
   assert.ok(match, "admin page must include its application script");
   assert.doesNotThrow(() => new vm.Script(match[1]), "admin page JavaScript must parse");
   assert.match(html, /name="robots" content="noindex,nofollow"/);
-  assert.match(html, /\/api\/v1\/admin\/overview/);
+  assert.match(html, /request\("\/admin\/overview"\)/);
   assert.doesNotMatch(html, /localStorage|sessionStorage/);
   assert.match(html, /\bAUTH_ENABLED\b|Authentication is currently disabled|Authentication ammaaf cufameera/);
 });
