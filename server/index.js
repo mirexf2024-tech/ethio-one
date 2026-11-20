@@ -49,6 +49,26 @@ app.use("/api", (_req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
 });
+app.post("/api/v1/telemetry/client-error", rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: (_req, res) => res.status(429).json({ error: "Telemetry rate limit reached." })
+}), async (req, res) => {
+  const kind = req.body && req.body.kind;
+  if (!["window_error", "unhandled_rejection"].includes(kind)) {
+    return res.status(400).json({ error: "Invalid telemetry event." });
+  }
+  const saved = await recordSecurityEvent(req, {
+    type: "client_error",
+    severity: "warning",
+    metadata: { component: "web", reason: kind, route: "/" }
+  });
+  if (!saved) return res.status(503).json({ error: "Telemetry is temporarily unavailable." });
+  return res.status(202).json({ ok: true });
+});
+
 app.use("/api", rateLimit({
   windowMs: 60 * 1000,
   limit: 120,
