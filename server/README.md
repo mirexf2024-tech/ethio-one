@@ -41,7 +41,7 @@ Do not commit secrets. Configure them in the hosting provider's environment sett
 
 ## Initial schema
 Database migrations are versioned under `schema/` and tracked in `schema_migrations`:
-- `001_initial.sql` — creates the platform module registry and seeds 16 planned modules.
+- `001_initial.sql` — creates the platform module registry and seeds the original 16 planned modules.
 - `002_identity_foundation.sql` — creates the user identity table with hashed-password storage.
 - `003_identity_hardening.sql` — makes email optional when a phone is supplied, defaults new users to pending verification, and records contact verification timestamps and terms version.\n- `004_auth_challenges_and_sessions.sql` — prepares one-time challenge and rotating refresh-session storage. This migration was applied to the live Ethio One database and verified in the migration ledger.
 
