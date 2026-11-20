@@ -210,4 +210,110 @@ router.post("/logout", async (req,res) => {
 });
 
 
+router.post("/verification/resend", async (req,res) => {
+  const db=req.app.locals.db, env=req.app.locals.authEnv||process.env, b=req.body||{};
+  if(typeof b.userId!=="string" || !/^[0-9a-f-]{36}$/i.test(b.userId) || !["email","sms"].includes(b.channel)) {
+    return res.status(400).json({error:"Invalid verification request."});
+  }
+  try {
+    const col=b.channel==="email"?"email":"phone";
+    const verified=b.channel==="email"?"email_verified_at":"phone_verified_at";
+    const found=await db.query("SELECT id,"+col+" AS destination,"+verified+" AS verified_at,status FROM users WHERE id=$1",[b.userId]);
+    const user=found.rows[0];
+    if(!user || !user.destination || user.verified_at || user.status!=="pending_verification") {
+      return res.status(400).json({error:"A new verification code cannot be sent for this account."});
+    }
+    const recent=await db.query("SELECT last_sent_at FROM auth_challenges WHERE user_id=$1 AND channel=$2 AND purpose='verify_contact' ORDER BY created_at DESC LIMIT 1",[user.id,b.channel]);
+    if(recent.rows[0] && Date.now()-new Date(recent.rows[0].last_sent_at).getTime()<60000) {
+      return res.status(429).json({error:"Please wait before requesting another code."});
+    }
+    const code=security.createOtp();
+    await db.query("UPDATE auth_challenges SET consumed_at=NOW() WHERE user_id=$1 AND channel=$2 AND purpose='verify_contact' AND consumed_at IS NULL",[user.id,b.channel]);
+    await db.query("INSERT INTO auth_challenges (user_id,channel,purpose,code_digest,expires_at) VALUES ($1,$2,'verify_contact',$3,NOW()+INTERVAL '5 minutes')",
+      [user.id,b.channel,security.digestChallenge(code,env.AUTH_CHALLENGE_PEPPER)]);
+    try {
+      if(b.channel==="email") await sendVerificationEmail({to:user.destination,code,expiresMinutes:5});
+      else await sendVerificationSms({to:user.destination,code,expiresMinutes:5});
+    } catch {
+      await db.query("UPDATE auth_challenges SET consumed_at=NOW() WHERE user_id=$1 AND channel=$2 AND purpose='verify_contact' AND consumed_at IS NULL",[user.id,b.channel]).catch(()=>{});
+      return res.status(503).json({error:"We could not send the verification code. Please try again later."});
+    }
+    return res.json({ok:true,channel:b.channel,destination:mask(b.channel,user.destination),expiresIn:300});
+  } catch {
+    return res.status(503).json({error:"Verification is temporarily unavailable."});
+  }
+});
+
+router.post("/password/forgot", async (req,res) => {
+  const db=req.app.locals.db, env=req.app.locals.authEnv||process.env, b=req.body||{};
+  if(typeof b.channel!=="string" || !["email","sms"].includes(b.channel) || typeof b.destination!=="string") {
+    return res.status(400).json({error:"Enter the email address or phone number linked to your account."});
+  }
+  try {
+    let destination;
+    try { destination=b.channel==="email"?security.normalizeEmail(b.destination):security.normalizePhone(b.destination); }
+    catch { return res.json({ok:true,message:"If the account exists, a reset code will be sent."}); }
+    const col=b.channel==="email"?"email":"phone";
+    const found=await db.query("SELECT id,status,"+col+" AS destination FROM users WHERE "+col+"=$1 LIMIT 1",[destination]);
+    const user=found.rows[0];
+    if(user && user.status==="active") {
+      const recent=await db.query("SELECT last_sent_at FROM auth_challenges WHERE user_id=$1 AND channel=$2 AND purpose='password_reset' ORDER BY created_at DESC LIMIT 1",[user.id,b.channel]);
+      if(!recent.rows[0] || Date.now()-new Date(recent.rows[0].last_sent_at).getTime()>=60000) {
+        const code=security.createOtp();
+        await db.query("UPDATE auth_challenges SET consumed_at=NOW() WHERE user_id=$1 AND channel=$2 AND purpose='password_reset' AND consumed_at IS NULL",[user.id,b.channel]);
+        await db.query("INSERT INTO auth_challenges (user_id,channel,purpose,code_digest,expires_at) VALUES ($1,$2,'password_reset',$3,NOW()+INTERVAL '5 minutes')",
+          [user.id,b.channel,security.digestChallenge(code,env.AUTH_CHALLENGE_PEPPER)]);
+        try {
+          if(b.channel==="email") await sendVerificationEmail({to:destination,code,expiresMinutes:5});
+          else await sendVerificationSms({to:destination,code,expiresMinutes:5});
+        } catch {
+          await db.query("UPDATE auth_challenges SET consumed_at=NOW() WHERE user_id=$1 AND channel=$2 AND purpose='password_reset' AND consumed_at IS NULL",[user.id,b.channel]).catch(()=>{});
+        }
+      }
+    }
+    return res.json({ok:true,message:"If the account exists, a reset code will be sent."});
+  } catch {
+    return res.json({ok:true,message:"If the account exists, a reset code will be sent."});
+  }
+});
+
+router.post("/password/reset", async (req,res) => {
+  const db=req.app.locals.db, env=req.app.locals.authEnv||process.env, b=req.body||{};
+  if(typeof b.destination!=="string" || !["email","sms"].includes(b.channel) || !/^\\d{6}$/.test(String(b.code||""))) {
+    return res.status(400).json({error:"Invalid password reset request."});
+  }
+  try { security.validatePassword(b.newPassword); }
+  catch(e) { return res.status(400).json({error:e.message}); }
+  let destination;
+  try { destination=b.channel==="email"?security.normalizeEmail(b.destination):security.normalizePhone(b.destination); }
+  catch { return res.status(400).json({error:"The code is invalid or expired."}); }
+  const c=await db.connect();
+  try {
+    await c.query("BEGIN");
+    const col=b.channel==="email"?"email":"phone";
+    const found=await c.query("SELECT u.id,ch.id AS challenge_id,ch.code_digest,ch.expires_at,ch.failed_attempts,ch.max_attempts FROM users u JOIN auth_challenges ch ON ch.user_id=u.id WHERE u."+col+"=$1 AND u.status='active' AND ch.channel=$2 AND ch.purpose='password_reset' AND ch.consumed_at IS NULL ORDER BY ch.created_at DESC LIMIT 1 FOR UPDATE OF ch",
+      [destination,b.channel]);
+    const challenge=found.rows[0];
+    if(!challenge || new Date(challenge.expires_at)<=new Date() || challenge.failed_attempts>=challenge.max_attempts) {
+      await c.query("ROLLBACK"); return res.status(400).json({error:"The code is invalid or expired."});
+    }
+    const actual=Buffer.from(security.digestChallenge(b.code,env.AUTH_CHALLENGE_PEPPER),"hex");
+    const expected=Buffer.from(challenge.code_digest,"hex");
+    if(actual.length!==expected.length || !crypto.timingSafeEqual(actual,expected)) {
+      await c.query("UPDATE auth_challenges SET failed_attempts=failed_attempts+1 WHERE id=$1",[challenge.challenge_id]);
+      await c.query("COMMIT"); return res.status(400).json({error:"The code is invalid or expired."});
+    }
+    const passwordHash=await security.hashPassword(b.newPassword);
+    await c.query("UPDATE users SET password_hash=$2,updated_at=NOW() WHERE id=$1",[challenge.id,passwordHash]);
+    await c.query("UPDATE auth_challenges SET consumed_at=NOW() WHERE id=$1",[challenge.challenge_id]);
+    await c.query("UPDATE auth_sessions SET revoked_at=NOW() WHERE user_id=$1 AND revoked_at IS NULL",[challenge.id]);
+    await c.query("COMMIT");
+    return res.json({ok:true,message:"Password updated. Please sign in again."});
+  } catch {
+    await c.query("ROLLBACK").catch(()=>{});
+    return res.status(503).json({error:"Password reset is temporarily unavailable."});
+  } finally { c.release(); }
+});
+
+
 module.exports=router;
