@@ -98,6 +98,14 @@ test("API health and safe degraded-mode responses", async (t) => {
   assert.equal(authDisabled.status, 503);
   assert.deepEqual(await authDisabled.json(), { error: "Authentication is temporarily unavailable." });
 
+  const telemetryUnavailable = await fetch(`${base}/api/v1/telemetry/client-error`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kind: "window_error" })
+  });
+  assert.equal(telemetryUnavailable.status, 503);
+  assert.deepEqual(await telemetryUnavailable.json(), { error: "Telemetry is temporarily unavailable." });
+
   const adminLocked = await fetch(`${base}/api/v1/admin/overview`);
   assert.equal(adminLocked.status, 503);
   assert.deepEqual(await adminLocked.json(), { error: "Admin service is temporarily unavailable." });
