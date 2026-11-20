@@ -194,11 +194,17 @@ const server = app.listen(port, () => {
     }).then(async (response) => {
       const result = await response.json().catch(() => ({}));
       if (!response.ok || result.ok !== true) {
-        console.error("Telegram webhook registration failed.");
+        console.error("Telegram webhook registration failed:", {
+          status: response.status,
+          errorCode: result.error_code || null,
+          description: typeof result.description === "string" ? result.description.slice(0, 240) : null
+        });
         return;
       }
       console.log("Telegram webhook registered.");
-    }).catch(() => console.error("Telegram webhook registration failed."));
+    }).catch((error) => console.error("Telegram webhook registration failed:", {
+      reason: error && error.name ? error.name : "request_error"
+    }));
   }
 });
 
