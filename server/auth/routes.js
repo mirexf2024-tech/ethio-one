@@ -89,7 +89,7 @@ router.post("/register", async (req,res) => {
       else await sendVerificationSms({to:phone,code,expiresMinutes:5});
     } catch {
       await db.query("UPDATE auth_challenges SET consumed_at=NOW() WHERE user_id=$1 AND purpose='verify_contact' AND consumed_at IS NULL",[user.id]).catch(()=>{});
-      return res.status(503).json({error:"We could not send the verification code. Please try again later."});
+      return res.status(503).json({error:"We could not send the verification code. Please try again later.",userId:user.id,channel});
     }
     const destination=channel==="email"?email:phone;
     return res.status(201).json({ok:true,status:"pending_verification",userId:user.id,channel,destination:mask(channel,destination),expiresIn:300});
