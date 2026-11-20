@@ -3,7 +3,8 @@ const crypto = require("node:crypto");
 const router = express.Router();
 
 function tokenPayload(req, env) {
-  const header = req.get("authorization") || "";\n  const match = /^Bearer /i.test(header) ? [header, header.slice(7).trim()] : null;
+  const header = req.get("authorization") || "";
+  const match = /^Bearer /i.test(header) ? [header, header.slice(7).trim()] : null;
   if (!match || !env.ACCESS_TOKEN_SECRET || String(env.ACCESS_TOKEN_SECRET).length < 32) return null;
   const parts = match[1].split(".");
   if (parts.length !== 3) return null;
@@ -48,7 +49,7 @@ router.patch("/profile", async (req,res) => {
     if(typeof value!=="string" || value.length>max || /[\\r\\n]/.test(value)) return res.status(400).json({error:"Please check your profile details."});
   }
   if(b.locale!==undefined && !["om","am","en"].includes(b.locale)) return res.status(400).json({error:"Unsupported language."});
-  if(b.avatarUrl!==undefined && (typeof b.avatarUrl!=="string" || b.avatarUrl.length>1000 || !/^https:\\/\\/res\\.cloudinary\\.com\\/[A-Za-z0-9_-]+\\//.test(b.avatarUrl))) return res.status(400).json({error:"Please use an approved profile image."});
+  if(b.avatarUrl!==undefined && (typeof b.avatarUrl!=="string" || b.avatarUrl.length>1000 || !b.avatarUrl.startsWith("https://res.cloudinary.com/"))) return res.status(400).json({error:"Please use an approved profile image."});
   try {
     await req.app.locals.db.query(
       "INSERT INTO user_profiles (user_id,country,region,city,bio,avatar_url,locale) VALUES ($1,COALESCE($2,'Ethiopia'),$3,$4,$5,$6,COALESCE($7,'om')) ON CONFLICT (user_id) DO UPDATE SET country=COALESCE($2,user_profiles.country),region=COALESCE($3,user_profiles.region),city=COALESCE($4,user_profiles.city),bio=COALESCE($5,user_profiles.bio),avatar_url=COALESCE($6,user_profiles.avatar_url),locale=COALESCE($7,user_profiles.locale),updated_at=NOW()",
@@ -101,7 +102,7 @@ router.post("/media/sign", async (req,res) => {
 router.post("/media", async (req,res) => {
   const b=req.body||{};
   if(typeof b.publicId!=="string" || b.publicId.length>255 || typeof b.secureUrl!=="string" || b.secureUrl.length>1000 ||
-     !/^https:\\/\\/res\\.cloudinary\\.com\\/[A-Za-z0-9_-]+\\/(image|video)\\/upload\\//.test(b.secureUrl) ||
+     !b.secureUrl.startsWith("https://res.cloudinary.com/") || !b.secureUrl.includes("/upload/") ||
      !["image","video"].includes(b.resourceType) || !Number.isSafeInteger(b.bytes) || b.bytes<1 || b.bytes>100*1024*1024) {
     return res.status(400).json({error:"Invalid media details."});
   }
