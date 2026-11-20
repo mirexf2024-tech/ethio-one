@@ -7,7 +7,7 @@ function digest(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
 function bearerPayload(req, env) {
-  const match = /^Bearer\\s+(.+)$/i.exec(req.get("authorization") || "");
+  const match = /^Bearer\s+(.+)$/i.exec(req.get("authorization") || "");
   if (!match || match[1].length > 2048) return null;
   const parts = match[1].split(".");
   if (parts.length !== 3) return null;
@@ -73,7 +73,7 @@ router.post("/webhook", async (req, res) => {
   const chatId = message && message.chat && message.chat.id;
   const text = message && message.text;
   if (!chatId || typeof text !== "string" || !text.startsWith("/start")) return res.sendStatus(200);
-  const match = /^\/start(?:@\\w+)?\\s+([A-Za-z0-9_-]{32,128})$/.exec(text.trim());
+  const match = /^\/start(?:@\w+)?\s+([A-Za-z0-9_-]{32,128})$/.exec(text.trim());
   if (!match) {
     await telegramRequest(env, "sendMessage", {
       chat_id: String(chatId),
