@@ -43,13 +43,7 @@ async function sendVerificationSms({ to, code, expiresMinutes = 5 }, options = {
     error.requestId = typeof payload.request_id === "string" ? payload.request_id : undefined;
     throw error;
   }
-  return {
-    provider: "smshub",
-    messageId: payload.data.message_id,
-    messageStatus: payload.data.message_status || "queued",
-    creditsUsed: Number.isInteger(payload.data.credits_used) ? payload.data.credits_used : undefined,
-    requestId: typeof payload.request_id === "string" ? payload.request_id : undefined
-  };
+  return { provider: "smshub", messageId: payload.data.message_id };
 }
 
 module.exports = { sendVerificationSms };
