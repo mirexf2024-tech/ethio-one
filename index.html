@@ -171,5 +171,25 @@
   });
   setLanguage(currentLanguage);
 </script>
+<script>
+  // Privacy-safe diagnostics: send only a fixed event type; never capture messages or stack traces.
+  (() => {
+    const reported = new Set();
+    const report = (kind) => {
+      if (reported.has(kind)) return;
+      reported.add(kind);
+      fetch("https://ethio-one-api.onrender.com/api/v1/telemetry/client-error", {
+        method: "POST",
+        mode: "cors",
+        credentials: "omit",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind }),
+        keepalive: true
+      }).catch(() => {});
+    };
+    window.addEventListener("error", () => report("window_error"));
+    window.addEventListener("unhandledrejection", () => report("unhandled_rejection"));
+  })();
+</script>
 </body>
 </html>
