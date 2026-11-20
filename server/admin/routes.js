@@ -36,7 +36,7 @@ async function requireSuperAdmin(req, res, next) {
   }
   try {
     const result = await db.query(
-      "SELECT id,email,email_verified_at,status FROM users WHERE id=$1 AND status='active' LIMIT 1",
+      "SELECT u.id,u.email,u.email_verified_at,u.status FROM users u JOIN user_roles ur ON ur.user_id=u.id AND ur.role_key='super_admin' WHERE u.id=$1 AND u.status='active' LIMIT 1",
       [payload.sub]
     );
     const user = result.rows[0];
