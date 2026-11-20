@@ -49,7 +49,20 @@ app.use("/api", (_req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
 });
-app.use("/api", rateLimit({ windowMs: 60 * 1000, limit: 120, standardHeaders: "draft-7", legacyHeaders: false }));
+app.use("/api", rateLimit({
+  windowMs: 60 * 1000,
+  limit: 120,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: async (req, res) => {
+    await recordSecurityEvent(req, {
+      type: "api_rate_limited",
+      severity: "high",
+      metadata: { route: req.path, method: req.method }
+    });
+    return res.status(429).json({ error: "Too many requests. Please wait and try again." });
+  }
+}));
 
 app.use("/api/v1/auth", rateLimit({
   windowMs: 15 * 60 * 1000,
