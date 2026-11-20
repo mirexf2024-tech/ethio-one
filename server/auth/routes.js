@@ -165,4 +165,49 @@ router.get("/me", async (req,res) => {
   } catch { return res.status(503).json({error:"Profile is temporarily unavailable."}); }
 });
 
+
+router.post("/refresh", async (req,res) => {
+  const db=req.app.locals.db, env=req.app.locals.authEnv||process.env;
+  let digest;
+  try { digest=security.digestToken(req.body?.refreshToken); }
+  catch { return res.status(401).json({error:"Session expired. Sign in again."}); }
+  const c=await db.connect();
+  try {
+    await c.query("BEGIN");
+    const found=await c.query(
+      "SELECT s.id,s.user_id,s.family_id,s.expires_at,s.revoked_at,s.replaced_by_digest,u.username,u.status FROM auth_sessions s JOIN users u ON u.id=s.user_id WHERE s.refresh_token_digest=$1 FOR UPDATE OF s",
+      [digest]);
+    const session=found.rows[0];
+    if(!session) { await c.query("ROLLBACK"); return res.status(401).json({error:"Session expired. Sign in again."}); }
+    if(session.revoked_at || session.replaced_by_digest) {
+      await c.query("UPDATE auth_sessions SET revoked_at=COALESCE(revoked_at,NOW()) WHERE family_id=$1",[session.family_id]);
+      await c.query("COMMIT");
+      return res.status(401).json({error:"Session expired. Sign in again."});
+    }
+    if(new Date(session.expires_at)<=new Date() || session.status!=="active") {
+      await c.query("UPDATE auth_sessions SET revoked_at=NOW() WHERE id=$1",[session.id]);
+      await c.query("COMMIT");
+      return res.status(401).json({error:"Session expired. Sign in again."});
+    }
+    const nextToken=security.createOpaqueToken(48), nextDigest=security.digestToken(nextToken);
+    await c.query("UPDATE auth_sessions SET revoked_at=NOW(),replaced_by_digest=$2,last_used_at=NOW() WHERE id=$1",[session.id,nextDigest]);
+    await c.query("INSERT INTO auth_sessions (user_id,family_id,refresh_token_digest,expires_at) VALUES ($1,$2,$3,NOW()+INTERVAL '30 days')",
+      [session.user_id,session.family_id,nextDigest]);
+    await c.query("COMMIT");
+    return res.json({accessToken:accessToken({id:session.user_id,username:session.username},env),refreshToken:nextToken,tokenType:"Bearer",expiresIn:ACCESS_TTL});
+  } catch {
+    await c.query("ROLLBACK").catch(()=>{});
+    return res.status(503).json({error:"Session refresh is temporarily unavailable."});
+  } finally { c.release(); }
+});
+
+router.post("/logout", async (req,res) => {
+  try {
+    const digest=security.digestToken(req.body?.refreshToken);
+    await req.app.locals.db.query("UPDATE auth_sessions SET revoked_at=NOW() WHERE refresh_token_digest=$1 AND revoked_at IS NULL",[digest]);
+  } catch {}
+  return res.json({ok:true});
+});
+
+
 module.exports=router;
