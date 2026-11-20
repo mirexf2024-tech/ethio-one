@@ -37,7 +37,7 @@ function readAccessToken(token, env) {
   } catch { return null; }
 }
 function profile(u) {
-  return { id:u.id, fullName:u.full_name, username:u.username, email:u.email, phone:u.phone,
+  return { id:u.id, ethioId:u.ethio_id, fullName:u.full_name, username:u.username, email:u.email, phone:u.phone,
     accountType:u.account_type, status:u.status, emailVerified:!!u.email_verified_at,
     phoneVerified:!!u.phone_verified_at, createdAt:u.created_at };
 }
@@ -77,6 +77,7 @@ router.post("/register", async (req,res) => {
         "INSERT INTO users (full_name,username,email,phone,password_hash,account_type,status,terms_accepted_at,terms_version) VALUES ($1,$2,$3,$4,$5,'member','pending_verification',NOW(),$6) RETURNING id,full_name,username,email,phone",
         [b.fullName.trim(),b.username.trim().toLowerCase(),email,phone,passwordHash,TERMS_VERSION]);
       user=inserted.rows[0];
+      await c.query("INSERT INTO user_roles (user_id,role_key) VALUES ($1,'member') ON CONFLICT DO NOTHING",[user.id]);
       await c.query("INSERT INTO auth_challenges (user_id,channel,purpose,code_digest,expires_at) VALUES ($1,$2,'verify_contact',$3,NOW()+INTERVAL '5 minutes')",
         [user.id,channel,security.digestChallenge(code,env.AUTH_CHALLENGE_PEPPER)]);
       await c.query("COMMIT");
@@ -167,7 +168,7 @@ router.get("/me", async (req,res) => {
   const payload=match && readAccessToken(match[1],env);
   if(!payload) return res.status(401).json({error:"Please sign in again."});
   try {
-    const result=await req.app.locals.db.query("SELECT id,full_name,username,email,phone,account_type,status,email_verified_at,phone_verified_at,created_at FROM users WHERE id=$1 AND status='active'",[payload.sub]);
+    const result=await req.app.locals.db.query("SELECT id,ethio_id,full_name,username,email,phone,account_type,status,email_verified_at,phone_verified_at,created_at FROM users WHERE id=$1 AND status='active'",[payload.sub]);
     if(!result.rows[0]) return res.status(401).json({error:"Please sign in again."});
     return res.json({user:profile(result.rows[0])});
   } catch { return res.status(503).json({error:"Profile is temporarily unavailable."}); }
