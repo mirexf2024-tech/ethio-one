@@ -6,6 +6,7 @@ const rateLimit = require("express-rate-limit");
 const { Pool } = require("pg");
 const authRouter = require("./auth/routes");
 const adminRouter = require("./admin/routes");
+const telegramRouter = require("./telegram/routes");
 const { recordSecurityEvent } = require("./admin/audit");
 
 const app = express();
@@ -40,7 +41,7 @@ app.use(cors({
     return callback(new Error("Origin not allowed"));
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  allowedHeaders: ["Content-Type", "Authorization", "X-Telegram-Bot-Api-Secret-Token"]
 }));
 app.use(express.json({ limit: "100kb" }));
 app.locals.db = pool;
@@ -99,6 +100,7 @@ app.use("/api/v1/auth", rateLimit({
   }
 }));
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/telegram", telegramRouter);
 app.use("/api/v1/admin", rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: "draft-7", legacyHeaders: false }));
 app.use("/api/v1/admin", adminRouter);
 
