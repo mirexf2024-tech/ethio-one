@@ -71,7 +71,7 @@ export default function App() {
   const set = (key:keyof typeof form, value:string) => setForm(old=>({...old,[key]:value}));
   const langLabel = useMemo(()=>({OM:"Oromoo",AM:"አማርኛ",EN:"English"}[language]),[language]);
 
-  const request=async(path:string,body:any)=>{const r=await fetch(API+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const d=await r.json().catch(()=>({error:"Could not read server response."}));if(!r.ok){const error:any=new Error(d.error||"Request failed.");error.payload=d;throw error;}return d;};
+  const request=async(path:string,body:any)=>{const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),30000);let r:Response;try{r=await fetch(API+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),signal:controller.signal});}catch(e:any){const message=language==="OM"?"Intarneetiin addaan citeera ykn serveriin deebii hin kennine. Irra deebi'ii yaali.":language==="AM"?"የኢንተርኔት ግንኙነት ተቋርጧል። እንደገና ይሞክሩ።":"Connection failed or timed out. Please check your internet and try again.";throw new Error(message);}finally{clearTimeout(timer);}const d=await r.json().catch(()=>({error:"Could not read server response."}));if(!r.ok){const error:any=new Error(d.error||"Request failed.");error.payload=d;throw error;}return d;};
   const saveSession=async(d:any)=>{await SecureStore.setItemAsync("ethio_one_access",d.accessToken);await SecureStore.setItemAsync("ethio_one_refresh",d.refreshToken);setAccountName(d.user?.fullName||d.user?.username||"Ethio One");setScreen("account");};
   const submitAction=async()=>{if(busy)return;try{setBusy(true);setNotice("");
     if(screen==="register"){
@@ -83,10 +83,10 @@ export default function App() {
       if(form.password.length<8)throw new Error(t.passwordShort);if(!accepted)throw new Error(t.termsRequired);
       const selected=channel;
       const d=await request("/register",{fullName:form.full.trim(),username:form.username.trim(),email:form.email.trim()||undefined,phone:form.phone.trim()||undefined,password:form.password,termsAccepted:true,channel:selected});
-      setUserId(d.userId);setChannel(selected);setOtp("");setNotice(t.sent);setScreen("verify");
+      set("password","");setUserId(d.userId);setChannel(selected);setOtp("");setNotice(t.sent);setScreen("verify");
     }else if(screen==="signin"){
       if(!form.phone.trim()||!form.password)throw new Error(t.required);
-      await saveSession(await request("/login",{identity:form.phone.trim(),password:form.password}));
+      await saveSession(await request("/login",{identity:form.phone.trim(),password:form.password}));set("password","");
     }else if(screen==="verify"){
       if(!/^\d{6}$/.test(otp))throw new Error(t.code+" — 6 digits");
       await saveSession(await request("/verify",{userId,channel,code:otp}));
@@ -98,10 +98,10 @@ export default function App() {
       await request("/password/reset",{destination:resetDestination,channel,code:otp,newPassword:resetPassword});
       Alert.alert("Ethio One",language==="OM"?"Jecha icciitii haaromfameera. Amma seeni.":"Password updated. Please sign in.");setScreen("signin");setOtp("");setResetPassword("");
     }
-  }catch(e:any){if(screen==="register"&&e?.payload?.userId){setUserId(e.payload.userId);setChannel(e.payload.channel||channel);setOtp("");setNotice(e.message+" You can request a new code below.");setScreen("verify");}else{Alert.alert("Ethio One",e?.message||"Something went wrong.");}}finally{setBusy(false);}};
+  }catch(e:any){if(screen==="register"&&e?.payload?.userId){set("password","");setUserId(e.payload.userId);setChannel(e.payload.channel||channel);setOtp("");setNotice(e.message+" You can request a new code below.");setScreen("verify");}else{Alert.alert("Ethio One",e?.message||"Something went wrong.");}}finally{setBusy(false);}};
   const startTelegramLink=async()=>{if(busy)return;try{setBusy(true);const token=await SecureStore.getItemAsync("ethio_one_access");if(!token)throw new Error(t.signInAgain);const response=await fetch("https://ethio-one-api.onrender.com/api/v1/telegram/link/start",{method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"}});const data=await response.json().catch(()=>({}));if(!response.ok){if(response.status===503)throw new Error(t.telegramUnavailable);if(response.status===401)throw new Error(t.signInAgain);throw new Error(t.telegramUnavailable);}if(typeof data.link!=="string"||!/^https:\/\/t\.me\/EthioOneSupportBot\?start=[A-Za-z0-9_-]{32,128}$/.test(data.link))throw new Error(t.telegramUnavailable);await Linking.openURL(data.link);}catch(e:any){Alert.alert("Ethio One",e?.message||t.telegramUnavailable);}finally{setBusy(false);}};
   const resendCode=async()=>{if(busy)return;try{setBusy(true);await request("/verification/resend",{userId,channel});setNotice(t.sent);}catch(e:any){Alert.alert("Ethio One",e?.message||"Could not resend code.");}finally{setBusy(false);}};
-  const signOut=async()=>{try{const token=await SecureStore.getItemAsync("ethio_one_refresh");if(token)await request("/logout",{refreshToken:token}).catch(()=>{});await SecureStore.deleteItemAsync("ethio_one_access");await SecureStore.deleteItemAsync("ethio_one_refresh");}finally{setAccountName("");setScreen("welcome");}};
+  const signOut=async()=>{try{const token=await SecureStore.getItemAsync("ethio_one_refresh");if(token)await request("/logout",{refreshToken:token}).catch(()=>{});await SecureStore.deleteItemAsync("ethio_one_access");await SecureStore.deleteItemAsync("ethio_one_refresh");}finally{setAccountName("");set("password","");setResetPassword("");setOtp("");setScreen("welcome");}};
   useEffect(()=>{let active=true;(async()=>{try{const token=await SecureStore.getItemAsync("ethio_one_access");if(!token||!active)return;const r=await fetch(API+"/me",{headers:{Authorization:"Bearer "+token}});if(r.ok){const d=await r.json();if(active){setAccountName(d.user?.fullName||d.user?.username||"Ethio One");setScreen("account");}return;}const refresh=await SecureStore.getItemAsync("ethio_one_refresh");if(refresh){const rr=await fetch(API+"/refresh",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({refreshToken:refresh})});const d=await rr.json();if(rr.ok&&active){await SecureStore.setItemAsync("ethio_one_access",d.accessToken);await SecureStore.setItemAsync("ethio_one_refresh",d.refreshToken);setAccountName("Ethio One");setScreen("account");}else{await SecureStore.deleteItemAsync("ethio_one_access");await SecureStore.deleteItemAsync("ethio_one_refresh");}}}catch{}})();return()=>{active=false;};},[]);
   return <SafeAreaView style={s.safe}>
     <StatusBar barStyle="light-content"/>
