@@ -75,12 +75,12 @@ export default function App() {
   const saveSession=async(d:any)=>{await SecureStore.setItemAsync("ethio_one_access",d.accessToken);await SecureStore.setItemAsync("ethio_one_refresh",d.refreshToken);setAccountName(d.user?.fullName||d.user?.username||"Ethio One");setScreen("account");};
   const submitAction=async()=>{if(busy)return;try{setBusy(true);setNotice("");
     if(screen==="register"){
-      if(!form.full.trim()||!form.username.trim()||!form.password||!form.country.trim()||!form.region.trim()||!form.city.trim())throw new Error(t.required);
+      if(!form.full.trim()||!form.username.trim()||!form.password)throw new Error(t.required);
       if(!form.email.trim()&&!form.phone.trim())throw new Error(t.contactRequired);
       if(form.email.trim()&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))throw new Error(t.emailInvalid);
       if(form.phone.trim()&&!/^\+?[0-9\s()-]{7,20}$/.test(form.phone.trim()))throw new Error(t.phoneInvalid);
       if(form.password.length<8)throw new Error(t.passwordShort);if(!accepted)throw new Error(t.termsRequired);
-      const selected=channel==="email"&&form.email.trim()?"email":"sms";
+      const selected=channel==="email"?(form.email.trim()?"email":"sms"):(form.phone.trim()?"sms":"email");
       const d=await request("/register",{fullName:form.full.trim(),username:form.username.trim(),email:form.email.trim()||undefined,phone:form.phone.trim()||undefined,password:form.password,termsAccepted:true,channel:selected});
       setUserId(d.userId);setChannel(selected);setOtp("");setNotice(t.sent);setScreen("verify");
     }else if(screen==="signin"){
@@ -128,8 +128,8 @@ export default function App() {
           </View>
           <View style={s.trust}><ShieldCheck size={17} color={C.gold}/><Text style={s.trustText}>{t.secure}</Text></View>
         </> : <>
-          <Pressable style={s.back} onPress={()=>setScreen("welcome")}><ArrowLeft size={18} color={C.navy}/><Text style={s.backText}>{t.back}</Text></Pressable>
-          <View style={s.formHeading}><View style={s.formBadge}><UserRound size={22} color={C.gold}/></View><Text style={s.formTitle}>{screen==="register"?t.create:t.loginTitle}</Text><Text style={s.formSub}>{screen==="register"?t.subtitle:t.loginSub}</Text></View>
+          <Pressable style={s.back} onPress={()=>setScreen(screen==="verify"?"register":screen==="reset"?"signin":"welcome")}><ArrowLeft size={18} color={C.navy}/><Text style={s.backText}>{t.back}</Text></Pressable>
+          <View style={s.formHeading}><View style={s.formBadge}><UserRound size={22} color={C.gold}/></View><Text style={s.formTitle}>{screen==="register"?t.create:screen==="verify"?t.verifyTitle:screen==="reset"?t.newPassword:screen==="forgot"?t.forgot:screen==="account"?t.accountReady:t.loginTitle}</Text><Text style={s.formSub}>{screen==="register"?t.subtitle:screen==="verify"?t.verifyHint:screen==="reset"?"":screen==="forgot"?t.forgot:screen==="account"?"":t.loginSub}</Text></View>
           {screen==="register" ? <>
             <Field label={t.full} icon={UserRound} value={form.full} onChangeText={(v:string)=>set("full",v)} autoCapitalize="words"/>
             <Field label={t.phone} icon={Phone} value={form.phone} onChangeText={(v:string)=>set("phone",v)} keyboardType="phone-pad"/>
@@ -137,9 +137,6 @@ export default function App() {
             <Field label={t.username} icon={UserRound} value={form.username} onChangeText={(v:string)=>set("username",v)}/>
             <View style={s.channelRow}><Text style={s.label}>{t.chooseChannel}</Text><View style={s.channelOptions}><Pressable onPress={()=>setChannel("email")} style={[s.channelOption,channel==="email"&&s.channelActive]}><Text style={[s.channelText,channel==="email"&&s.channelTextActive]}>{t.emailChannel}</Text></Pressable><Pressable onPress={()=>setChannel("sms")} style={[s.channelOption,channel==="sms"&&s.channelActive]}><Text style={[s.channelText,channel==="sms"&&s.channelTextActive]}>{t.smsChannel}</Text></Pressable></View></View>
             <Field label={t.password} icon={LockKeyhole} value={form.password} onChangeText={(v:string)=>set("password",v)} secureTextEntry={!showPassword} trailing={<Pressable onPress={()=>setShowPassword(v=>!v)} accessibilityRole="button" accessibilityLabel={showPassword?t.hide:t.show} hitSlop={10}><View style={s.passwordToggle}>{showPassword?<EyeOff size={17} color={C.muted}/>:<Eye size={17} color={C.muted}/>}<Text style={s.passwordToggleText}>{showPassword?t.hide:t.show}</Text></View></Pressable>}/>
-            <Field label={t.country} icon={Globe2} value={form.country} onChangeText={(v:string)=>set("country",v)} placeholder={t.countryValue} autoCapitalize="words"/>
-            <Field label={t.region} icon={Globe2} value={form.region} onChangeText={(v:string)=>set("region",v)} autoCapitalize="words"/>
-            <Field label={t.city} icon={Globe2} value={form.city} onChangeText={(v:string)=>set("city",v)} autoCapitalize="words"/>
             <Pressable style={s.termsRow} onPress={()=>setAccepted(v=>!v)} accessibilityRole="checkbox" accessibilityState={{checked:accepted}}><View style={[s.checkbox,accepted&&s.checkboxOn]}>{accepted&&<Check size={13} color={C.white}/>}</View><Text style={s.termsText}>{t.terms}</Text></Pressable>
           </> : screen==="signin" ? <>
             <Field label={t.identity} icon={UserRound} value={form.phone} onChangeText={(v:string)=>set("phone",v)} keyboardType="email-address"/>
