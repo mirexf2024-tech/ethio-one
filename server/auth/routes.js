@@ -138,7 +138,7 @@ router.post("/login", async (req,res) => {
     const value=b.identity.trim();
     let result;
     if(value.includes("@")) result=await db.query("SELECT * FROM users WHERE lower(email)=lower($1) LIMIT 1",[security.normalizeEmail(value)]);
-    else if(/^[+0-9()\\s-]+$/.test(value)) {
+    else if(/^[+0-9()\s-]+$/.test(value)) {
       let phone=null; try { phone=security.normalizePhone(value); } catch {}
       result=phone ? await db.query("SELECT * FROM users WHERE phone=$1 LIMIT 1",[phone]) : await db.query("SELECT * FROM users WHERE lower(username)=lower($1) LIMIT 1",[value]);
     } else result=await db.query("SELECT * FROM users WHERE lower(username)=lower($1) LIMIT 1",[value]);
@@ -155,7 +155,7 @@ router.post("/login", async (req,res) => {
 
 router.get("/me", async (req,res) => {
   const env=req.app.locals.authEnv||process.env;
-  const match=/^Bearer\\s+(.+)$/i.exec(req.get("authorization")||"");
+  const match=/^Bearer\s+(.+)$/i.exec(req.get("authorization")||"");
   const payload=match && readAccessToken(match[1],env);
   if(!payload) return res.status(401).json({error:"Please sign in again."});
   try {
