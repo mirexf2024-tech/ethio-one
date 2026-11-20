@@ -40,9 +40,16 @@ async function sendVerificationSms({ to, code, expiresMinutes = 5 }, options = {
     const error = new Error("SMS provider rejected the verification message.");
     error.providerStatus = response.status;
     error.providerCode = typeof payload.error_type === "string" ? payload.error_type : undefined;
+    error.requestId = typeof payload.request_id === "string" ? payload.request_id : undefined;
     throw error;
   }
-  return { provider: "smshub", messageId: payload.data.message_id };
+  return {
+    provider: "smshub",
+    messageId: payload.data.message_id,
+    messageStatus: payload.data.message_status || "queued",
+    creditsUsed: Number.isInteger(payload.data.credits_used) ? payload.data.credits_used : undefined,
+    requestId: typeof payload.request_id === "string" ? payload.request_id : undefined
+  };
 }
 
 module.exports = { sendVerificationSms };
