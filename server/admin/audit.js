@@ -2,7 +2,7 @@ const crypto = require("node:crypto");
 
 const ALLOWED_TYPES = new Set([
   "login_failed", "otp_invalid", "otp_expired", "refresh_reuse",
-  "admin_access_denied", "auth_rate_limited", "provider_delivery_failed"
+  "admin_access_denied", "auth_rate_limited", "provider_delivery_failed", "api_error", "api_not_found", "api_rate_limited"
 ]);
 const ALLOWED_SEVERITIES = new Set(["info", "warning", "high", "critical"]);
 const ALLOWED_METADATA_KEYS = new Set(["channel", "reason", "route", "method", "provider"]);
