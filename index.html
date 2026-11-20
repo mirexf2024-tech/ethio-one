@@ -92,6 +92,12 @@
     @media(max-width:700px){header{height:68px}.hero{padding:15px 0 22px}.hero-grid.dashboard-grid{gap:14px;padding:0 16px}.welcome-card{min-height:245px;padding:20px;border-radius:21px}.welcome-copy{max-width:70%}.welcome-copy h1{font-size:34px}.welcome-copy .lead{font-size:13px}.welcome-art{width:42%}.art-phone{width:78px;height:140px;font-size:38px;right:14%;top:22%}.ethiopia-mark{right:18px;top:18px}.art-ribbon{font-size:8px}.search-box{height:48px;border-radius:15px}.section{padding:38px 0 55px}.services-head{align-items:flex-start;flex-direction:column;gap:8px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.tile{min-height:126px;padding:14px;border-radius:16px}.tile .ico{width:40px;height:40px;margin-bottom:11px}.tile h3{font-size:13px}.tile p{font-size:10px}}
     @media(max-width:390px){.welcome-copy{max-width:76%}.welcome-copy h1{font-size:29px}.welcome-art{width:37%}.art-phone{right:9%;width:68px;height:125px}.grid{gap:8px}.tile{padding:12px}}
 
+
+    .trending-block{margin-top:34px}.trending-title{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}.trending-title h2{margin:0;color:var(--navy);font-size:22px;letter-spacing:-.04em}.trending-title a{font-size:12px;color:#1555a0;font-weight:800}.trending-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}.trend-card{min-height:116px;border-radius:18px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;color:#fff;overflow:hidden;position:relative;box-shadow:0 9px 24px #10233a18}.trend-card:after{content:"";position:absolute;width:130px;height:130px;border-radius:50%;right:-35px;top:-35px;background:#ffffff20}.trend-card span{font-size:28px;font-weight:900}.trend-card b{font-size:13px;position:relative;z-index:1}.trend-music{background:linear-gradient(135deg,#7c1ac2,#e14379)}.trend-travel{background:linear-gradient(135deg,#147c58,#1b9aab)}.trend-ai{background:linear-gradient(135deg,#072c65,#1689d4)}.trend-sport{background:linear-gradient(135deg,#246f39,#9a9c21)}
+    .bottom-nav{display:flex;align-items:center;justify-content:center;gap:clamp(20px,6vw,80px);position:sticky;bottom:0;z-index:8;padding:10px 18px calc(10px + env(safe-area-inset-bottom));background:#ffffffed;border-top:1px solid #dfe6ef;backdrop-filter:blur(14px);box-shadow:0 -8px 25px #10233a0b}
+    .bottom-nav a{min-width:54px;display:flex;flex-direction:column;align-items:center;gap:3px;color:#50617a;font-size:10px}.bottom-nav a span{font-size:22px;line-height:1.2}.bottom-nav a b{font-weight:700}.bottom-nav a.active{color:#0b5ac0}.bottom-nav a:hover{color:#b78916}
+    @media(max-width:700px){.trending-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.trend-card{min-height:94px}.bottom-nav{justify-content:space-around;gap:8px}.bottom-nav a{min-width:48px}.bottom-nav a span{font-size:20px}}
+
   </style>
 </head>
 <body>
@@ -155,7 +161,23 @@
         <article class="tile"><div class="ico" style="--accent:#9C7920;--tint:#FBF7E8"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M7 8h10M5 21h14"/></svg></div><h3>Ethio Religio</h3><p data-i18n="serviceReligio">Amantii fi hawaasa</p></article>
         <article class="tile"><div class="ico" style="--accent:#1C966B;--tint:#E9F8F1"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15 8.5c-.7-.8-1.7-1.2-3-1.2-1.7 0-2.8.8-2.8 2s1.1 1.8 2.8 2.2 2.8 1 2.8 2.2-1.1 2.2-2.8 2.2c-1.2 0-2.4-.5-3.2-1.4M12 5.5v13"/></svg></div><h3>Ethio Earn</h3><p data-i18n="serviceEarn">Hojii xixiqqaa fi badhaasa</p></article>
       </div>
+      <div class="trending-block">
+        <div class="trending-title"><h2 data-i18n="discoverTitle">Har’a qoradhu</h2><a href="#vision" data-i18n="seeMore">Dabalata ilaali →</a></div>
+        <div class="trending-grid">
+          <article class="trend-card trend-music"><span>♫</span><b data-i18n="topicMusic">Music & Live</b></article>
+          <article class="trend-card trend-travel"><span>✦</span><b data-i18n="topicTravel">Travel Ethiopia</b></article>
+          <article class="trend-card trend-ai"><span>✧</span><b data-i18n="topicAI">AI & Technology</b></article>
+          <article class="trend-card trend-sport"><span>⚽</span><b data-i18n="topicSports">Sports</b></article>
+        </div>
+      </div>
     </div></section>
+    <nav class="bottom-nav" aria-label="Quick navigation">
+      <a class="active" href="#vision"><span>⌂</span><b data-i18n="navHome">Home</b></a>
+      <a href="#ecosystem"><span>◈</span><b data-i18n="navExplore">Explore</b></a>
+      <a href="#contact"><span>＋</span><b data-i18n="navMore">More</b></a>
+      <a href="#contact" title="Ethio One service rollout information"><span>▣</span><b data-i18n="navWallet">Wallet</b></a>
+      <a href="#contact"><span>●</span><b data-i18n="navProfile">Profile</b></a>
+    </nav>
     <section class="band" id="contact"><div class="wrap band-inner"><div><h2 data-i18n="contactTitle">Egeree dijitaalaa waliin qooddannu as irraa jalqaba.</h2><p>Ethio One — ONE ID · MANY SERVICES.</p></div><a class="btn" href="mailto:hello@ethio.one"><span data-i18n="contactTeam">Garee keenya qunnamaa</span> <span aria-hidden="true">→</span></a></div></section>
   </main>
   <footer><div class="wrap foot"><span>© <span id="year"></span> Ethio One. All rights reserved.</span><span data-i18n="footerTagline">Itoophiyaaf ijaaramaa jira · OM / AM / EN</span></div></footer>
@@ -173,6 +195,7 @@
   });
   const translations = {
     OM: {
+      discoverTitle:"Har’a qoradhu",seeMore:"Dabalata ilaali →",topicMusic:"Muuziqaa fi Live",topicTravel:"Imala Itoophiyaa",topicAI:"AI fi Teeknooloojii",topicSports:"Ispoortii",navHome:"Mana",navExplore:"Qoradhu",navMore:"Dabalata",navWallet:"Wallet",navProfile:"Profile",
       navServices:"Tajaajiloota",navVision:"Mul’ata keenya",navContact:"Nu qunnamaa",
       heroTitle:'Baga nagaan dhuftan <span>Ethio One</span>',
       searchPlaceholder:"Tajaajila barbaadi...",homeCaption:"Waan barbaaddu bakka tokkotti argadhu.",ribbonText:"Appii Tokko. Carraawwan Dhuma Hin Qabne!",panelTitle:"Super App Itoophiyaaf ijaarame",panelVideo:"Viidiyoo gabaabaa fi kallattii",panelYoutube:"Ilaali fi olkaa’i",panelCommunity:"Namoota fi gareewwan",panelMessenger:"Ergaa, sagalee fi bilbila",panelMarket:"Salphaatti bitii gurguri",panelNews:"Oduu amanamaa fi haaromsa",panelLearning:"Koorsii fi dandeettii",panelAI:"Gaafadhu, baradhu, uumi",panelSecure:"Herrega. Daataa. To’annoo kee.",panelStart:"Email ykn bilbila fayyadami.",comingSoon:"Tartiibaan ni banamu",
@@ -193,6 +216,7 @@
       metaTitle:"Ethio One — Waan hunda bakka tokkotti.",metaDescription:"Ethio One — eenyummaa tokko, tajaajiloota hedduu. Waltajjii dijitaalaa Itoophiyaaf ijaaramaa jiru."
     },
     AM: {
+      discoverTitle:"ዛሬ ይመርምሩ",seeMore:"ተጨማሪ ይመልከቱ →",topicMusic:"ሙዚቃ እና ቀጥታ",topicTravel:"የኢትዮጵያ ጉዞ",topicAI:"AI እና ቴክኖሎጂ",topicSports:"ስፖርት",navHome:"መነሻ",navExplore:"ያስሱ",navMore:"ተጨማሪ",navWallet:"Wallet",navProfile:"Profile",
       navServices:"አገልግሎቶች",navVision:"ራዕያችን",navContact:"ያግኙን",
       heroTitle:'እንኳን ወደ <span>Ethio One</span> በደህና መጡ',
       searchPlaceholder:"አገልግሎት ይፈልጉ...",homeCaption:"የሚፈልጉትን ሁሉ በአንድ ቦታ ያግኙ።",ribbonText:"አንድ መተግበሪያ። ያልተገደቡ እድሎች!",panelTitle:"ለኢትዮጵያ የተገነባ ሱፐር አፕ",panelVideo:"አጭር ቪዲዮዎች እና ቀጥታ",panelYoutube:"ይመልከቱ እና ይጫኑ",panelCommunity:"ሰዎች እና ቡድኖች",panelMessenger:"መልዕክት፣ ድምጽ እና ጥሪ",panelMarket:"በቀላሉ ይግዙ እና ይሽጡ",panelNews:"የታመኑ ዜናዎች እና ዝመናዎች",panelLearning:"ኮርሶች እና ክህሎቶች",panelAI:"ይጠይቁ፣ ይማሩ እና ይፍጠሩ",panelSecure:"መለያዎ። ውሂብዎ። ቁጥጥርዎ።",panelStart:"በኢሜይል ወይም በስልክ ይጀምሩ።",comingSoon:"በቅደም ተከተል ይከፈታሉ",
@@ -213,6 +237,7 @@
       metaTitle:"Ethio One — ሁሉም ነገር በአንድ ቦታ።",metaDescription:"Ethio One — አንድ መለያ፣ ብዙ አገልግሎቶች። ለኢትዮጵያ የሚገነባ ዲጂታል መድረክ።"
     },
     EN: {
+      discoverTitle:"Explore today",seeMore:"See more →",topicMusic:"Music & Live",topicTravel:"Travel Ethiopia",topicAI:"AI & Technology",topicSports:"Sports",navHome:"Home",navExplore:"Explore",navMore:"More",navWallet:"Wallet",navProfile:"Profile",
       navServices:"Services",navVision:"Our vision",navContact:"Contact",
       heroTitle:'Welcome to <span>Ethio One</span>',
       searchPlaceholder:"Search services...",homeCaption:"Find what you need, all in one place.",ribbonText:"One App. Endless Possibilities!",panelTitle:"A Super App Built for Ethiopia",panelVideo:"Short videos & live",panelYoutube:"Watch & upload",panelCommunity:"People & groups",panelMessenger:"Chat, voice & calls",panelMarket:"Buy & sell easily",panelNews:"Trusted news & updates",panelLearning:"Courses & skills",panelAI:"Ask, learn & create",panelSecure:"Your account. Your data. Your control.",panelStart:"Get started with email or phone.",comingSoon:"Rolling out in phases",
