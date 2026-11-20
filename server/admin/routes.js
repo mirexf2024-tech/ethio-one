@@ -22,7 +22,16 @@ async function requireSuperAdmin(req, res, next) {
   const db = req.app.locals.db;
   const match = /^Bearer\s+(.+)$/i.exec(req.get("authorization") || "");
   const payload = match && readAccessToken(match[1], env.ACCESS_TOKEN_SECRET);
-  if (!db || env.AUTH_ENABLED !== "true" || !env.ADMIN_EMAIL || !payload) {
+  if (!db) {
+    return res.status(503).json({ error: "Admin service is temporarily unavailable." });
+  }
+  if (env.AUTH_ENABLED !== "true" || !env.ADMIN_EMAIL || !payload) {
+    const { recordSecurityEvent } = require("./audit");
+    await recordSecurityEvent(req, {
+      type: "admin_access_denied",
+      severity: "warning",
+      metadata: { route: req.path, method: req.method, reason: "missing_or_invalid_session" }
+    });
     return res.status(401).json({ error: "Super Admin authentication required." });
   }
   try {
