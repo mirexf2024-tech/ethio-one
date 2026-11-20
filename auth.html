@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="om">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#082B59"><title>Ethio One — Seeni / Galmaa’i</title>
+<style>
+:root{--navy:#082b59;--gold:#d9a928;--ink:#17263d;--muted:#66758b;--line:#e4eaf2}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:linear-gradient(135deg,#061a35,#0b3d70);display:grid;place-items:center;padding:24px}
+a{color:inherit;text-decoration:none}.shell{width:min(100%,980px);min-height:620px;display:grid;grid-template-columns: .9fr 1.1fr;background:#fff;border-radius:28px;overflow:hidden;box-shadow:0 30px 90px #0005}
+.brand{padding:44px;background:radial-gradient(circle at 20% 15%,#ffffff20,transparent 35%),linear-gradient(155deg,#082b59,#061a35);color:white;display:flex;flex-direction:column;justify-content:space-between}
+.logo{font-size:26px;font-weight:900;letter-spacing:-1px}.logo b{color:var(--gold)}.brand h1{font-size:42px;line-height:1.08;letter-spacing:-1.8px;margin:55px 0 14px}.brand h1 span{color:#f3cb55}.brand p{color:#d5e0ee;line-height:1.7}.tag{color:#f2d477;font-size:12px;font-weight:800;letter-spacing:2px}.copyright{font-size:12px;color:#aebfd4}
+.main{padding:42px clamp(22px,5vw,58px);display:flex;flex-direction:column;justify-content:center}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}.back{color:#5f6e82;font-size:13px}.tabs{display:flex;gap:7px;background:#f0f3f8;padding:5px;border-radius:12px}.tabs button{border:0;background:transparent;padding:10px 17px;border-radius:9px;font-weight:750;color:#64748b;cursor:pointer}.tabs button.active{background:white;color:var(--navy);box-shadow:0 2px 8px #0b244015}
+h2{font-size:28px;letter-spacing:-1px;color:var(--navy);margin:0 0 8px}.sub{color:var(--muted);font-size:14px;line-height:1.6;margin:0 0 24px}
+form{display:grid;gap:13px}.field{display:grid;gap:7px}.field label{font-size:12px;font-weight:750;color:#34445b}.field input{width:100%;height:48px;border:1px solid #dce3ed;border-radius:12px;padding:0 14px;font:inherit;outline:none;background:#fff}.field input:focus{border-color:#2766a4;box-shadow:0 0 0 3px #2766a41c}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.check{display:flex;align-items:flex-start;gap:9px;color:#5d6b80;font-size:12px;line-height:1.5}.check input{margin-top:3px;accent-color:var(--navy)}
+.submit{height:50px;border:0;border-radius:12px;background:linear-gradient(100deg,#e8bd48,#d9a928);color:#082b59;font-weight:900;font-size:14px;cursor:pointer;box-shadow:0 8px 18px #b88d2225}.submit:disabled{opacity:.6;cursor:wait}
+.msg{display:none;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5}.msg.show{display:block}.msg.error{background:#fff0f0;color:#a52b2b;border:1px solid #ffd4d4}.msg.ok{background:#edf9f2;color:#176b3a;border:1px solid #c9ecd6}
+.otp{display:none}.otp.show{display:grid;gap:12px}.otp input{text-align:center;font-size:24px;letter-spacing:10px;font-weight:800}.hint{font-size:12px;color:var(--muted);text-align:center}.footnote{font-size:11px;color:#8995a6;text-align:center;margin-top:18px}
+@media(max-width:720px){body{padding:0;background:#fff}.shell{min-height:100vh;border-radius:0;grid-template-columns:1fr}.brand{display:none}.main{padding:30px 22px}.top{margin-bottom:40px}}
+</style></head>
+<body><div class="shell">
+<aside class="brand"><div class="logo">ETHIO <b>ONE</b></div><div><div class="tag">ONE ID · MANY POSSIBILITIES</div><h1>Waltajjii kee<br><span>tokko qofa.</span></h1><p>Herrega tokkoon tajaajiloota Ethio One hundaaf qophaa’i. Odeeffannoo kee nageenyaan eegganna.</p></div><div class="copyright">© 2026 Ethio One · Ethiopia</div></aside>
+<main class="main">
+<div class="top"><a class="back" href="/">← Gara fuula jalqabaatti</a><div class="tabs"><button id="signupTab" class="active" type="button">Galmaa’i</button><button id="loginTab" type="button">Seeni</button></div></div>
+<section id="signupPanel"><h2>Herrega haaraa bani</h2><p class="sub">Ethio One irratti jalqabuuf odeeffannoo kee guuti.</p>
+<form id="signupForm">
+<div class="field"><label for="fullName">Maqaa guutuu</label><input id="fullName" name="fullName" autocomplete="name" minlength="2" maxlength="120" required></div>
+<div class="row"><div class="field"><label for="username">Username</label><input id="username" name="username" autocomplete="username" pattern="[A-Za-z0-9_]{3,30}" minlength="3" maxlength="30" required></div><div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" required></div></div>
+<div class="field"><label for="password">Password (yoo xiqqaate qubee 8)</label><input id="password" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></div>
+<label class="check"><input id="terms" type="checkbox" required><span>Haala itti fayyadamaa fi imaammata iccitii dubbisee walii galeera.</span></label>
+<button class="submit" type="submit">Herrega uumi →</button></form></section>
+<section id="loginPanel" hidden><h2>Baga deebitee dhuftे</h2><p class="sub">Ethio ID, username ykn email kee fayyadami.</p>
+<form id="loginForm"><div class="field"><label for="identity">Ethio ID / Username / Email</label><input id="identity" autocomplete="username" required></div><div class="field"><label for="loginPassword">Password</label><input id="loginPassword" type="password" autocomplete="current-password" required></div><button class="submit" type="submit">Seeni →</button></form></section>
+<section id="verifyPanel" class="otp" hidden><h2>Email kee mirkaneessi</h2><p class="sub" id="verifyHint">Koodiin mirkaneessaa email keetti ergameera.</p><form id="verifyForm"><div class="field"><label for="otpCode">Koodii lakkoofsa 6</label><input id="otpCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></div><button class="submit" type="submit">Mirkaneessi →</button></form><button id="resend" class="hint" type="button" style="border:0;background:none;cursor:pointer;margin-top:12px">Koodii irra deebi’ii ergi</button></section>
+<div id="message" class="msg" role="status" aria-live="polite"></div><p class="footnote">Email OTP · Nageenya account · Ethio One</p>
+</main></div>
+<script>
+const API="https://ethio-one-api.onrender.com/api/v1/auth";
+const $=id=>document.getElementById(id);let pendingUserId=null;
+function message(text,type="error"){const el=$("message");el.textContent=text;el.className="msg show "+type}
+function busy(form,on){const b=form.querySelector("button[type=submit]");b.disabled=on;b.textContent=on?"Mee eegi...":b.dataset.label||b.textContent}
+async function request(path,data){const r=await fetch(API+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||"Tajaajilli yeroo ammaa hin argamu.");return j}
+function panel(which){$("signupPanel").hidden=which!=="signup";$("loginPanel").hidden=which!=="login";$("verifyPanel").hidden=which!=="verify";$("signupTab").classList.toggle("active",which==="signup");$("loginTab").classList.toggle("active",which==="login");$("message").className="msg"}
+$("signupTab").onclick=()=>panel("signup");$("loginTab").onclick=()=>panel("login");
+$("signupForm").addEventListener("submit",async e=>{e.preventDefault();const f=e.currentTarget;const b=f.querySelector("button");b.disabled=true;b.textContent="Herrega uumaa jira...";try{const d=await request("/register",{fullName:$("fullName").value.trim(),username:$("username").value.trim(),email:$("email").value.trim(),password:$("password").value,termsAccepted:$("terms").checked,channel:"email"});pendingUserId=d.userId;$("verifyHint").textContent="Koodiin mirkaneessaa gara "+d.destination+" ergameera. Daqiiqaa 5 keessatti galchi.";panel("verify");message("Herregni kee uumameera. Email kee mirkaneessi.","ok");$("otpCode").focus()}catch(err){message(err.message)}finally{b.disabled=false;b.textContent="Herrega uumi →"}});
+$("verifyForm").addEventListener("submit",async e=>{e.preventDefault();const b=e.currentTarget.querySelector("button");b.disabled=true;b.textContent="Mirkaneessaa jira...";try{const d=await request("/verify",{userId:pendingUserId,channel:"email",code:$("otpCode").value.trim()});sessionStorage.setItem("ethioOneAccessToken",d.accessToken);sessionStorage.setItem("ethioOneRefreshToken",d.refreshToken);sessionStorage.setItem("ethioOneUser",JSON.stringify(d.user));message("Email mirkanaa’eera. Ethio ID kee: "+d.user.ethioId,"ok");$("verifyForm").hidden=true;$("resend").hidden=true;$("verifyHint").textContent="Amma herrega kee fayyadamuu dandeessa."}catch(err){message(err.message)}finally{b.disabled=false;b.textContent="Mirkaneessi →"}});
+$("resend").onclick=async()=>{if(!pendingUserId)return;try{const d=await request("/verification/resend",{userId:pendingUserId,channel:"email"});message("Koodiin haaraan gara "+d.destination+" ergameera.","ok")}catch(err){message(err.message)}};
+$("loginForm").addEventListener("submit",async e=>{e.preventDefault();const b=e.currentTarget.querySelector("button");b.disabled=true;b.textContent="Seenaa jira...";try{const d=await request("/login",{identity:$("identity").value.trim(),password:$("loginPassword").value});sessionStorage.setItem("ethioOneAccessToken",d.accessToken);sessionStorage.setItem("ethioOneRefreshToken",d.refreshToken);sessionStorage.setItem("ethioOneUser",JSON.stringify(d.user));message("Milkaa’e! Ethio ID kee: "+d.user.ethioId,"ok")}catch(err){message(err.message)}finally{b.disabled=false;b.textContent="Seeni →"}});
+</script></body></html>
