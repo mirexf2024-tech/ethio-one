@@ -39,6 +39,10 @@ async function recordSecurityEvent(req, event = {}) {
       "INSERT INTO security_events (event_type,severity,user_id,ip_digest,metadata) VALUES ($1,$2,$3,$4,$5::jsonb)",
       [type, severity, userId, ipDigest, JSON.stringify(safeMetadata(event.metadata))]
     );
+    if (severity === "high" || severity === "critical") {
+      const { sendSecurityAlert } = require("./alerts");
+      void sendSecurityAlert({ type, severity, createdAt: new Date() }, env).catch(() => {});
+    }
     return true;
   } catch {
     // Logging must never break authentication or disclose internal database errors.
