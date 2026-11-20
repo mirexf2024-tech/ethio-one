@@ -5,6 +5,7 @@ const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 const { Pool } = require("pg");
 const authRouter = require("./auth/routes");
+const adminRouter = require("./admin/routes");
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -51,6 +52,8 @@ app.use("/api", rateLimit({ windowMs: 60 * 1000, limit: 120, standardHeaders: "d
 
 app.use("/api/v1/auth", rateLimit({ windowMs: 15 * 60 * 1000, limit: 15, standardHeaders: "draft-7", legacyHeaders: false }));
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/admin", rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: "draft-7", legacyHeaders: false }));
+app.use("/api/v1/admin", adminRouter);
 
 app.get("/healthz", (_req, res) => {
   res.set("Cache-Control", "no-store");
