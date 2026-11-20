@@ -41,6 +41,7 @@
       <section id="dashboardView" class="hidden">
         <div class="heading"><div><div class="eyebrow" id="dashEyebrow">SYSTEM OVERVIEW</div><h1 id="dashTitle">To'annoo Ethio One</h1><p id="lastUpdated">Hanga ammaatti hin haaromfamne</p></div><button id="refreshButton">↻ <span id="refreshText">Haaromsi</span></button></div>
         <div class="grid">
+          <div class="panel stat"><span id="statWeb">Website</span><strong id="webValue"><i class="status-dot warn"></i>—</strong></div>
           <div class="panel stat"><span id="statApi">API</span><strong id="apiValue"><i class="status-dot warn"></i>—</strong></div>
           <div class="panel stat"><span id="statDb">Database</span><strong id="dbValue"><i class="status-dot warn"></i>—</strong></div>
           <div class="panel stat"><span id="statUsers">Users waliigalaa</span><strong id="usersValue">—</strong></div>
@@ -65,27 +66,37 @@
   const $ = (id) => document.getElementById(id);
   let accessToken = null;
   let refreshToken = null;
+  let monitorTimer = null;
   let lang = "om";
   const words = {
-    om: {login:"Super Admin seeni",hint:"Email fi password account Super Admin mirkanaa'e fayyadami.",identity:"Email / Ethio ID",password:"Password",enter:"Seeni",locked:"Authentication ammaaf cufameera. Admin API banuun dura email mirkanaa'e, hayyama Super Admin fi sirreeffamni nageenyaa xumuramuu qabu.",denied:"Account kanaaf Super Admin hayyamni hin jiru.",loading:"Odeeffannoo fe'aa jira…",refresh:"Haaromsi",title:"To'annoo Ethio One",overview:"HAALA SIRNICHAA",api:"API",db:"Database",users:"Users waliigalaa",active:"Users active",pending:"Eeggataa",suspended:"Ugguraman",events:"Security events / 24h",high:"High / Critical",modules:"Haala tajaajiloota",security:"Nageenya yeroo dhiyoo",history:"Seenaa security events",privacy:"Odeeffannoo dhuunfaa, password, OTP fi ergaa hin agarsiisu.",type:"Event",severity:"Sadarkaa",time:"Yeroo",details:"Ibsa",logout:"Ba'i",updated:"Haaromfame:",none:"Ragaan hin jiru",online:"Online",offline:"Offline",ready:"Ready",notReady:"Hin qophoofne",filter:"Sadarkaa hunda",expired:"Session xumurame. Irra deebi'ii seeni."},
-    en: {login:"Super Admin sign in",hint:"Use the verified Super Admin account email and password.",identity:"Email / Ethio ID",password:"Password",enter:"Sign in",locked:"Authentication is currently disabled. Verified email, Super Admin authorization and security setup are required before admin access can open.",denied:"This account is not authorized as Super Admin.",loading:"Loading monitoring data…",refresh:"Refresh",title:"Ethio One Control Center",overview:"SYSTEM OVERVIEW",api:"API",db:"Database",users:"Total users",active:"Active users",pending:"Pending",suspended:"Suspended",events:"Security events / 24h",high:"High / Critical",modules:"Service modules",security:"Recent security events",history:"Security event history",privacy:"Private content, passwords, OTPs and messages are never displayed.",type:"Event",severity:"Severity",time:"Time",details:"Details",logout:"Logout",updated:"Updated:",none:"No records",online:"Online",offline:"Offline",ready:"Ready",notReady:"Not ready",filter:"All severity",expired:"Session expired. Please sign in again."},
-    am: {login:"የSuper Admin መግቢያ",hint:"የተረጋገጠውን የSuper Admin ኢሜይልና የይለፍ ቃል ይጠቀሙ።",identity:"ኢሜይል / Ethio ID",password:"የይለፍ ቃል",enter:"ግባ",locked:"የመግቢያ አገልግሎቱ አሁን ተዘግቷል። የተረጋገጠ ኢሜይልና የSuper Admin ፈቃድ ያስፈልጋል።",denied:"ይህ መለያ የSuper Admin ፈቃድ የለውም።",loading:"መረጃ በመጫን ላይ…",refresh:"አድስ",title:"Ethio One መቆጣጠሪያ",overview:"የስርዓት አጠቃላይ ሁኔታ",api:"API",db:"Database",users:"ጠቅላላ ተጠቃሚዎች",active:"ንቁ ተጠቃሚዎች",pending:"በመጠባበቅ ላይ",suspended:"የታገዱ",events:"የደህንነት ክስተቶች / 24 ሰዓት",high:"ከፍተኛ / ወሳኝ",modules:"የአገልግሎት ሁኔታ",security:"የቅርብ ጊዜ የደህንነት ክስተቶች",history:"የደህንነት ታሪክ",privacy:"የግል መልዕክቶች፣ የይለፍ ቃላትና OTP አይታዩም።",type:"ክስተት",severity:"ደረጃ",time:"ጊዜ",details:"ዝርዝር",logout:"ውጣ",updated:"የታደሰ:",none:"መረጃ የለም",online:"በመስመር ላይ",offline:"ከመስመር ውጭ",ready:"ዝግጁ",notReady:"ዝግጁ አይደለም",filter:"ሁሉም ደረጃዎች",expired:"Session ጊዜው አልፏል። እንደገና ይግቡ።"}
+    om: {login:"Super Admin seeni",hint:"Email fi password account Super Admin mirkanaa'e fayyadami.",identity:"Email / Ethio ID",password:"Password",enter:"Seeni",locked:"Authentication ammaaf cufameera. Admin API banuun dura email mirkanaa'e, hayyama Super Admin fi sirreeffamni nageenyaa xumuramuu qabu.",denied:"Account kanaaf Super Admin hayyamni hin jiru.",loading:"Odeeffannoo fe'aa jira…",refresh:"Haaromsi",title:"To'annoo Ethio One",overview:"HAALA SIRNICHAA",web:"Website",api:"API",db:"Database",users:"Users waliigalaa",active:"Users active",pending:"Eeggataa",suspended:"Ugguraman",events:"Security events / 24h",high:"High / Critical",modules:"Haala tajaajiloota",security:"Nageenya yeroo dhiyoo",history:"Seenaa security events",privacy:"Odeeffannoo dhuunfaa, password, OTP fi ergaa hin agarsiisu.",type:"Event",severity:"Sadarkaa",time:"Yeroo",details:"Ibsa",logout:"Ba'i",updated:"Haaromfame:",none:"Ragaan hin jiru",online:"Online",offline:"Offline",ready:"Ready",notReady:"Hin qophoofne",filter:"Sadarkaa hunda",expired:"Session xumurame. Irra deebi'ii seeni."},
+    en: {login:"Super Admin sign in",hint:"Use the verified Super Admin account email and password.",identity:"Email / Ethio ID",password:"Password",enter:"Sign in",locked:"Authentication is currently disabled. Verified email, Super Admin authorization and security setup are required before admin access can open.",denied:"This account is not authorized as Super Admin.",loading:"Loading monitoring data…",refresh:"Refresh",title:"Ethio One Control Center",overview:"SYSTEM OVERVIEW",web:"Website",api:"API",db:"Database",users:"Total users",active:"Active users",pending:"Pending",suspended:"Suspended",events:"Security events / 24h",high:"High / Critical",modules:"Service modules",security:"Recent security events",history:"Security event history",privacy:"Private content, passwords, OTPs and messages are never displayed.",type:"Event",severity:"Severity",time:"Time",details:"Details",logout:"Logout",updated:"Updated:",none:"No records",online:"Online",offline:"Offline",ready:"Ready",notReady:"Not ready",filter:"All severity",expired:"Session expired. Please sign in again."},
+    am: {login:"የSuper Admin መግቢያ",hint:"የተረጋገጠውን የSuper Admin ኢሜይልና የይለፍ ቃል ይጠቀሙ።",identity:"ኢሜይል / Ethio ID",password:"የይለፍ ቃል",enter:"ግባ",locked:"የመግቢያ አገልግሎቱ አሁን ተዘግቷል። የተረጋገጠ ኢሜይልና የSuper Admin ፈቃድ ያስፈልጋል።",denied:"ይህ መለያ የSuper Admin ፈቃድ የለውም።",loading:"መረጃ በመጫን ላይ…",refresh:"አድስ",title:"Ethio One መቆጣጠሪያ",overview:"የስርዓት አጠቃላይ ሁኔታ",web:"Website",api:"API",db:"Database",users:"ጠቅላላ ተጠቃሚዎች",active:"ንቁ ተጠቃሚዎች",pending:"በመጠባበቅ ላይ",suspended:"የታገዱ",events:"የደህንነት ክስተቶች / 24 ሰዓት",high:"ከፍተኛ / ወሳኝ",modules:"የአገልግሎት ሁኔታ",security:"የቅርብ ጊዜ የደህንነት ክስተቶች",history:"የደህንነት ታሪክ",privacy:"የግል መልዕክቶች፣ የይለፍ ቃላትና OTP አይታዩም።",type:"ክስተት",severity:"ደረጃ",time:"ጊዜ",details:"ዝርዝር",logout:"ውጣ",updated:"የታደሰ:",none:"መረጃ የለም",online:"በመስመር ላይ",offline:"ከመስመር ውጭ",ready:"ዝግጁ",notReady:"ዝግጁ አይደለም",filter:"ሁሉም ደረጃዎች",expired:"Session ጊዜው አልፏል። እንደገና ይግቡ።"}
   };
   function tr(key){return words[lang][key] || words.om[key] || key}
   function setText(id,key){$(id).textContent=tr(key)}
   function setLanguage(next){
     lang=next; document.documentElement.lang=lang;
-    const map={loginTitle:"login",loginHint:"hint",identityLabel:"identity",passwordLabel:"password",loginButton:"enter",dashEyebrow:"overview",dashTitle:"title",refreshText:"refresh",statApi:"api",statDb:"db",statUsers:"users",statActive:"active",statPending:"pending",statSuspended:"suspended",statEvents:"events",statHigh:"high",modulesTitle:"modules",securityTitle:"security",eventsTitle:"history",privacyNote:"privacy",thType:"type",thSeverity:"severity",thTime:"time",thMeta:"details",logout:"logout"};
+    const map={loginTitle:"login",loginHint:"hint",identityLabel:"identity",passwordLabel:"password",loginButton:"enter",dashEyebrow:"overview",dashTitle:"title",refreshText:"refresh",statWeb:"web",statApi:"api",statDb:"db",statUsers:"users",statActive:"active",statPending:"pending",statSuspended:"suspended",statEvents:"events",statHigh:"high",modulesTitle:"modules",securityTitle:"security",eventsTitle:"history",privacyNote:"privacy",thType:"type",thSeverity:"severity",thTime:"time",thMeta:"details",logout:"logout"};
     Object.entries(map).forEach(([id,key])=>setText(id,key));
     $("severityFilter").options[0].text=tr("filter");
     if(!$("dashboardView").classList.contains("hidden")) refresh();
   }
   $("language").addEventListener("change",e=>setLanguage(e.target.value));
   function showMessage(message,isError=false){$("loginMessage").textContent=message;$("loginMessage").classList.toggle("error",isError)}
-  async function request(path, options={}){
+  async function request(path, options={}, retry=true){
     const headers={"Content-Type":"application/json",...(options.headers||{})};
     if(accessToken) headers.Authorization="Bearer "+accessToken;
-    const response=await fetch(API+path,{...options,headers,cache:"no-store"});
+    let response=await fetch(API+path,{...options,headers,cache:"no-store"});
+    if(response.status===401 && retry && refreshToken && path!=="/auth/refresh" && path!=="/auth/login"){
+      const renewed=await fetch(API+"/auth/refresh",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({refreshToken}),cache:"no-store"});
+      let session={};try{session=await renewed.json()}catch{}
+      if(renewed.ok && session.accessToken && session.refreshToken){
+        accessToken=session.accessToken;refreshToken=session.refreshToken;
+        return request(path,options,false);
+      }
+      accessToken=null;refreshToken=null;
+    }
     let data={}; try{data=await response.json()}catch{}
     if(!response.ok){const error=new Error(data.error||("HTTP "+response.status));error.status=response.status;throw error}
     return data;
@@ -104,7 +115,13 @@
   async function loadDashboard(){
     const overview=await request("/admin/overview");
     $("loginView").classList.add("hidden");$("dashboardView").classList.remove("hidden");$("logout").classList.remove("hidden");
-    renderOverview(overview);await refreshServices();
+    renderOverview(overview);await refreshServices();startPolling();
+  }
+  function startPolling(){
+    if(monitorTimer!==null) return;
+    monitorTimer=setInterval(()=>{
+      if(document.visibilityState==="visible" && !$("dashboardView").classList.contains("hidden")) refresh();
+    },30000);
   }
   function renderOverview(data){
     const u=data.users||{},s=data.security||{};
@@ -114,11 +131,13 @@
     $("moduleList").innerHTML=(data.modules||[]).map(m=>'<div class="service"><span>'+escapeHtml(m.status)+'</span><span class="pill">'+escapeHtml(m.count)+'</span></div>').join("")||'<p class="muted">'+tr("none")+'</p>';
   }
   async function refreshServices(){
-    const [health,ready,modules]=await Promise.allSettled([
+    const [website,health,ready,modules]=await Promise.allSettled([
+      fetch(location.origin+"/",{cache:"no-store"}),
       fetch("https://ethio-one-api.onrender.com/healthz",{cache:"no-store"}),
       fetch("https://ethio-one-api.onrender.com/readyz",{cache:"no-store"}),
       request("/admin/modules")
     ]);
+    setStatus("webValue",website.status==="fulfilled"&&website.value.ok,tr("online"),tr("offline"));
     setStatus("apiValue",health.status==="fulfilled"&&health.value.ok,tr("online"),tr("offline"));
     let dbOk=false;if(ready.status==="fulfilled"&&ready.value.ok){try{dbOk=(await ready.value.json()).ready===true}catch{}}
     setStatus("dbValue",dbOk,tr("ready"),tr("notReady"));
@@ -138,7 +157,7 @@
     finally{$("refreshButton").disabled=false}
   }
   function showLogin(message){
-    accessToken=null;refreshToken=null;$("dashboardView").classList.add("hidden");$("loginView").classList.remove("hidden");$("logout").classList.add("hidden");showMessage(message,true);
+    accessToken=null;refreshToken=null;if(monitorTimer!==null){clearInterval(monitorTimer);monitorTimer=null;}$("dashboardView").classList.add("hidden");$("loginView").classList.remove("hidden");$("logout").classList.add("hidden");showMessage(message,true);
   }
   $("refreshButton").addEventListener("click",refresh);
   $("severityFilter").addEventListener("change",async()=>{
