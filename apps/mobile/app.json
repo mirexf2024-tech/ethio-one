@@ -20,7 +20,10 @@
       "expo-secure-store"
     ],
     "extra": {
-      "apiBaseUrl": "https://ethio-one-api.onrender.com"
+      "apiBaseUrl": "https://ethio-one-api.onrender.com",
+      "eas": {
+        "projectId": "1465cb82-64b1-4e84-9632-169a07b0e5cf"
+      }
     }
   }
 }
