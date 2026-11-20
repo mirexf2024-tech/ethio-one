@@ -13,11 +13,12 @@ npx expo start
 
 Use Expo Go or a development build to preview. Android and iOS share this application code.
 
-## Current scope
+## Authentication
 
-- Ethio One branded welcome screen
-- Afaan Oromoo, Amharic and English UI language switch
-- Ethio ID registration and sign-in form layouts
-- Form actions are intentionally preview-only until the authentication API, validation, OTP and account recovery flows are implemented.
+- Registration, sign-in, email OTP verification, session refresh, logout, and password recovery screens call the Ethio One API.
+- API base URL is configured in `app.json`.
+- Email OTP is the only enabled verification channel while SMSHub account KYC is pending.
+- Resend's shared testing sender is used temporarily; it is not suitable for public production registration. A verified sending domain is required before sending to all users.
+- SMS verification can be enabled after SMSHub approval and end-to-end delivery tests.
 
-API base URL is configured in `app.json`. Do not put secrets or private API keys in this repository.
+Do not put secrets or private API keys in this repository.
