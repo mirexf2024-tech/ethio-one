@@ -290,7 +290,7 @@ router.post("/password/forgot", async (req,res) => {
 
 router.post("/password/reset", async (req,res) => {
   const db=req.app.locals.db, env=req.app.locals.authEnv||process.env, b=req.body||{};
-  if(typeof b.destination!=="string" || !["email","sms"].includes(b.channel) || !/^\\d{6}$/.test(String(b.code||""))) {
+  if(typeof b.destination!=="string" || !["email","sms"].includes(b.channel) || !/^\d{6}$/.test(String(b.code||""))) {
     return res.status(400).json({error:"Invalid password reset request."});
   }
   try { security.validatePassword(b.newPassword); }
