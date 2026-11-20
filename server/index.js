@@ -178,6 +178,28 @@ app.use(async (err, req, res, _next) => {
 
 const server = app.listen(port, () => {
   console.log(`Ethio One API listening on port ${port}`);
+  // Register the Telegram webhook from server-side secrets; never expose the bot token.
+  if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_WEBHOOK_SECRET) {
+    const webhookUrl = "https://ethio-one-api.onrender.com/api/v1/telegram/webhook";
+    fetch("https://api.telegram.org/bot" + process.env.TELEGRAM_BOT_TOKEN + "/setWebhook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: webhookUrl,
+        secret_token: process.env.TELEGRAM_WEBHOOK_SECRET,
+        allowed_updates: ["message"],
+        drop_pending_updates: false
+      }),
+      signal: AbortSignal.timeout(10000)
+    }).then(async (response) => {
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.ok !== true) {
+        console.error("Telegram webhook registration failed.");
+        return;
+      }
+      console.log("Telegram webhook registered.");
+    }).catch(() => console.error("Telegram webhook registration failed."));
+  }
 });
 
 async function shutdown() {
