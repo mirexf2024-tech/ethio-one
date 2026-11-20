@@ -1,6 +1,6 @@
 # Ethio One authentication design
 
-Status: partially implemented. Registration, OTP verification, login, profile lookup, refresh rotation, and logout routes exist behind `AUTH_ENABLED=true`. They must remain disabled until both delivery providers and production secrets are verified. Mobile UI integration, resend, and password recovery remain outstanding.
+Status: backend routes implemented for registration, OTP verification/resend, login, profile lookup, refresh rotation, logout, and password recovery. All routes remain gated behind `AUTH_ENABLED=true`; keep the gate off until provider credentials, sender verification/KYC, and end-to-end tests are complete. Mobile UI integration remains outstanding.
 
 ## Goals
 - One Ethio ID for the platform; default account type is `member`.
@@ -65,5 +65,5 @@ The router is mounted but returns HTTP 503 unless `AUTH_ENABLED=true`, `AUTH_CHA
 ## External provider dependencies still required
 - The product decision is set: both email OTP and SMS OTP must be supported.
 - Selected adapters: Resend for email and SMSHub for Ethiopian SMS. Resend requires an API key and a verified sender/domain for production delivery. SMSHub's published API documentation states that API sending is unlocked after account identity/KYC approval; confirm the account is approved before attempting live sends.
-- Provider adapter modules are in `server/providers/`. Configure `RESEND_API_KEY`, `RESEND_FROM`, `SMSHUB_API_KEY`, and `AUTH_CHALLENGE_PEPPER` only in Render secret environment settings; never place them in source code or mobile builds. Provider adapters and security primitives are connected to the gated registration route. CI verifies that auth remains disabled without production configuration; real delivery and full database-backed end-to-end tests still need to be completed.
+- Provider adapter modules are in `server/providers/`. Configure `RESEND_API_KEY`, `RESEND_FROM`, `SMSHUB_API_KEY`, `AUTH_CHALLENGE_PEPPER`, `ACCESS_TOKEN_SECRET`, and `AUTH_ENABLED` only in Render secret environment settings; never place them in source code or mobile builds. Provider adapters and security primitives are connected to the gated auth routes. Automated route-level and live provider/database end-to-end verification must pass before enabling account creation.
 - Do not send real OTPs or enable account creation until both required delivery paths are configured and end-to-end delivery is verified.
