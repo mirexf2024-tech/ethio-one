@@ -112,7 +112,7 @@ export default function App() {
       if(form.phone.trim()&&!/^\+?[0-9\s()-]{7,20}$/.test(form.phone.trim()))throw new Error(t.phoneInvalid);
       if(form.password.length<8)throw new Error(t.passwordShort);if(!accepted)throw new Error(t.termsRequired);
       const selected=channel;
-      const d=await request("/register",{fullName:form.full.trim(),username:form.username.trim(),email:form.email.trim(),phone:undefined,password:form.password,termsAccepted:true,channel:selected});
+      const d=await request("/register",{fullName:form.full.trim(),username:form.username.trim(),email:form.email.trim(),country:form.country.trim()||"Ethiopia",locale:language.toLowerCase(),password:form.password,termsAccepted:true,channel:selected});
       set("password","");setUserId(d.userId);setChannel(selected);setOtp("");setNotice(t.sent);setScreen("verify");
     }else if(screen==="signin"){
       if(!form.phone.trim()||!form.password)throw new Error(t.required);
