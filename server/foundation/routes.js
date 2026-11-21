@@ -58,6 +58,47 @@ router.patch("/profile", async (req,res) => {
   } catch { return res.status(503).json({error:"Profile could not be updated."}); }
 });
 
+
+router.post("/identity-verification/request", async (req,res) => {
+  const db=req.app.locals.db;
+  const client=await db.connect();
+  try {
+    await client.query("BEGIN");
+    const current=await client.query(
+      "SELECT identity_verification_status FROM users WHERE id=$1 AND status='active' FOR UPDATE",
+      [req.account.id]
+    );
+    if(!current.rows[0]) {
+      await client.query("ROLLBACK");
+      return res.status(401).json({error:"Please sign in again."});
+    }
+    const status=current.rows[0].identity_verification_status || "unverified";
+    if(!["unverified","needs_more_info"].includes(status)) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({error:"An identity verification request cannot be submitted in the current status."});
+    }
+    const updated=await client.query(
+      "UPDATE users SET identity_verification_status='pending_review',identity_verification_updated_at=NOW(),updated_at=NOW() WHERE id=$1 RETURNING identity_verification_status,identity_verification_updated_at",
+      [req.account.id]
+    );
+    await client.query("COMMIT");
+    const {recordSecurityEvent}=require("../admin/audit");
+    const logged=await recordSecurityEvent(req,{
+      type:"identity_verification_requested",
+      severity:"info",
+      userId:req.account.id,
+      metadata:{route:req.path,method:req.method,reason:"user_requested_identity_review"}
+    });
+    if(!logged) return res.status(503).json({error:"Request saved, but its audit record could not be confirmed. Please contact support."});
+    return res.status(202).set("Cache-Control","no-store").json({ok:true,verification:updated.rows[0]});
+  } catch {
+    await client.query("ROLLBACK").catch(()=>{});
+    return res.status(503).json({error:"Identity verification request could not be submitted."});
+  } finally {
+    client.release();
+  }
+});
+
 router.get("/roles", async (req,res) => {
   try {
     const r=await req.app.locals.db.query("SELECT ur.role_key,r.display_name FROM user_roles ur JOIN roles r ON r.role_key=ur.role_key WHERE ur.user_id=$1 ORDER BY ur.role_key",[req.account.id]);
