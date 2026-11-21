@@ -110,6 +110,14 @@ test("API health and safe degraded-mode responses", async (t) => {
   assert.equal(adminLocked.status, 503);
   assert.deepEqual(await adminLocked.json(), { error: "Admin service is temporarily unavailable." });
 
+  const subscriptionPlans = await fetch(`${base}/api/v1/subscriptions/plans`);
+  assert.equal(subscriptionPlans.status, 503);
+  assert.deepEqual(await subscriptionPlans.json(), { error: "Subscription services are temporarily unavailable." });
+
+  const subscriptionMe = await fetch(`${base}/api/v1/subscriptions/me`);
+  assert.equal(subscriptionMe.status, 503);
+  assert.deepEqual(await subscriptionMe.json(), { error: "Subscription services are temporarily unavailable." });
+
   const missing = await fetch(`${base}/does-not-exist`);
   assert.equal(missing.status, 404);
   assert.deepEqual(await missing.json(), { error: "Not found" });
