@@ -7,7 +7,7 @@ test("registration provisions Ethio ID, profile and member role atomically", () 
   const routes = fs.readFileSync(path.join(__dirname, "../auth/routes.js"), "utf8");
   assert.match(routes, /WITH identity AS \(SELECT gen_random_uuid\(\) AS id\)/);
   assert.match(routes, /'E1-' \|\| UPPER\(SUBSTRING\(REPLACE\(id::text/);
-  assert.match(routes, /INSERT INTO user_profiles \(user_id,locale\)/);
+  assert.match(routes, /INSERT INTO user_profiles \(user_id,country,locale\)/);
   assert.match(routes, /INSERT INTO user_roles \(user_id,role_key\) VALUES \(\$1,'member'\)/);
 });
 
