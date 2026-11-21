@@ -63,7 +63,7 @@ router.get("/plans", async (req, res) => {
 router.get("/me", requireUser, async (req, res) => {
   try {
     const result = await req.app.locals.db.query(
-      "SELECT s.id AS subscription_id,s.plan_key,s.status,s.starts_at,s.current_period_start,s.current_period_end,s.cancel_at_period_end,p.display_name,p.description,p.status AS plan_status FROM user_subscriptions s JOIN subscription_plans p ON p.plan_key=s.plan_key WHERE s.user_id=$1 AND s.status IN ('trialing','active','past_due') ORDER BY s.created_at DESC LIMIT 1",
+      "SELECT s.id AS subscription_id,s.plan_key,s.status,s.starts_at,s.current_period_start,s.current_period_end,s.cancel_at_period_end,p.display_name,p.description,p.status AS plan_status, EXISTS (SELECT 1 FROM payment_transactions t WHERE t.subscription_id=s.id AND t.user_id=s.user_id AND t.status='succeeded' AND t.verified_at IS NOT NULL) AS payment_verified FROM user_subscriptions s JOIN subscription_plans p ON p.plan_key=s.plan_key WHERE s.user_id=$1 AND s.status IN ('trialing','active','past_due') ORDER BY s.created_at DESC LIMIT 1",
       [req.subscriptionUser.id]
     );
     const current = result.rows[0];
@@ -84,7 +84,7 @@ router.get("/me", requireUser, async (req, res) => {
         currentPeriodEnd: current.current_period_end,
         cancelAtPeriodEnd: current.cancel_at_period_end
       },
-      paidAccessEnabled: current.status === "active" && current.plan_status === "active"
+      paidAccessEnabled: current.plan_key !== "free" && current.status === "active" && current.plan_status === "active" && current.payment_verified === true
     });
   } catch {
     return res.status(503).json({ error: "Your subscription is temporarily unavailable." });
