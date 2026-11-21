@@ -22,7 +22,7 @@ async function requireUser(req, res, next) {
   if (env.AUTH_ENABLED !== "true" || !db) {
     return res.status(503).json({ error: "Subscription services are temporarily unavailable." });
   }
-  const match = /^Bearer\\s+(.+)$/i.exec(req.get("authorization") || "");
+  const match = /^Bearer\s+(.+)$/i.exec(req.get("authorization") || "");
   const payload = match && readAccessToken(match[1], env.ACCESS_TOKEN_SECRET);
   if (!payload) return res.status(401).json({ error: "Please sign in again." });
   try {
