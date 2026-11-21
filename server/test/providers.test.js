@@ -21,7 +21,7 @@ test("email provider refuses to run without production configuration", async () 
       { to: "person@example.com", code: "123456" },
       { env: {}, fetch: async () => { throw new Error("must not call network"); } }
     ),
-    /RESEND_API_KEY/
+    /GMAIL_USER/
   );
 });
 
