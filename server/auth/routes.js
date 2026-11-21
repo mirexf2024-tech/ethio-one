@@ -166,7 +166,8 @@ router.post("/login", async (req,res) => {
       await recordSecurityEvent(req, { type: "login_failed", severity: "warning", userId: user?.id || null, metadata: { reason: "invalid_credentials", route: "/auth/login" } });
       return res.status(401).json({error:"The sign-in details are incorrect."});
     }
-    if(user.status!=="active") return res.status(403).json({error:"Verify your contact method before signing in."});
+    if(user.status==="pending_verification") return res.status(403).json({error:"Verify your email before signing in.",status:"pending_verification",userId:user.id,channel:"email"});
+    if(user.status!=="active") return res.status(403).json({error:"This account cannot sign in yet."});
     return res.json({ok:true,user:profile(user),...(await newSession(db,user,env))});
   } catch(e) {
     if(e instanceof TypeError) return res.status(401).json({error:"The sign-in details are incorrect."});
