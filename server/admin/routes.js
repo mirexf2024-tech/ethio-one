@@ -104,4 +104,73 @@ router.get("/modules", async (req, res) => {
   }
 });
 
+
+router.get("/identity-verifications", async (req, res) => {
+  const status = typeof req.query.status === "string" ? req.query.status : "pending_review";
+  const allowed = ["unverified", "pending_review", "verified", "needs_more_info", "rejected"];
+  if (!allowed.includes(status)) return res.status(400).json({ error: "Invalid verification status." });
+  const limit = Math.min(50, Math.max(1, Number.parseInt(req.query.limit, 10) || 20));
+  const offset = Math.max(0, Number.parseInt(req.query.offset, 10) || 0);
+  try {
+    const result = await req.app.locals.db.query(
+      "SELECT id,ethio_id,full_name,email,phone,identity_verification_status,identity_verification_updated_at,created_at FROM users WHERE identity_verification_status=$1 ORDER BY identity_verification_updated_at ASC LIMIT $2 OFFSET $3",
+      [status, limit, offset]
+    );
+    return res.set("Cache-Control", "no-store").json({ applications: result.rows, status, limit, offset });
+  } catch {
+    return res.status(503).json({ error: "Identity review queue is temporarily unavailable." });
+  }
+});
+
+router.patch("/users/:userId/identity-verification", async (req, res) => {
+  const userId = req.params.userId;
+  const status = req.body?.status;
+  const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+  const allowed = ["pending_review", "verified", "needs_more_info", "rejected"];
+  if (!/^[0-9a-f-]{36}$/i.test(userId) || !allowed.includes(status) ||
+      reason.length > 500 || /[\\r\\n]/.test(reason) ||
+      (["needs_more_info", "rejected"].includes(status) && reason.length < 3)) {
+    return res.status(400).json({ error: "Check the verification decision and review note." });
+  }
+  const db = req.app.locals.db;
+  const client = await db.connect();
+  try {
+    await client.query("BEGIN");
+    const found = await client.query(
+      "SELECT id,identity_verification_status FROM users WHERE id=$1 AND status='active' FOR UPDATE",
+      [userId]
+    );
+    if (!found.rows[0]) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "User not found." });
+    }
+    const updated = await client.query(
+      "UPDATE users SET identity_verification_status=$2,identity_verification_updated_at=NOW(),updated_at=NOW() WHERE id=$1 RETURNING id,ethio_id,full_name,identity_verification_status,identity_verification_updated_at",
+      [userId, status]
+    );
+    await client.query("COMMIT");
+    const { recordSecurityEvent } = require("./audit");
+    const logged = await recordSecurityEvent(req, {
+      type: "identity_verification_updated",
+      severity: status === "rejected" ? "high" : "info",
+      userId: req.superAdmin.id,
+      metadata: {
+        route: req.path,
+        method: req.method,
+        reason: status + (reason ? ": " + reason.slice(0, 60) : ""),
+        target_user_id: userId
+      }
+    });
+    if (!logged) {
+      return res.status(503).json({ error: "Decision saved, but the audit record could not be confirmed. Contact support." });
+    }
+    return res.set("Cache-Control", "no-store").json({ ok: true, user: updated.rows[0] });
+  } catch {
+    await client.query("ROLLBACK").catch(() => {});
+    return res.status(503).json({ error: "Identity verification decision could not be saved." });
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router;
