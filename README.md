@@ -27,7 +27,7 @@ npx eas-cli build --platform android --profile preview
 
 ## Current implementation status
 
-The API foundation, PostgreSQL module registry, multilingual public website dashboard, and initial mobile welcome / Ethio ID screens are in place. API health and safe degraded-mode integration tests run in CI. The mobile registration and sign-in screens are UI previews only. Registration includes client-side field checks, but does not create an account; sign-in does not authenticate. Country, region, and city are currently free-text inputs. Authentication, OTP, identity verification, wallet operations and the 18 service modules must be implemented and tested before production use.
+The API foundation, PostgreSQL module registry, multilingual public website dashboard, and mobile welcome / Ethio ID account screens are in place. The mobile app is connected to the live API for email registration, email OTP verification, sign-in, password reset, refresh-token sessions, sign-out, profile, roles and notifications. This does not mean the entire platform is production-complete: identity verification beyond contact verification is not implemented; phone OTP is not enabled in the current mobile registration flow; wallet and payment operations are not implemented; and the 19 service tiles are currently a service directory/preview rather than completed service experiences. All 19 platform modules remain marked planned in the production registry. See [Service Readiness](server/SERVICE-READINESS.md) for the module-by-module status.
 
 ## Safety
 
