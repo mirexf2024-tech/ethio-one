@@ -34,6 +34,6 @@ test("foundation endpoints scope profile, roles, notifications and media to the 
 
 test("auth responses expose the server-managed Ethio ID verification status", () => {
   const routes = fs.readFileSync(path.join(__dirname, "../auth/routes.js"), "utf8");
-  assert.match(routes, /identityVerificationStatus:u\\.identity_verification_status/);
-  assert.match(routes, /identityVerificationUpdatedAt:u\\.identity_verification_updated_at/);
+  assert.ok(routes.includes("identityVerificationStatus:u.identity_verification_status"));
+  assert.ok(routes.includes("identityVerificationUpdatedAt:u.identity_verification_updated_at"));
 });
