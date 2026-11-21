@@ -81,15 +81,14 @@ router.post("/identity-verification/request", async (req,res) => {
       "UPDATE users SET identity_verification_status='pending_review',identity_verification_updated_at=NOW(),updated_at=NOW() WHERE id=$1 RETURNING identity_verification_status,identity_verification_updated_at",
       [req.account.id]
     );
+    const {digestIp}=require("../admin/audit");
+    const env=req.app.locals.authEnv||process.env;
+    const ipDigest=digestIp(req.ip,env.AUDIT_LOG_PEPPER);
+    await client.query(
+      "INSERT INTO security_events (event_type,severity,user_id,ip_digest,metadata) VALUES ($1,$2,$3,$4,$5::jsonb)",
+      ["identity_verification_requested","info",req.account.id,ipDigest,JSON.stringify({route:req.path,method:req.method,reason:"user_requested_identity_review"})]
+    );
     await client.query("COMMIT");
-    const {recordSecurityEvent}=require("../admin/audit");
-    const logged=await recordSecurityEvent(req,{
-      type:"identity_verification_requested",
-      severity:"info",
-      userId:req.account.id,
-      metadata:{route:req.path,method:req.method,reason:"user_requested_identity_review"}
-    });
-    if(!logged) return res.status(503).json({error:"Request saved, but its audit record could not be confirmed. Please contact support."});
     return res.status(202).set("Cache-Control","no-store").json({ok:true,verification:updated.rows[0]});
   } catch {
     await client.query("ROLLBACK").catch(()=>{});
