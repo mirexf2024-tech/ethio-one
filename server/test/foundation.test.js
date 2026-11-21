@@ -27,4 +27,13 @@ test("foundation endpoints scope profile, roles, notifications and media to the 
   assert.match(routes, /WHERE user_id=\$1/);
   assert.match(routes, /router\.post\("\/media\/sign"/);
   assert.match(routes, /router\.post\("\/media"/);
+  assert.match(routes, /identity_verification_status/);
+  assert.match(routes, /identityVerificationStatus/);
+  assert.match(routes, /identityVerificationUpdatedAt/);
+});
+
+test("auth responses expose the server-managed Ethio ID verification status", () => {
+  const routes = fs.readFileSync(path.join(__dirname, "../auth/routes.js"), "utf8");
+  assert.match(routes, /identityVerificationStatus:u\\.identity_verification_status/);
+  assert.match(routes, /identityVerificationUpdatedAt:u\\.identity_verification_updated_at/);
 });
