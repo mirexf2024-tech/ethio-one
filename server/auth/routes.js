@@ -89,7 +89,12 @@ router.post("/register", async (req,res) => {
     } finally { c.release(); }
     try {
       await sendVerificationEmail({to:email,code,expiresMinutes:5});
-    } catch {
+    } catch (mailError) {
+      console.error("Verification email delivery failed:", {
+        name: mailError?.name || "Error",
+        code: mailError?.code || null,
+        responseCode: mailError?.responseCode || null
+      });
       await db.query("UPDATE auth_challenges SET consumed_at=NOW() WHERE user_id=$1 AND purpose='verify_contact' AND consumed_at IS NULL",[user.id]).catch(()=>{});
       return res.status(503).json({error:"We could not send the verification code. Please try again later.",userId:user.id,channel});
     }
@@ -247,7 +252,12 @@ router.post("/verification/resend", async (req,res) => {
       [user.id,b.channel,security.digestChallenge(code,env.AUTH_CHALLENGE_PEPPER)]);
     try {
       await sendVerificationEmail({to:user.destination,code,expiresMinutes:5});
-    } catch {
+    } catch (mailError) {
+      console.error("Verification email resend failed:", {
+        name: mailError?.name || "Error",
+        code: mailError?.code || null,
+        responseCode: mailError?.responseCode || null
+      });
       await db.query("UPDATE auth_challenges SET consumed_at=NOW() WHERE user_id=$1 AND channel=$2 AND purpose='verify_contact' AND consumed_at IS NULL",[user.id,b.channel]).catch(()=>{});
       return res.status(503).json({error:"We could not send the verification code. Please try again later."});
     }
