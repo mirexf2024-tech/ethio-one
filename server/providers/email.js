@@ -21,6 +21,7 @@ async function sendVerificationEmail({ to, code, expiresMinutes = 5 }, options =
 
   // Prefer HTTPS email delivery; this avoids SMTP connection timeouts on hosted platforms.
   if (apiKey) {
+    console.info("Verification email provider selected: Resend API");
     const from = requiredEnv("RESEND_FROM", env);
     const response = await (options.fetch || fetch)("https://api.resend.com/emails", {
       method: "POST",
@@ -37,6 +38,7 @@ async function sendVerificationEmail({ to, code, expiresMinutes = 5 }, options =
   }
 
   // Keep Gmail SMTP as a fallback for deployments that have not configured Resend yet.
+  console.warn("Verification email provider selected: Gmail SMTP fallback (RESEND_API_KEY is not configured).");
   const user = requiredEnv("GMAIL_USER", env);
   const pass = requiredEnv("GMAIL_APP_PASSWORD", env).replace(/\s+/g, "");
   const from = String(env.GMAIL_FROM || user).trim();
