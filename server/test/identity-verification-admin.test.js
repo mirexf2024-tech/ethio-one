@@ -32,3 +32,19 @@ test("identity verification audit events and target user metadata are allowliste
   assert.match(audit, /identity_verification_updated/);
   assert.match(audit, /target_user_id/);
 });
+
+
+test("signed-in users can request review but cannot set their own verified status", () => {
+  const routes = fs.readFileSync(path.join(__dirname, "../foundation/routes.js"), "utf8");
+  assert.match(routes, /router\.post\("\/identity-verification\/request"/);
+  assert.match(routes, /WHERE id=\$1 AND status='active' FOR UPDATE/);
+  assert.match(routes, /\["unverified", "needs_more_info"\]\.includes\(status\)/);
+  assert.match(routes, /identity_verification_status='pending_review'/);
+  assert.doesNotMatch(routes, /identity_verification_status=req\.body/);
+  assert.match(routes, /identity_verification_requested/);
+});
+
+test("identity verification request audit event is allowlisted", () => {
+  const audit = fs.readFileSync(path.join(__dirname, "../admin/audit.js"), "utf8");
+  assert.match(audit, /identity_verification_requested/);
+});
