@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import {
-  Alert, KeyboardAvoidingView, Linking, Platform, Pressable, SafeAreaView,
+  Alert, Image, KeyboardAvoidingView, Linking, Platform, Pressable, SafeAreaView,
   ScrollView, StatusBar, StyleSheet, Text, TextInput, View
 } from "react-native";
 import {
@@ -13,6 +13,7 @@ import {
 
 type Language = "OM" | "AM" | "EN";
 type Screen = "welcome" | "register" | "signin" | "verify" | "forgot" | "reset" | "account";
+const LOGO_URI = "https://raw.githubusercontent.com/mirexf2024-tech/ethio-one/main/ETHIO%20ONE%20logo%20identity.png";
 const API = "https://ethio-one-api.onrender.com/api/v1/auth";
 const API_ROOT = "https://ethio-one-api.onrender.com/api/v1";
 const C = { navy:"#082B59", navy2:"#061E3D", gold:"#D9A928", ink:"#152238", muted:"#748197", line:"#E7EBF1", bg:"#F5F7FA", white:"#FFFFFF", pale:"#F0F4FA" };
@@ -136,14 +137,14 @@ export default function App() {
     <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==="ios"?"padding":undefined}>
       <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
         <View style={s.topbar}>
-          <View style={s.brand}><View style={s.brandMark}><Text style={s.brandMarkE}>E</Text><Text style={s.brandMarkOne}>1</Text></View><Text style={s.brandName}>ETHIO <Text style={{color:C.gold}}>ONE</Text></Text></View>
+          <View style={s.brand}><View style={s.brandMark}><Image source={{uri:LOGO_URI}} style={s.brandMarkImage} resizeMode="contain"/></View><Text style={s.brandName}>ETHIO <Text style={{color:C.gold}}>ONE</Text></Text></View>
           <Pressable style={s.language} onPress={()=>setLanguage(v=>v==="OM"?"AM":v==="AM"?"EN":"OM")} accessibilityRole="button" accessibilityLabel={t.language}><Globe2 size={15} color={C.navy}/><Text style={s.languageText}>{language}</Text><ChevronDown size={13} color={C.navy}/></Pressable>
         </View>
 
         {screen==="welcome" ? <>
           <View style={s.hero}>
             <View style={s.orbitOne}/><View style={s.orbitTwo}/>
-            <View style={s.heroLogoOuter}><View style={s.heroLogoRing}><Text style={s.heroLogoE}>E</Text><Text style={s.heroLogoOne}>1</Text></View></View>
+            <View style={s.heroLogoOuter}><View style={s.heroLogoRing}><Image source={{uri:LOGO_URI}} style={s.heroLogoImage} resizeMode="contain"/></View></View>
             <Text style={s.eyebrow}>ONE ID · MANY SERVICES</Text>
             <Text style={s.heroTitle}>ETHIO{"\n"}<Text style={{color:C.gold}}>ONE</Text></Text>
             <Text style={s.tagline}>{t.tagline}</Text>
@@ -202,11 +203,11 @@ export default function App() {
 const s = StyleSheet.create({
   safe:{flex:1,backgroundColor:C.navy2}, page:{flexGrow:1,paddingHorizontal:24,paddingTop:12,paddingBottom:24},
   topbar:{height:52,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
-  brand:{flexDirection:"row",alignItems:"center",gap:9},brandMark:{width:38,height:38,borderRadius:12,backgroundColor:C.navy,alignItems:"center",justifyContent:"center",flexDirection:"row",shadowColor:C.navy,shadowOpacity:.2,shadowRadius:8,shadowOffset:{width:0,height:4},elevation:4},brandMarkE:{fontSize:19,fontWeight:"900",color:C.white,letterSpacing:-2},brandMarkOne:{fontSize:19,fontWeight:"900",color:C.gold,letterSpacing:-1},brandName:{fontSize:15,fontWeight:"900",letterSpacing:1.5,color:C.white},
+  brand:{flexDirection:"row",alignItems:"center",gap:9},brandMark:{width:38,height:38,borderRadius:12,backgroundColor:C.navy,alignItems:"center",justifyContent:"center",shadowColor:C.navy,shadowOpacity:.2,shadowRadius:8,shadowOffset:{width:0,height:4},elevation:4,overflow:"hidden"},brandMarkImage:{width:32,height:32},brandName:{fontSize:15,fontWeight:"900",letterSpacing:1.5,color:C.white},
   language:{flexDirection:"row",alignItems:"center",gap:6,paddingHorizontal:11,paddingVertical:8,borderRadius:20,backgroundColor:"#123B6C",borderWidth:1,borderColor:"rgba(217,169,40,.55)"},languageText:{fontSize:12,fontWeight:"800",color:C.white},
   hero:{backgroundColor:"#082B59",borderRadius:30,marginTop:20,minHeight:405,alignItems:"center",justifyContent:"center",paddingHorizontal:22,paddingVertical:34,overflow:"hidden",borderWidth:1,borderColor:"rgba(217,169,40,.62)",shadowColor:"#061E3D",shadowOpacity:.24,shadowRadius:24,shadowOffset:{width:0,height:14},elevation:10},
   orbitOne:{position:"absolute",width:280,height:280,borderRadius:140,borderWidth:1,borderColor:"rgba(255,255,255,.08)",top:-115,right:-105},orbitTwo:{position:"absolute",width:220,height:220,borderRadius:110,borderWidth:1,borderColor:"rgba(217,169,40,.18)",bottom:-115,left:-80},
-  heroLogoOuter:{width:88,height:88,borderRadius:44,backgroundColor:"rgba(255,255,255,.06)",alignItems:"center",justifyContent:"center",marginBottom:18,borderWidth:1,borderColor:"rgba(217,169,40,.45)"},heroLogoRing:{width:68,height:68,borderRadius:34,borderWidth:1,borderColor:"rgba(255,255,255,.34)",alignItems:"center",justifyContent:"center",flexDirection:"row"},heroLogoE:{fontSize:39,fontWeight:"900",color:C.white,letterSpacing:-5},heroLogoOne:{fontSize:39,fontWeight:"900",color:C.gold,letterSpacing:-3},
+  heroLogoOuter:{width:88,height:88,borderRadius:44,backgroundColor:"rgba(255,255,255,.06)",alignItems:"center",justifyContent:"center",marginBottom:18,borderWidth:1,borderColor:"rgba(217,169,40,.45)"},heroLogoRing:{width:68,height:68,borderRadius:34,borderWidth:1,borderColor:"rgba(255,255,255,.34)",alignItems:"center",justifyContent:"center"},heroLogoImage:{width:54,height:54},
   eyebrow:{fontSize:10,fontWeight:"800",letterSpacing:2.7,color:"#D7E0ED",marginBottom:12},heroTitle:{fontSize:54,lineHeight:55,fontWeight:"900",letterSpacing:3,color:C.white,textAlign:"center"},tagline:{fontSize:18,fontWeight:"800",color:C.white,marginTop:14,textAlign:"center"},intro:{fontSize:13,lineHeight:20,color:"#D5DFEC",textAlign:"center",marginTop:9,maxWidth:280},
   serviceHeading:{width:"100%",alignItems:"center",marginTop:27,marginBottom:13},serviceTitle:{fontSize:14,fontWeight:"900",color:C.white},serviceCaption:{fontSize:10,color:"#C9D5E4",marginTop:4},serviceGrid:{width:"100%",flexDirection:"row",flexWrap:"wrap",justifyContent:"center",gap:8},serviceCard:{width:"22.5%",maxWidth:84,minHeight:78,borderRadius:13,backgroundColor:"rgba(255,255,255,.97)",alignItems:"center",justifyContent:"center",paddingHorizontal:4,paddingVertical:9},serviceIcon:{width:35,height:35,borderRadius:11,alignItems:"center",justifyContent:"center",marginBottom:6},serviceName:{fontSize:8.5,fontWeight:"800",color:C.ink,textAlign:"center"},
   welcomeActions:{marginTop:22,gap:11},primary:{minHeight:56,borderRadius:17,backgroundColor:C.gold,flexDirection:"row",alignItems:"center",justifyContent:"center",gap:12,borderWidth:1,borderColor:"#F1D477",shadowColor:C.gold,shadowOpacity:.2,shadowRadius:12,shadowOffset:{width:0,height:6},elevation:4},primaryText:{fontSize:15,fontWeight:"900",color:C.navy2},secondary:{height:52,borderRadius:16,borderWidth:1.5,borderColor:C.navy,alignItems:"center",justifyContent:"center",backgroundColor:C.white},secondaryText:{fontSize:15,fontWeight:"800",color:C.navy},bottomPrompt:{textAlign:"center",fontSize:12,color:"#C7D3E2",marginTop:4},inlineLink:{fontWeight:"900",color:C.gold},
