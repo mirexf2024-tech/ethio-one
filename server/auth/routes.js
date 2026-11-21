@@ -57,8 +57,11 @@ router.post("/register", async (req,res) => {
   const db=req.app.locals.db, env=req.app.locals.authEnv||process.env, b=req.body||{};
   try {
     const email=b.email ? security.normalizeEmail(b.email) : null;
-    const phone=null;
+    const phone=security.normalizePhone(b.phone);
+    const country=typeof b.country==="string"?b.country.trim():"";
+    const locale=["om","am","en"].includes(b.locale)?b.locale:null;
     if (!email) return res.status(400).json({error:"A valid email address is required."});
+    if (!country || country.length>80 || !locale) return res.status(400).json({error:"Choose your country and preferred language."});
     if (typeof b.fullName!=="string" || b.fullName.trim().length<2 || b.fullName.trim().length>120 ||
         typeof b.username!=="string" || !/^[a-zA-Z0-9_]{3,30}$/.test(b.username) || b.termsAccepted!==true) {
       return res.status(400).json({error:"Please check the required registration details."});
@@ -77,7 +80,7 @@ router.post("/register", async (req,res) => {
         "WITH identity AS (SELECT gen_random_uuid() AS id) INSERT INTO users (id,ethio_id,full_name,username,email,phone,password_hash,account_type,status,terms_accepted_at,terms_version) SELECT id,'E1-' || UPPER(SUBSTRING(REPLACE(id::text,'-','') FROM 1 FOR 12)),$1,$2,$3,$4,$5,'member','pending_verification',NOW(),$6 FROM identity RETURNING id,ethio_id,full_name,username,email,phone",
         [b.fullName.trim(),b.username.trim().toLowerCase(),email,phone,passwordHash,TERMS_VERSION]);
       user=inserted.rows[0];
-      await c.query("INSERT INTO user_profiles (user_id,locale) VALUES ($1,'om') ON CONFLICT (user_id) DO NOTHING",[user.id]);
+      await c.query("INSERT INTO user_profiles (user_id,country,locale) VALUES ($1,$2,$3) ON CONFLICT (user_id) DO UPDATE SET country=EXCLUDED.country,locale=EXCLUDED.locale,updated_at=NOW()",[user.id,country,locale]);
       await c.query("INSERT INTO user_roles (user_id,role_key) VALUES ($1,'member') ON CONFLICT DO NOTHING",[user.id]);
       await c.query("INSERT INTO auth_challenges (user_id,channel,purpose,code_digest,expires_at) VALUES ($1,$2,'verify_contact',$3,NOW()+INTERVAL '5 minutes')",
         [user.id,channel,security.digestChallenge(code,env.AUTH_CHALLENGE_PEPPER)]);
