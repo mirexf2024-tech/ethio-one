@@ -1,5 +1,3 @@
-const nodemailer = require("nodemailer");
-
 function requiredEnv(name, env) {
   const value = env[name];
   if (!value || !String(value).trim()) throw new Error("Email delivery is not configured (" + name + ").");
@@ -42,6 +40,7 @@ async function sendVerificationEmail({ to, code, expiresMinutes = 5 }, options =
   const user = requiredEnv("GMAIL_USER", env);
   const pass = requiredEnv("GMAIL_APP_PASSWORD", env).replace(/\s+/g, "");
   const from = String(env.GMAIL_FROM || user).trim();
+  const nodemailer = options.nodemailer || require("nodemailer");
   const transport = options.transport || nodemailer.createTransport({
     host: "smtp.gmail.com", port: 465, secure: true,
     auth: { user, pass }, connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 15000
