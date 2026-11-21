@@ -23,7 +23,7 @@ router.use(async (req,res,next) => {
   const payload=tokenPayload(req,env);
   if(!payload) return res.status(401).json({error:"Please sign in again."});
   try {
-    const found=await db.query("SELECT id,ethio_id,full_name,username,email,phone,status FROM users WHERE id=$1 AND status='active'",[payload.sub]);
+    const found=await db.query("SELECT id,ethio_id,full_name,username,email,phone,status,identity_verification_status,identity_verification_updated_at FROM users WHERE id=$1 AND status='active'",[payload.sub]);
     if(!found.rows[0]) return res.status(401).json({error:"Please sign in again."});
     req.account=found.rows[0];
     return next();
@@ -36,7 +36,7 @@ router.get("/profile", async (req,res) => {
       req.app.locals.db.query("SELECT country,region,city,bio,avatar_url,locale,updated_at FROM user_profiles WHERE user_id=$1",[req.account.id]),
       req.app.locals.db.query("SELECT ur.role_key, r.display_name, COALESCE(array_agg(rp.permission_key) FILTER (WHERE rp.permission_key IS NOT NULL),'{}') AS permissions FROM user_roles ur JOIN roles r ON r.role_key=ur.role_key LEFT JOIN role_permissions rp ON rp.role_key=ur.role_key WHERE ur.user_id=$1 GROUP BY ur.role_key,r.display_name",[req.account.id])
     ]);
-    return res.set("Cache-Control","no-store").json({user:{id:req.account.id,ethioId:req.account.ethio_id,fullName:req.account.full_name,username:req.account.username,email:req.account.email,phone:req.account.phone,profile:p.rows[0]||{country:"Ethiopia",locale:"om"}},roles:r.rows});
+    return res.set("Cache-Control","no-store").json({user:{id:req.account.id,ethioId:req.account.ethio_id,fullName:req.account.full_name,username:req.account.username,email:req.account.email,phone:req.account.phone,identityVerificationStatus:req.account.identity_verification_status||"unverified",identityVerificationUpdatedAt:req.account.identity_verification_updated_at||null,profile:p.rows[0]||{country:"Ethiopia",locale:"om"}},roles:r.rows});
   } catch { return res.status(503).json({error:"Profile is temporarily unavailable."}); }
 });
 
