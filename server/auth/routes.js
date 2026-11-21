@@ -39,7 +39,8 @@ function readAccessToken(token, env) {
 function profile(u) {
   return { id:u.id, ethioId:u.ethio_id, fullName:u.full_name, username:u.username, email:u.email, phone:u.phone,
     accountType:u.account_type, status:u.status, emailVerified:!!u.email_verified_at,
-    phoneVerified:!!u.phone_verified_at, createdAt:u.created_at };
+    phoneVerified:!!u.phone_verified_at, identityVerificationStatus:u.identity_verification_status || "unverified",
+    identityVerificationUpdatedAt:u.identity_verification_updated_at || null, createdAt:u.created_at };
 }
 function mask(channel, value) {
   return channel === "email" ? value.slice(0,1) + "***@" + value.split("@")[1] : value.slice(0,4) + "*****" + value.slice(-2);
@@ -134,7 +135,7 @@ router.post("/verify", async (req,res) => {
     }
     await c.query("UPDATE auth_challenges SET consumed_at=NOW() WHERE id=$1",[ch.id]);
     const col=b.channel==="email"?"email_verified_at":"phone_verified_at";
-    const updated=await c.query("UPDATE users SET "+col+"=NOW(),status='active',updated_at=NOW() WHERE id=$1 AND status IN ('pending_verification','active') RETURNING id,ethio_id,full_name,username,email,phone,account_type,status,email_verified_at,phone_verified_at,created_at",[b.userId]);
+    const updated=await c.query("UPDATE users SET "+col+"=NOW(),status='active',updated_at=NOW() WHERE id=$1 AND status IN ('pending_verification','active') RETURNING id,ethio_id,full_name,username,email,phone,account_type,status,email_verified_at,phone_verified_at,identity_verification_status,identity_verification_updated_at,created_at",[b.userId]);
     if(!updated.rows[0]) { await c.query("ROLLBACK"); return res.status(400).json({error:"This account cannot be verified."}); }
     const adminEmail=String(env.ADMIN_EMAIL||"").trim().toLowerCase();
     if(b.channel==="email" && adminEmail && String(updated.rows[0].email||"").toLowerCase()===adminEmail) {
@@ -181,7 +182,7 @@ router.get("/me", async (req,res) => {
   const payload=match && readAccessToken(match[1],env);
   if(!payload) return res.status(401).json({error:"Please sign in again."});
   try {
-    const result=await req.app.locals.db.query("SELECT id,ethio_id,full_name,username,email,phone,account_type,status,email_verified_at,phone_verified_at,created_at FROM users WHERE id=$1 AND status='active'",[payload.sub]);
+    const result=await req.app.locals.db.query("SELECT id,ethio_id,full_name,username,email,phone,account_type,status,email_verified_at,phone_verified_at,identity_verification_status,identity_verification_updated_at,created_at FROM users WHERE id=$1 AND status='active'",[payload.sub]);
     if(!result.rows[0]) return res.status(401).json({error:"Please sign in again."});
     return res.json({user:profile(result.rows[0])});
   } catch { return res.status(503).json({error:"Profile is temporarily unavailable."}); }
