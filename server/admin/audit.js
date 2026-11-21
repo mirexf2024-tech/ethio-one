@@ -2,10 +2,10 @@ const crypto = require("node:crypto");
 
 const ALLOWED_TYPES = new Set([
   "login_failed", "otp_invalid", "otp_expired", "refresh_reuse",
-  "admin_access_denied", "auth_rate_limited", "provider_delivery_failed", "api_error", "api_not_found", "api_rate_limited", "client_error"
+  "admin_access_denied", "identity_verification_updated", "auth_rate_limited", "provider_delivery_failed", "api_error", "api_not_found", "api_rate_limited", "client_error"
 ]);
 const ALLOWED_SEVERITIES = new Set(["info", "warning", "high", "critical"]);
-const ALLOWED_METADATA_KEYS = new Set(["channel", "reason", "route", "method", "provider", "component"]);
+const ALLOWED_METADATA_KEYS = new Set(["channel", "reason", "route", "method", "provider", "component", "target_user_id"]);
 
 function safeMetadata(input = {}) {
   const output = {};
