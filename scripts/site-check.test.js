@@ -5,8 +5,8 @@ const path = require("node:path");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 
-test("landing page exposes all 18 service cards", () => {
-  assert.equal((html.match(/class="tile"/g) || []).length, 18);
+test("landing page exposes all 19 service cards", () => {
+  assert.equal((html.match(/class="tile"/g) || []).length, 19);
 });
 
 test("all visible translated labels exist in all three languages", () => {
