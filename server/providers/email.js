@@ -17,6 +17,33 @@ async function sendVerificationEmail({ to, code, expiresMinutes = 5 }, options =
   if (!/^\d{6}$/.test(String(code || ""))) throw new TypeError("A six-digit verification code is required.");
   const env = options.env || process.env;
   const content = messageContent(code, expiresMinutes);
+  const brevoKey = String(env.BREVO_API_KEY || "").trim();
+
+  // Brevo HTTPS API works without opening SMTP ports on the hosting platform.
+  if (brevoKey) {
+    console.info("Verification email provider selected: Brevo API");
+    const fromEmail = requiredEnv("BREVO_FROM_EMAIL", env);
+    const fromName = String(env.BREVO_FROM_NAME || "Ethio One").trim();
+    const response = await (options.fetch || fetch)("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: { "api-key": brevoKey, "accept": "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sender: { name: fromName, email: fromEmail },
+        to: [{ email: String(to).trim() }],
+        subject: content.subject,
+        textContent: content.text,
+        htmlContent: content.html
+      })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error("Brevo email delivery failed.");
+      error.code = "BREVO_HTTP_" + response.status;
+      throw error;
+    }
+    return { provider: "brevo", messageId: result.messageId || null };
+  }
+
   const apiKey = String(env.RESEND_API_KEY || "").trim();
 
   // Prefer HTTPS email delivery; this avoids SMTP connection timeouts on hosted platforms.
