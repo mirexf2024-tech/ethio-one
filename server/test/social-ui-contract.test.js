@@ -65,3 +65,16 @@ test("Ethio Social API keeps authentication, media validation and core routes", 
   assert.match(routes, /const safeMedia\s*=/);
   assert.match(routes, /SOCIAL_TURN_URLS/);
 });
+
+test("Creator analytics are only opened from the signed-in owner's profile", () => {
+  assert.match(html, /ethio-id-bio[\\s\\S]{0,500}profile-analytics-btn[\\s\\S]{0,160}id="creatorInsightsBtn"/);
+  assert.doesNotMatch(html, /<button[^>]*id="creatorInsightsBtn"[^>]*>Creator insights<\\/button>/);
+  assert.match(routes, /router\\.get\\("\/creator\/analytics",requireAuth/);
+  assert.match(routes, /WITH mine AS \\(SELECT id,created_at FROM social_posts WHERE user_id=\\$1/);
+  assert.match(routes, /Cache-Control", "no-store"/);
+});
+
+test("Group title opens Telegram-style group information", () => {
+  assert.match(html, /#chatPersonInfo[\\s\\S]{0,220}openGroupSettings/);
+  assert.match(html, /function openGroupSettings\\(id\\)[\\s\\S]{0,1800}groupInfoHero[\\s\\S]{0,1800}groupMemberList/);
+});
