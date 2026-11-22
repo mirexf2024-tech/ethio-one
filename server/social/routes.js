@@ -38,7 +38,7 @@ const storyCreateLimit=actionLimiter(4,60*60*1000,"You have reached the story li
 const messageCreateLimit=actionLimiter(20,60*1000,"You are sending messages too quickly. Please wait a moment.");
 const interactionLimit=actionLimiter(60,60*1000,"You are doing that too quickly. Please wait a moment.");
 async function notifyMentions(db,body,actorId,postId,commentId=null){
-  const handles=[...new Set((String(body||"").match(/(?:^|[^A-Za-z0-9_])@([A-Za-z0-9_]{3,30})/g)||[]).map(x=>x.trim().slice(1).toLowerCase()))].slice(0,10);
+  const handles=[...new Set([...String(body||"").matchAll(/(?:^|[^A-Za-z0-9_])@([A-Za-z0-9_]{3,30})/g)].map(x=>x[1].toLowerCase()))].slice(0,10);
   if(!handles.length)return;
   await db.query(
     `INSERT INTO notifications(user_id,title,body,kind,data)
