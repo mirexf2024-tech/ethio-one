@@ -408,5 +408,95 @@
     window.addEventListener("unhandledrejection", () => report("unhandled_rejection"));
   })();
 </script>
+<script>
+/* Authenticated header: keep the signed-in identity visible on the home dashboard. */
+(() => {
+  const AUTH = "https://ethio-one-api.onrender.com/api/v1/auth";
+  const keys = { access:"ethioOneAccessToken", refresh:"ethioOneRefreshToken", user:"ethioOneUser" };
+  const actions = document.querySelector(".header-actions");
+  if (!actions) return;
+  const signIn = actions.querySelector(".sign-in-link");
+  const avatar = actions.querySelector(".profile-avatar");
+  const language = actions.querySelector("#languageToggle");
+  let currentUser = null;
+
+  const read = key => { try { return sessionStorage.getItem(key); } catch { return null; } };
+  const save = (key,value) => { try { sessionStorage.setItem(key,value); } catch {} };
+  const clear = () => { Object.values(keys).forEach(k => { try { sessionStorage.removeItem(k); } catch {} }); };
+  const initials = name => String(name || "U").trim().split(/\\s+/).slice(0,2).map(x=>x[0]||"").join("").toUpperCase();
+
+  let menu = document.getElementById("accountMenu");
+  if (!menu) {
+    menu = document.createElement("div");
+    menu.id = "accountMenu";
+    menu.hidden = true;
+    menu.style.cssText = "position:absolute;right:24px;top:68px;z-index:30;width:min(310px,calc(100vw - 28px));padding:16px;border:1px solid #e6ebf2;border-radius:16px;background:#fff;color:#17263d;box-shadow:0 18px 50px #061a3530";
+    document.querySelector("header").appendChild(menu);
+  }
+  const renderSignedOut = () => {
+    if (signIn) signIn.hidden = false;
+    if (avatar) { avatar.textContent = "◉"; avatar.href = "/auth.html"; avatar.removeAttribute("aria-expanded"); avatar.onclick = null; }
+    menu.hidden = true;
+  };
+  const renderSignedIn = user => {
+    currentUser = user;
+    if (signIn) signIn.hidden = true;
+    if (avatar) {
+      avatar.href = "#accountMenu";
+      avatar.textContent = initials(user.fullName);
+      avatar.title = user.fullName || "My profile";
+      avatar.setAttribute("aria-label", "Profile: " + (user.fullName || "Account"));
+      avatar.setAttribute("aria-expanded", "false");
+      avatar.onclick = event => {
+        event.preventDefault();
+        menu.hidden = !menu.hidden;
+        avatar.setAttribute("aria-expanded", String(!menu.hidden));
+      };
+    }
+    menu.innerHTML = "";
+    const name = document.createElement("strong"); name.textContent = user.fullName || user.username || "Ethio One user";
+    name.style.cssText = "display:block;color:#082b59;font-size:15px;margin-bottom:4px";
+    const id = document.createElement("div"); id.textContent = user.ethioId || ""; id.style.cssText = "font-size:12px;color:#8a6a16;font-weight:800;margin-bottom:5px";
+    const detail = document.createElement("div"); detail.textContent = user.email || user.username || ""; detail.style.cssText = "font-size:12px;color:#667085;margin-bottom:14px;overflow-wrap:anywhere";
+    const logout = document.createElement("button"); logout.type = "button"; logout.textContent = "Sign out"; logout.style.cssText = "width:100%;padding:10px;border:0;border-radius:10px;background:#082b59;color:#fff;font-weight:750;cursor:pointer";
+    logout.onclick = async () => {
+      logout.disabled = true;
+      try { const refreshToken = read(keys.refresh); if (refreshToken) await fetch(AUTH + "/logout", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({refreshToken})}); } catch {}
+      clear(); currentUser = null; renderSignedOut(); window.location.reload();
+    };
+    menu.replaceChildren(name,id,detail,logout);
+  };
+
+  async function loadIdentity() {
+    let access = read(keys.access);
+    const refresh = read(keys.refresh);
+    if (!access && !refresh) { renderSignedOut(); return; }
+    try {
+      let response = access ? await fetch(AUTH + "/me", {headers:{Authorization:"Bearer " + access}}) : null;
+      if ((!response || response.status === 401) && refresh) {
+        const renewed = await fetch(AUTH + "/refresh", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({refreshToken:refresh})});
+        if (!renewed.ok) throw new Error("session-expired");
+        const tokens = await renewed.json();
+        save(keys.access,tokens.accessToken); save(keys.refresh,tokens.refreshToken);
+        access = tokens.accessToken;
+        response = await fetch(AUTH + "/me", {headers:{Authorization:"Bearer " + access}});
+      }
+      if (!response || !response.ok) throw new Error("profile-unavailable");
+      const data = await response.json();
+      if (!data.user) throw new Error("profile-unavailable");
+      save(keys.user,JSON.stringify(data.user));
+      renderSignedIn(data.user);
+    } catch {
+      clear(); renderSignedOut();
+    }
+  }
+  document.addEventListener("click", event => {
+    if (!menu.hidden && !menu.contains(event.target) && !avatar?.contains(event.target)) {
+      menu.hidden = true; avatar?.setAttribute("aria-expanded","false");
+    }
+  });
+  loadIdentity();
+})();
+</script>
 </body>
 </html>
