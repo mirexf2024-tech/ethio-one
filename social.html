@@ -363,7 +363,7 @@ $("#messageInput").addEventListener("input",()=>{$("#sendMessageBtn").disabled=!
 $("#messageInput").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!$("#sendMessageBtn").disabled)$("#sendMessageBtn").click()}});
 
 /* Messenger call client: WebRTC media is peer-to-peer; API carries authenticated signaling only. */
-let activeCall=null,peerConnection=null,localCallStream=null,callPollTimer=null,incomingPollTimer=null,lastCallSignalId=0,incomingCallId=null,callMuted=false,cameraOff=false,pendingCallCandidates=[];
+let activeCall=null,peerConnection=null,localCallStream=null,callPollTimer=null,incomingPollTimer=null,lastCallSignalId=0,incomingCallId=null,callMuted=false,cameraOff=false,pendingCallCandidates=[],remoteCandidateQueue=[];
 const callApi=(path,opts={})=>api(path,opts);
 function showCall(status){$("#callStatus").textContent=status;$("#callModal").classList.add("open")}
 function stopCallMedia(){
@@ -371,17 +371,18 @@ function stopCallMedia(){
  if(peerConnection){peerConnection.onicecandidate=null;peerConnection.ontrack=null;peerConnection.close();peerConnection=null}
  if(localCallStream){localCallStream.getTracks().forEach(t=>t.stop());localCallStream=null}
  $("#localCallVideo").srcObject=null;$("#remoteCallVideo").srcObject=null;
- $("#callModal").classList.remove("open");activeCall=null;incomingCallId=null;lastCallSignalId=0;pendingCallCandidates=[];callMuted=false;cameraOff=false;
+ $("#callModal").classList.remove("open");activeCall=null;incomingCallId=null;lastCallSignalId=0;pendingCallCandidates=[];remoteCandidateQueue=[];callMuted=false;cameraOff=false;
  $("#muteCallBtn").textContent="🎙 Mute";$("#cameraCallBtn").textContent="▣ Camera";
 }
 async function sendCallSignal(type,payload){
  if(!activeCall)return;
  await callApi("/calls/"+activeCall.id+"/signals",{method:"POST",body:JSON.stringify({type,payload})});
 }
-async function preparePeer(type){
+async function flushRemoteCandidates(){const queued=remoteCandidateQueue.splice(0);for(const candidate of queued)await peerConnection.addIceCandidate(candidate).catch(()=>{})}
+async function preparePeer(type,iceServers){
  const stream=await navigator.mediaDevices.getUserMedia({audio:true,video:type==="video"});
  localCallStream=stream;$("#localCallVideo").srcObject=type==="video"?stream:null;
- peerConnection=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]});
+ peerConnection=new RTCPeerConnection({iceServers:Array.isArray(iceServers)&&iceServers.length?iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
  stream.getTracks().forEach(track=>peerConnection.addTrack(track,stream));
  peerConnection.ontrack=e=>{const remote=e.streams[0];if(remote){if(type==="video")$("#remoteCallVideo").srcObject=remote;else{const a=document.createElement("audio");a.autoplay=true;a.srcObject=remote;$("#remoteCallAudio").replaceChildren(a)}}};
  peerConnection.onicecandidate=e=>{if(!e.candidate)return;const candidate=e.candidate.toJSON();if(activeCall)sendCallSignal("ice",candidate).catch(()=>{});else pendingCallCandidates.push(candidate)};
@@ -391,7 +392,7 @@ async function startSocialCall(type){
  if(!window.activeConversation){toast("Choose a conversation first.");return}
  if(!navigator.mediaDevices?.getUserMedia||!window.RTCPeerConnection){toast("This browser does not support calls.");return}
  try{
-  await preparePeer(type);const offer=await peerConnection.createOffer();await peerConnection.setLocalDescription(offer);
+  const relay=await callApi("/calls/ice-servers");await preparePeer(type,relay.iceServers);const offer=await peerConnection.createOffer();await peerConnection.setLocalDescription(offer);
   const d=await callApi("/conversations/"+window.activeConversation+"/calls",{method:"POST",body:JSON.stringify({type,offer:peerConnection.localDescription.toJSON()})});
   activeCall={id:d.call.id,role:"caller",type};for(const candidate of pendingCallCandidates.splice(0))sendCallSignal("ice",candidate).catch(()=>{});showCall("Calling…");startCallPolling();
  }catch(e){stopCallMedia();toast(e.message||"Could not start the call. Check microphone/camera permission.");}
@@ -400,9 +401,9 @@ async function acceptSocialCall(callId){
  try{
   const d=await callApi("/calls/"+callId+"?after=0");const call=d.call;
   window.activeConversation=call.conversation_id;activeConversationName=call.caller_name||call.caller_username||"Member";$("#messagesModal").classList.add("open");await loadConversations();await loadMessages(window.activeConversation);
-  await preparePeer(call.call_type);activeCall={id:callId,role:"callee",type:call.call_type};
+  const relay=await callApi("/calls/ice-servers");await preparePeer(call.call_type,relay.iceServers);activeCall={id:callId,role:"callee",type:call.call_type};
   const offer=d.signals.find(x=>x.signal_type==="offer");if(!offer)throw new Error("Call offer is not available.");
-  await peerConnection.setRemoteDescription(offer.payload);
+  await peerConnection.setRemoteDescription(offer.payload);await flushRemoteCandidates();
   const answer=await peerConnection.createAnswer();await peerConnection.setLocalDescription(answer);
   await sendCallSignal("answer",peerConnection.localDescription.toJSON());
   for(const candidate of pendingCallCandidates.splice(0))sendCallSignal("ice",candidate).catch(()=>{});
@@ -419,8 +420,8 @@ function startCallPolling(){
    if(["rejected","ended","missed"].includes(d.call.status)){toast(d.call.status==="rejected"?"Call declined.":"Call ended.");stopCallMedia();return}
    for(const signal of d.signals||[]){
     lastCallSignalId=Math.max(lastCallSignalId,Number(signal.id)||0);
-    if(signal.signal_type==="answer"&&activeCall.role==="caller"&&peerConnection?.signalingState==="have-local-offer")await peerConnection.setRemoteDescription(signal.payload);
-    if(signal.signal_type==="ice"&&peerConnection?.remoteDescription)await peerConnection.addIceCandidate(signal.payload).catch(()=>{});
+    if(signal.signal_type==="answer"&&activeCall.role==="caller"&&peerConnection?.signalingState==="have-local-offer")await peerConnection.setRemoteDescription(signal.payload);await flushRemoteCandidates();
+    if(signal.signal_type==="ice"){if(peerConnection?.remoteDescription)await peerConnection.addIceCandidate(signal.payload).catch(()=>{});else remoteCandidateQueue.push(signal.payload)}
    }
    if(d.call.status==="accepted")$("#callStatus").textContent="Connected";
   }catch{}
