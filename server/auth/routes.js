@@ -156,11 +156,17 @@ router.post("/login", async (req,res) => {
   try {
     const value=b.identity.trim();
     let result;
-    if(value.includes("@")) result=await db.query("SELECT * FROM users WHERE lower(email)=lower($1) LIMIT 1",[security.normalizeEmail(value)]);
-    else if(/^[+0-9()\s-]+$/.test(value)) {
-      let phone=null; try { phone=security.normalizePhone(value); } catch {}
-      result=phone ? await db.query("SELECT * FROM users WHERE phone=$1 LIMIT 1",[phone]) : await db.query("SELECT * FROM users WHERE lower(username)=lower($1) LIMIT 1",[value]);
-    } else result=await db.query("SELECT * FROM users WHERE lower(ethio_id)=lower($1) OR lower(username)=lower($1) LIMIT 1",[value]);
+    if(value.includes("@")) {
+      result=await db.query("SELECT * FROM users WHERE lower(email)=lower($1) LIMIT 1",[security.normalizeEmail(value)]);
+    } else {
+      // Numeric usernames can resemble phone numbers; match both identifiers.
+      let phone=null;
+      if(/^[+0-9()\\s-]+$/.test(value)) { try { phone=security.normalizePhone(value); } catch {} }
+      result=await db.query(
+        "SELECT * FROM users WHERE lower(ethio_id)=lower($1) OR lower(username)=lower($1) OR ($2::text IS NOT NULL AND phone=$2) LIMIT 1",
+        [value,phone]
+      );
+    }
     const user=result.rows[0];
     const valid=user ? await security.verifyPassword(b.password,user.password_hash) : false;
     if(!user || !valid) {
