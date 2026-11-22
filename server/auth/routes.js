@@ -113,7 +113,7 @@ router.post("/register", async (req,res) => {
 
 router.post("/verify", async (req,res) => {
   const db=req.app.locals.db, env=req.app.locals.authEnv||process.env, b=req.body||{};
-  if(typeof b.userId!=="string" || !/^[0-9a-f-]{36}$/i.test(b.userId) || b.channel !== "email" || !/^\d{6}$/.test(String(b.code||""))) {
+  if(typeof b.userId!=="string" || !/^[0-9a-f-]{36}$/i.test(b.userId) || !["email","sms"].includes(b.channel) || !/^\d{6}$/.test(String(b.code||""))) {
     return res.status(400).json({error:"Invalid verification request."});
   }
   const c=await db.connect();
@@ -174,7 +174,7 @@ router.post("/login", async (req,res) => {
       await recordSecurityEvent(req, { type: "login_failed", severity: "warning", userId: user?.id || null, metadata: { reason: "invalid_credentials", route: "/auth/login" } });
       return res.status(401).json({error:"The sign-in details are incorrect."});
     }
-    if(user.status==="pending_verification") return res.status(403).json({error:"Verify your email before signing in.",status:"pending_verification",userId:user.id,channel:"email"});
+    if(user.status==="pending_verification") return res.status(403).json({error:"Verify your email or phone before signing in.",status:"pending_verification",userId:user.id,channel:"email"});
     if(user.status!=="active") return res.status(403).json({error:"This account cannot sign in yet."});
     return res.json({ok:true,user:profile(user),...(await newSession(db,user,env))});
   } catch(e) {
