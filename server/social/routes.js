@@ -89,6 +89,7 @@ router.get("/users/:id/profile",async(req,res)=>{
     (SELECT COUNT(*)::int FROM social_likes l WHERE l.post_id=p.id) AS like_count,
     (SELECT COUNT(*)::int FROM social_comments c WHERE c.post_id=p.id AND c.status='published') AS comment_count,
     CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_likes l WHERE l.post_id=p.id AND l.user_id=$2) END AS liked,
+        CASE WHEN $2::uuid IS NULL THEN NULL ELSE (SELECT l.reaction FROM social_likes l WHERE l.post_id=p.id AND l.user_id=$2) END AS my_reaction,
     CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_bookmarks b WHERE b.post_id=p.id AND b.user_id=$2) END AS bookmarked
     FROM social_posts p JOIN users u ON u.id=p.user_id LEFT JOIN user_profiles up ON up.user_id=u.id
     WHERE p.user_id=$1 AND p.status='published'
@@ -154,6 +155,7 @@ router.get("/posts/:id",async(req,res)=>{
        (SELECT COUNT(*)::int FROM social_likes l WHERE l.post_id=p.id) AS like_count,
        (SELECT COUNT(*)::int FROM social_comments c WHERE c.post_id=p.id AND c.status='published') AS comment_count,
        CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_likes l WHERE l.post_id=p.id AND l.user_id=$2) END AS liked,
+        CASE WHEN $2::uuid IS NULL THEN NULL ELSE (SELECT l.reaction FROM social_likes l WHERE l.post_id=p.id AND l.user_id=$2) END AS my_reaction,
        CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_bookmarks b WHERE b.post_id=p.id AND b.user_id=$2) END AS bookmarked
        FROM social_posts p JOIN users u ON u.id=p.user_id LEFT JOIN user_profiles up ON up.user_id=u.id
        WHERE p.id=$1 AND p.status='published'
@@ -205,6 +207,17 @@ router.delete("/posts/:id",requireAuth,async(req,res)=>{
     const r=await req.app.locals.db.query("UPDATE social_posts SET status='removed',updated_at=NOW() WHERE id=$1 AND user_id=$2 AND status='published' RETURNING id",[req.params.id,req.socialUserId]);
     return r.rowCount?res.json({ok:true}):res.status(404).json({error:"Post not found."});
   }catch{return res.status(503).json({error:"Post could not be removed."});}
+});
+router.post("/posts/:id/reaction",interactionLimit,requireAuth,async(req,res)=>{
+ const reaction=req.body?.reaction;
+ if(!uuid(req.params.id)||!["like","love","care","haha","wow","sad","angry"].includes(reaction))return res.status(400).json({error:"Choose a valid reaction."});
+ try{
+  const allowed=await req.app.locals.db.query("SELECT p.id,p.user_id FROM social_posts p WHERE p.id=$1 AND p.status='published' AND (p.visibility='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id)) AND (COALESCE((SELECT profile_visibility FROM user_profiles WHERE user_id=p.user_id),'public')='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id)) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2))",[req.params.id,req.socialUserId]);
+  if(!allowed.rowCount)return res.status(404).json({error:"Post not found."});
+  const saved=await req.app.locals.db.query("INSERT INTO social_likes(post_id,user_id,reaction) VALUES($1,$2,$3) ON CONFLICT(post_id,user_id) DO UPDATE SET reaction=EXCLUDED.reaction RETURNING reaction",[req.params.id,req.socialUserId,reaction]);
+  if(allowed.rows[0].user_id!==req.socialUserId)req.app.locals.db.query("INSERT INTO notifications(user_id,title,body,kind,data) SELECT $1,'New reaction','Someone reacted to your post.','social_like',jsonb_build_object('postId',$2,'actorId',$3) WHERE COALESCE((SELECT likes FROM social_notification_preferences WHERE user_id=$1),TRUE)",[allowed.rows[0].user_id,req.params.id,req.socialUserId]).catch(()=>{});
+  return res.json({reaction:saved.rows[0].reaction,liked:true});
+ }catch(err){console.error("social_post_reaction_failed",{code:err.code||null});return res.status(503).json({error:"Reaction could not be saved."});}
 });
 router.post("/posts/:id/like",interactionLimit,requireAuth,async(req,res)=>{
   if(!uuid(req.params.id)) return res.status(400).json({error:"Invalid post."});
@@ -445,32 +458,33 @@ router.get("/conversations/:id/messages",requireAuth,async(req,res)=>{
   const values=[req.params.id,limit];let cursorSql="";
   if(before){values.push(before);cursorSql=" AND m.created_at < (SELECT created_at FROM social_messages WHERE id=$3 AND conversation_id=$1)";}
   const r=await req.app.locals.db.query(
-   `SELECT m.id,m.sender_id,m.body,m.read_at,m.created_at FROM social_messages m
+   `SELECT m.id,m.sender_id,m.body,m.media,m.read_at,m.created_at FROM social_messages m
     WHERE m.conversation_id=$1 ${cursorSql} ORDER BY m.created_at DESC LIMIT $2`,values);
   return res.set("Cache-Control","no-store").json({messages:r.rows.reverse()});
  }catch{return res.status(503).json({error:"Messages could not be loaded."});}
 });
 router.post("/conversations/:id/messages",messageCreateLimit,requireAuth,async(req,res)=>{
- const body=typeof req.body?.body==="string"?req.body.body.trim():"";
- if(!uuid(req.params.id)||!body||body.length>2000)return res.status(400).json({error:"Write a message of up to 2,000 characters."});
- const client=await req.app.locals.db.connect();
- try{
-  await client.query("BEGIN");
-  const conv=await client.query("SELECT participant_one_id,participant_two_id FROM social_conversations WHERE id=$1 AND (participant_one_id=$2 OR participant_two_id=$2) FOR UPDATE",[req.params.id,req.socialUserId]);
-  if(!conv.rowCount){await client.query("ROLLBACK");return res.status(404).json({error:"Conversation not found."});}
-  const recipient=conv.rows[0].participant_one_id===req.socialUserId?conv.rows[0].participant_two_id:conv.rows[0].participant_one_id;
-  const blocked=await client.query("SELECT 1 FROM social_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1",[req.socialUserId,recipient]);
-  if(blocked.rowCount){await client.query("ROLLBACK");return res.status(403).json({error:"Messaging is unavailable for this account."});}
-  const saved=await client.query("INSERT INTO social_messages(conversation_id,sender_id,body) VALUES($1,$2,$3) RETURNING id,sender_id,body,read_at,created_at",[req.params.id,req.socialUserId,body]);
-  await client.query("UPDATE social_conversations SET last_message_at=NOW() WHERE id=$1",[req.params.id]);
-  await client.query("INSERT INTO notifications(user_id,title,body,kind,data) SELECT $1,'New message','You received a new Ethio Social message.','social_message',jsonb_build_object('conversationId',$2,'messageId',$3) WHERE COALESCE((SELECT messages FROM social_notification_preferences WHERE user_id=$1),TRUE)",[recipient,req.params.id,saved.rows[0].id]);
-  await client.query("COMMIT");
-  return res.status(201).json({message:saved.rows[0]});
- }catch{
-  await client.query("ROLLBACK").catch(()=>{});
-  return res.status(503).json({error:"Message could not be sent."});
- }finally{client.release();}
-});
+  const body=typeof req.body?.body==="string"?req.body.body.trim():"";
+  const media=Array.isArray(req.body?.media)?req.body.media:[];
+  if(!uuid(req.params.id)||body.length>2000||(!body&&!media.length)||media.length>4)return res.status(400).json({error:"Write a message or attach up to 4 files."});
+  for(const item of media){if(!item||typeof item.publicId!=="string"||typeof item.url!=="string"||typeof item.name!=="string"||!["image","video","raw"].includes(item.type)||item.publicId.length>255||item.url.length>1000||item.name.length>160)return res.status(400).json({error:"One of the attachments is invalid."});}
+  const client=await req.app.locals.db.connect();
+  try{
+   await client.query("BEGIN");
+   const conv=await client.query("SELECT participant_one_id,participant_two_id FROM social_conversations WHERE id=$1 AND (participant_one_id=$2 OR participant_two_id=$2) FOR UPDATE",[req.params.id,req.socialUserId]);
+   if(!conv.rowCount){await client.query("ROLLBACK");return res.status(404).json({error:"Conversation not found."});}
+   const recipient=conv.rows[0].participant_one_id===req.socialUserId?conv.rows[0].participant_two_id:conv.rows[0].participant_one_id;
+   const blocked=await client.query("SELECT 1 FROM social_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1",[req.socialUserId,recipient]);
+   if(blocked.rowCount){await client.query("ROLLBACK");return res.status(403).json({error:"Messaging is unavailable for this account."});}
+   for(const item of media){const owned=await client.query("SELECT id FROM media_assets WHERE user_id=$1 AND public_id=$2 AND secure_url=$3 AND resource_type=$4 LIMIT 1",[req.socialUserId,item.publicId,item.url,item.type]);if(!owned.rowCount){await client.query("ROLLBACK");return res.status(403).json({error:"An attachment does not belong to this account."});}}
+   const saved=await client.query("INSERT INTO social_messages(conversation_id,sender_id,body,media) VALUES($1,$2,$3,$4::jsonb) RETURNING id,sender_id,body,media,read_at,created_at",[req.params.id,req.socialUserId,body,JSON.stringify(media)]);
+   await client.query("UPDATE social_conversations SET last_message_at=NOW() WHERE id=$1",[req.params.id]);
+   await client.query("COMMIT");
+   req.app.locals.db.query("INSERT INTO notifications(user_id,title,body,kind,data) SELECT $1,'New message','You received a new Ethio Social message.','social_message',jsonb_build_object('conversationId',$2,'messageId',$3) WHERE COALESCE((SELECT messages FROM social_notification_preferences WHERE user_id=$1),TRUE)",[recipient,req.params.id,saved.rows[0].id]).catch(err=>console.error("social_message_notification_failed",{code:err.code||null}));
+   return res.status(201).json({message:saved.rows[0]});
+  }catch(err){await client.query("ROLLBACK").catch(()=>{});console.error("social_message_send_failed",{code:err.code||null,constraint:err.constraint||null});return res.status(503).json({error:"Message could not be sent. Please try again."});}
+  finally{client.release();}
+ });
 router.post("/conversations/:id/read",requireAuth,async(req,res)=>{
  if(!uuid(req.params.id))return res.status(400).json({error:"Invalid conversation."});
  try{
