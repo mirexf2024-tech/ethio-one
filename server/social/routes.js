@@ -88,6 +88,8 @@ router.get("/users/:id/profile",async(req,res)=>{
    `SELECT p.id,p.body,p.media,p.visibility,p.created_at,u.id AS author_id,u.username,u.full_name,up.avatar_url,
     (SELECT COUNT(*)::int FROM social_likes l WHERE l.post_id=p.id) AS like_count,
     (SELECT COUNT(*)::int FROM social_comments c WHERE c.post_id=p.id AND c.status='published') AS comment_count,
+       (SELECT COUNT(*)::int FROM social_post_views v WHERE v.post_id=p.id) AS video_view_count,
+       COALESCE((SELECT show_video_views FROM user_profiles WHERE user_id=p.user_id),TRUE) AS show_video_views,
     CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_likes l WHERE l.post_id=p.id AND l.user_id=$2) END AS liked,
         CASE WHEN $2::uuid IS NULL THEN NULL ELSE (SELECT l.reaction FROM social_likes l WHERE l.post_id=p.id AND l.user_id=$2) END AS my_reaction,
     CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_bookmarks b WHERE b.post_id=p.id AND b.user_id=$2) END AS bookmarked
@@ -112,6 +114,8 @@ router.get("/posts/search",postSearchLimit,async(req,res)=>{
       `SELECT p.id,p.body,p.media,p.visibility,p.created_at,u.id AS author_id,u.username,u.full_name,up.avatar_url,
        (SELECT COUNT(*)::int FROM social_likes l WHERE l.post_id=p.id) AS like_count,
        (SELECT COUNT(*)::int FROM social_comments c WHERE c.post_id=p.id AND c.status='published') AS comment_count,
+       (SELECT COUNT(*)::int FROM social_post_views v WHERE v.post_id=p.id) AS video_view_count,
+       COALESCE((SELECT show_video_views FROM user_profiles WHERE user_id=p.user_id),TRUE) AS show_video_views,
        CASE WHEN $1::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_likes l WHERE l.post_id=p.id AND l.user_id=$1) END AS liked,
        CASE WHEN $1::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_bookmarks b WHERE b.post_id=p.id AND b.user_id=$1) END AS bookmarked
        FROM social_posts p JOIN users u ON u.id=p.user_id LEFT JOIN user_profiles up ON up.user_id=u.id
@@ -136,6 +140,8 @@ router.get("/feed",async(req,res)=>{
       `SELECT p.id,p.body,p.media,p.visibility,p.created_at,u.id AS author_id,u.username,u.full_name,up.avatar_url,
        (SELECT COUNT(*)::int FROM social_likes l WHERE l.post_id=p.id) AS like_count,
        (SELECT COUNT(*)::int FROM social_comments c WHERE c.post_id=p.id AND c.status='published') AS comment_count,
+       (SELECT COUNT(*)::int FROM social_post_views v WHERE v.post_id=p.id) AS video_view_count,
+       COALESCE((SELECT show_video_views FROM user_profiles WHERE user_id=p.user_id),TRUE) AS show_video_views,
        CASE WHEN $1::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_likes l WHERE l.post_id=p.id AND l.user_id=$1) END AS liked,
        CASE WHEN $1::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_bookmarks b WHERE b.post_id=p.id AND b.user_id=$1) END AS bookmarked
        FROM social_posts p JOIN users u ON u.id=p.user_id LEFT JOIN user_profiles up ON up.user_id=u.id
@@ -154,6 +160,8 @@ router.get("/posts/:id",async(req,res)=>{
       `SELECT p.id,p.body,p.media,p.visibility,p.created_at,u.id AS author_id,u.username,u.full_name,up.avatar_url,
        (SELECT COUNT(*)::int FROM social_likes l WHERE l.post_id=p.id) AS like_count,
        (SELECT COUNT(*)::int FROM social_comments c WHERE c.post_id=p.id AND c.status='published') AS comment_count,
+       (SELECT COUNT(*)::int FROM social_post_views v WHERE v.post_id=p.id) AS video_view_count,
+       COALESCE((SELECT show_video_views FROM user_profiles WHERE user_id=p.user_id),TRUE) AS show_video_views,
        CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_likes l WHERE l.post_id=p.id AND l.user_id=$2) END AS liked,
         CASE WHEN $2::uuid IS NULL THEN NULL ELSE (SELECT l.reaction FROM social_likes l WHERE l.post_id=p.id AND l.user_id=$2) END AS my_reaction,
        CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_bookmarks b WHERE b.post_id=p.id AND b.user_id=$2) END AS bookmarked
@@ -266,6 +274,8 @@ router.get("/bookmarks",requireAuth,async(req,res)=>{
    `SELECT p.id,p.body,p.media,p.visibility,p.created_at,u.id AS author_id,u.username,u.full_name,up.avatar_url,
     (SELECT COUNT(*)::int FROM social_likes l WHERE l.post_id=p.id) AS like_count,
     (SELECT COUNT(*)::int FROM social_comments c WHERE c.post_id=p.id AND c.status='published') AS comment_count,
+       (SELECT COUNT(*)::int FROM social_post_views v WHERE v.post_id=p.id) AS video_view_count,
+       COALESCE((SELECT show_video_views FROM user_profiles WHERE user_id=p.user_id),TRUE) AS show_video_views,
     EXISTS(SELECT 1 FROM social_likes l WHERE l.post_id=p.id AND l.user_id=$1) AS liked,
     true AS bookmarked
     FROM social_bookmarks b JOIN social_posts p ON p.id=b.post_id JOIN users u ON u.id=p.user_id LEFT JOIN user_profiles up ON up.user_id=u.id
@@ -603,6 +613,135 @@ router.patch("/calls/:id",requireAuth,async(req,res)=>{
   if(client&&!committed)await client.query("ROLLBACK").catch(()=>{});
   return res.status(503).json({error:"Call status could not be updated."});
  }finally{client?.release();}
+});
+
+
+/* Video view insights: one counted view per signed-in account and video. */
+router.post("/posts/:id/view",interactionLimit,requireAuth,async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid post."});
+ try{
+  const post=await req.app.locals.db.query(
+   `SELECT p.id,p.user_id,p.media,COALESCE(up.show_video_views,TRUE) AS show_video_views
+    FROM social_posts p LEFT JOIN user_profiles up ON up.user_id=p.user_id
+    WHERE p.id=$1 AND p.status='published'
+    AND (p.user_id=$2 OR p.visibility='public' OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id))
+    AND (COALESCE(up.profile_visibility,'public')='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id))
+    AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2))`,
+   [req.params.id,req.socialUserId]);
+  if(!post.rowCount)return res.status(404).json({error:"Video not found."});
+  if(!Array.isArray(post.rows[0].media)||!post.rows[0].media.some(m=>m.type==="video"))return res.status(400).json({error:"This post has no video."});
+  if(post.rows[0].user_id!==req.socialUserId)await req.app.locals.db.query("INSERT INTO social_post_views(post_id,user_id) VALUES($1,$2) ON CONFLICT(post_id,user_id) DO NOTHING",[req.params.id,req.socialUserId]);
+  const count=await req.app.locals.db.query("SELECT COUNT(*)::int AS count FROM social_post_views WHERE post_id=$1",[req.params.id]);
+  return res.set("Cache-Control","no-store").json({count:count.rows[0].count,visible:post.rows[0].user_id===req.socialUserId||post.rows[0].show_video_views,isOwner:post.rows[0].user_id===req.socialUserId});
+ }catch{return res.status(503).json({error:"Video views are temporarily unavailable."});}
+});
+router.get("/posts/:id/viewers",requireAuth,async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid post."});
+ try{
+  const owner=await req.app.locals.db.query("SELECT p.user_id FROM social_posts p WHERE p.id=$1 AND p.status='published'",[req.params.id]);
+  if(!owner.rowCount||owner.rows[0].user_id!==req.socialUserId)return res.status(403).json({error:"Only the video owner can view its audience list."});
+  const viewers=await req.app.locals.db.query(
+   `SELECT u.id,u.username,u.full_name,up.avatar_url,v.viewed_at
+    FROM social_post_views v JOIN users u ON u.id=v.user_id LEFT JOIN user_profiles up ON up.user_id=u.id
+    WHERE v.post_id=$1 AND u.status='active' AND NOT EXISTS(
+     SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=u.id) OR (b.blocker_id=u.id AND b.blocked_id=$2))
+    ORDER BY v.viewed_at DESC LIMIT 200`,[req.params.id,req.socialUserId]);
+  return res.set("Cache-Control","no-store").json({viewers:viewers.rows});
+ }catch{return res.status(503).json({error:"Video audience is temporarily unavailable."});}
+});
+router.get("/video-view-preference",requireAuth,async(req,res)=>{
+ try{const r=await req.app.locals.db.query("SELECT COALESCE(show_video_views,TRUE) AS show_video_views FROM user_profiles WHERE user_id=$1",[req.socialUserId]);return res.json({showVideoViews:r.rows[0]?.show_video_views??true})}
+ catch{return res.status(503).json({error:"Preference could not be loaded."});}
+});
+router.patch("/video-view-preference",requireAuth,async(req,res)=>{
+ if(typeof req.body?.showVideoViews!=="boolean")return res.status(400).json({error:"Choose whether video views are visible."});
+ try{const r=await req.app.locals.db.query("INSERT INTO user_profiles(user_id,show_video_views) VALUES($1,$2) ON CONFLICT(user_id) DO UPDATE SET show_video_views=EXCLUDED.show_video_views,updated_at=NOW() RETURNING show_video_views",[req.socialUserId,req.body.showVideoViews]);return res.json({showVideoViews:r.rows[0].show_video_views})}
+ catch{return res.status(503).json({error:"Preference could not be saved."});}
+});
+
+/* Telegram-inspired group chats with explicit admin, moderator and member roles. */
+router.get("/groups",requireAuth,async(req,res)=>{
+ try{
+  const r=await req.app.locals.db.query(
+   `SELECT g.id,g.name,g.description,g.avatar_url,g.created_at,gm.role,
+    (SELECT COUNT(*)::int FROM social_group_members x WHERE x.group_id=g.id) AS member_count,
+    (SELECT body FROM social_group_messages m WHERE m.group_id=g.id ORDER BY m.created_at DESC LIMIT 1) AS last_message,
+    (SELECT created_at FROM social_group_messages m WHERE m.group_id=g.id ORDER BY m.created_at DESC LIMIT 1) AS last_message_at
+    FROM social_groups g JOIN social_group_members gm ON gm.group_id=g.id
+    WHERE gm.user_id=$1 ORDER BY COALESCE((SELECT MAX(created_at) FROM social_group_messages m WHERE m.group_id=g.id),g.created_at) DESC LIMIT 100`,[req.socialUserId]);
+  return res.set("Cache-Control","no-store").json({groups:r.rows});
+ }catch{return res.status(503).json({error:"Groups could not be loaded."});}
+});
+router.post("/groups",requireAuth,async(req,res)=>{
+ const name=typeof req.body?.name==="string"?req.body.name.trim():"",description=typeof req.body?.description==="string"?req.body.description.trim():"";
+ if(name.length<2||name.length>80||description.length>300)return res.status(400).json({error:"Group name must be 2–80 characters; description up to 300."});
+ const client=await req.app.locals.db.connect();
+ try{
+  await client.query("BEGIN");
+  const g=await client.query("INSERT INTO social_groups(name,description,created_by) VALUES($1,$2,$3) RETURNING id,name,description,created_at",[name,description,req.socialUserId]);
+  await client.query("INSERT INTO social_group_members(group_id,user_id,role) VALUES($1,$2,'admin')",[g.rows[0].id,req.socialUserId]);
+  await client.query("COMMIT");return res.status(201).json({group:{...g.rows[0],role:"admin",member_count:1}});
+ }catch{await client.query("ROLLBACK").catch(()=>{});return res.status(503).json({error:"Group could not be created."})}
+ finally{client.release()}
+});
+router.get("/groups/:id",requireAuth,async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid group."});
+ try{
+  const g=await req.app.locals.db.query("SELECT g.*,m.role,(SELECT COUNT(*)::int FROM social_group_members WHERE group_id=g.id) AS member_count FROM social_groups g JOIN social_group_members m ON m.group_id=g.id WHERE g.id=$1 AND m.user_id=$2",[req.params.id,req.socialUserId]);
+  if(!g.rowCount)return res.status(404).json({error:"Group not found."});
+  const members=await req.app.locals.db.query("SELECT u.id,u.username,u.full_name,p.avatar_url,m.role,m.joined_at FROM social_group_members m JOIN users u ON u.id=m.user_id LEFT JOIN user_profiles p ON p.user_id=u.id WHERE m.group_id=$1 AND u.status='active' ORDER BY CASE m.role WHEN 'admin' THEN 1 WHEN 'moderator' THEN 2 ELSE 3 END,m.joined_at",[req.params.id]);
+  return res.set("Cache-Control","no-store").json({group:g.rows[0],members:members.rows});
+ }catch{return res.status(503).json({error:"Group details are unavailable."});}
+});
+router.post("/groups/:id/members",requireAuth,async(req,res)=>{
+ const userId=req.body?.userId;if(!uuid(req.params.id)||!uuid(userId))return res.status(400).json({error:"Choose a valid member."});
+ try{
+  const role=await req.app.locals.db.query("SELECT role FROM social_group_members WHERE group_id=$1 AND user_id=$2",[req.params.id,req.socialUserId]);
+  if(!role.rowCount||!["admin","moderator"].includes(role.rows[0].role))return res.status(403).json({error:"Only group admins and moderators can add members."});
+  const user=await req.app.locals.db.query("SELECT id FROM users WHERE id=$1 AND status='active'",[userId]);if(!user.rowCount)return res.status(404).json({error:"Account not found."});
+  const added=await req.app.locals.db.query("INSERT INTO social_group_members(group_id,user_id,role) VALUES($1,$2,'member') ON CONFLICT(group_id,user_id) DO NOTHING RETURNING user_id",[req.params.id,userId]);
+  return res.status(added.rowCount?201:200).json({ok:true,added:!!added.rowCount});
+ }catch{return res.status(503).json({error:"Member could not be added."});}
+});
+router.patch("/groups/:id/members/:userId",requireAuth,async(req,res)=>{
+ const role=req.body?.role;if(!uuid(req.params.id)||!uuid(req.params.userId)||!["admin","moderator","member","remove"].includes(role))return res.status(400).json({error:"Invalid member role."});
+ try{
+  const actor=await req.app.locals.db.query("SELECT role FROM social_group_members WHERE group_id=$1 AND user_id=$2",[req.params.id,req.socialUserId]);
+  const target=await req.app.locals.db.query("SELECT role FROM social_group_members WHERE group_id=$1 AND user_id=$2",[req.params.id,req.params.userId]);
+  if(!actor.rowCount||!target.rowCount)return res.status(404).json({error:"Group member not found."});
+  if(actor.rows[0].role!=="admin")return res.status(403).json({error:"Only group admins can change roles or remove members."});
+  if(req.params.userId===req.socialUserId&&role!=="remove")return res.status(400).json({error:"You cannot change your own group role."});
+  if(target.rows[0].role==="admin"&&role==="remove")return res.status(400).json({error:"Transfer admin role before removing an admin."});
+  if(role==="remove")await req.app.locals.db.query("DELETE FROM social_group_members WHERE group_id=$1 AND user_id=$2",[req.params.id,req.params.userId]);
+  else await req.app.locals.db.query("UPDATE social_group_members SET role=$3 WHERE group_id=$1 AND user_id=$2",[req.params.id,req.params.userId,role]);
+  return res.json({ok:true});
+ }catch{return res.status(503).json({error:"Group role could not be changed."});}
+});
+router.get("/groups/:id/messages",requireAuth,async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid group."});
+ const limit=Math.min(100,Math.max(1,Number.parseInt(req.query.limit,10)||50));
+ try{
+  const member=await req.app.locals.db.query("SELECT 1 FROM social_group_members WHERE group_id=$1 AND user_id=$2",[req.params.id,req.socialUserId]);
+  if(!member.rowCount)return res.status(404).json({error:"Group not found."});
+  const r=await req.app.locals.db.query("SELECT m.id,m.sender_id,m.body,m.media,m.created_at,u.full_name,u.username,p.avatar_url,gm.role FROM social_group_messages m JOIN users u ON u.id=m.sender_id LEFT JOIN user_profiles p ON p.user_id=u.id LEFT JOIN social_group_members gm ON gm.group_id=m.group_id AND gm.user_id=m.sender_id WHERE m.group_id=$1 ORDER BY m.created_at DESC LIMIT $2",[req.params.id,limit]);
+  return res.set("Cache-Control","no-store").json({messages:r.rows.reverse()});
+ }catch{return res.status(503).json({error:"Group messages could not be loaded."});}
+});
+router.post("/groups/:id/messages",messageCreateLimit,requireAuth,async(req,res)=>{
+ const body=typeof req.body?.body==="string"?req.body.body.trim():"",media=Array.isArray(req.body?.media)?req.body.media:[];
+ if(!uuid(req.params.id)||body.length>2000||(!body&&!media.length)||media.length>4)return res.status(400).json({error:"Write a message or attach up to 4 files."});
+ for(const item of media)if(!item||typeof item.publicId!=="string"||typeof item.url!=="string"||typeof item.name!=="string"||!["image","video","raw"].includes(item.type)||item.publicId.length>255||item.url.length>1000||item.name.length>160)return res.status(400).json({error:"One of the attachments is invalid."});
+ const client=await req.app.locals.db.connect();
+ try{
+  await client.query("BEGIN");
+  const member=await client.query("SELECT role FROM social_group_members WHERE group_id=$1 AND user_id=$2 FOR UPDATE",[req.params.id,req.socialUserId]);
+  if(!member.rowCount){await client.query("ROLLBACK");return res.status(404).json({error:"Group not found."});}
+  if(media.length)for(const item of media){const owned=await client.query("SELECT id FROM media_assets WHERE user_id=$1 AND public_id=$2 AND secure_url=$3 AND resource_type=$4 LIMIT 1",[req.socialUserId,item.publicId,item.url,item.type]);if(!owned.rowCount){await client.query("ROLLBACK");return res.status(403).json({error:"One or more attachments do not belong to this account."});}}
+  const r=await client.query("INSERT INTO social_group_messages(group_id,sender_id,body,media) VALUES($1,$2,$3,$4::jsonb) RETURNING id,sender_id,body,media,created_at",[req.params.id,req.socialUserId,body,JSON.stringify(media)]);
+  await client.query("UPDATE social_groups SET updated_at=NOW() WHERE id=$1",[req.params.id]);await client.query("COMMIT");
+  return res.status(201).json({message:r.rows[0]});
+ }catch{await client.query("ROLLBACK").catch(()=>{});return res.status(503).json({error:"Group message could not be sent."});}
+ finally{client.release()}
 });
 
 module.exports=router;
