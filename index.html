@@ -98,21 +98,104 @@
     .bottom-nav a{min-width:54px;display:flex;flex-direction:column;align-items:center;gap:3px;color:#50617a;font-size:10px}.bottom-nav a span{font-size:22px;line-height:1.2}.bottom-nav a b{font-weight:700}.bottom-nav a.active{color:#0b5ac0}.bottom-nav a:hover{color:#b78916}
     @media(max-width:700px){.trending-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.trend-card{min-height:94px}.bottom-nav{justify-content:space-around;gap:8px}.bottom-nav a{min-width:48px}.bottom-nav a span{font-size:20px}}
 
+  
+    /* Ethio One dashboard refresh — responsive mobile and desktop */
+    header{height:72px;background:#082b59;border-bottom:1px solid #ffffff24;box-shadow:0 8px 24px #061a3520}
+    .wrap{max-width:1320px}
+    .nav{gap:18px}
+    .brand{font-size:23px;color:#fff;letter-spacing:-.045em}
+    .brand>b,.brand span:last-child b{color:#e5b93b}
+    .mark{width:44px;height:44px;background:transparent;border:0;box-shadow:none;padding:2px}
+    .mark img{width:42px;height:42px;object-fit:contain}
+    .header-actions{display:flex;align-items:center;gap:12px}
+    .icon-action{position:relative;width:40px;height:40px;border:1px solid #ffffff35;border-radius:50%;background:#ffffff10;color:#fff;font-size:20px}
+    .icon-action i{position:absolute;right:8px;top:7px;width:7px;height:7px;border-radius:50%;background:#e24b4b;border:1px solid #fff}
+    .profile-avatar{width:40px;height:40px;display:grid;place-items:center;border-radius:50%;background:linear-gradient(145deg,#e9c45c,#fff0bd);color:#082b59;font-size:25px;border:2px solid #fff}
+    .menu-toggle{display:none;border:0;background:transparent;color:#f2c94c;font-size:27px;padding:4px}
+    .app-sidebar{position:fixed;z-index:6;left:0;top:72px;bottom:0;width:104px;background:linear-gradient(180deg,#082b59,#061a35);display:flex;flex-direction:column;align-items:stretch;padding:26px 10px;gap:12px}
+    .side-link{min-height:78px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;color:#d7e3f2;border-radius:15px;font-size:11px}
+    .side-link span{font-size:25px}.side-link.active,.side-link:hover{background:#ffffff12;color:#f4c94e}
+    main,.bottom-nav,footer{margin-left:104px}
+    .hero{padding:28px 0 32px;background:#f5f7fb}
+    .hero-grid.dashboard-grid{max-width:1320px;grid-template-columns:minmax(0,1.12fr) minmax(300px,.88fr);gap:26px;padding:10px 24px}
+    .dashboard-main{gap:15px}
+    .welcome-card{min-height:170px;padding:4px 2px;background:transparent;border:0;border-radius:0;box-shadow:none;overflow:visible}
+    .welcome-card:before,.welcome-art{display:none}
+    .welcome-copy{max-width:100%;position:static}
+    .welcome-copy .eyebrow{display:none}
+    .welcome-copy h1{color:#10294d;font-size:clamp(30px,3.6vw,44px);margin:0 0 8px;letter-spacing:-.045em}
+    .welcome-copy h1 span{display:inline;color:#c99b25}
+    .welcome-copy .lead{color:#203957;font-size:17px;margin:0;max-width:100%;font-weight:650}
+    .welcome-copy .btn{display:none}
+    .search-box{height:54px;border-radius:17px;background:#fff;border:1px solid #e6ebf2;color:#16375f;box-shadow:0 7px 24px #10233a0a}
+    .search-box input{color:#17375f}.search-box input::placeholder{color:#8995a6}.search-box kbd{color:#8793a4;border-color:#e3e8ef}
+    .dashboard-caption{display:none}
+    .ethio-id-card{min-height:210px;border:1px solid #d6ad3c;border-radius:24px;padding:24px;background:radial-gradient(circle at 90% 20%,#1d5487,transparent 40%),linear-gradient(135deg,#061a35,#082b59 65%,#0c477f);box-shadow:0 18px 42px #082b5926;justify-content:space-between;position:relative;overflow:hidden}
+    .ethio-id-card:after{content:"";position:absolute;width:210px;height:210px;border:1px solid #e1b83c55;border-radius:50%;right:-80px;bottom:-100px;box-shadow:0 0 0 18px #e1b83c10,0 0 0 38px #e1b83c0a}
+    .id-card-top,.id-card-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative;z-index:1}
+    .id-chip{color:#eac34b;font-weight:900;font-size:13px;letter-spacing:.16em}
+    .id-status{font-size:9px;color:#b7cce3;letter-spacing:.12em}
+    .id-card-content{display:flex;align-items:center;gap:20px;position:relative;z-index:1}
+    .id-fingerprint{width:82px;height:82px;border:2px solid #d9a928;border-radius:20px;display:grid;place-items:center;color:#e5b93b;font-size:55px;line-height:1}
+    .id-card-content strong{display:block;color:#e5b93b;font-size:clamp(23px,2.7vw,34px);letter-spacing:-.035em}
+    .id-card-content small{display:block;color:#fff;font-size:15px;margin-top:3px}
+    .id-tagline{display:block;color:#c8d7e9;font-size:10px;margin-top:13px;letter-spacing:.04em}
+    .id-card-bottom{color:#b8cce2;font-size:9px;letter-spacing:.14em}
+    .brand-panel:not(.ethio-id-card){display:none!important}
+    .section{background:#f5f7fb;padding:36px 0 64px}
+    .section-head{text-align:left;margin:0 0 24px}
+    .services-head{align-items:center}
+    .services-head h2{font-size:24px;color:#132d50}
+    .grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+    .tile{min-height:126px;border-radius:17px;padding:16px 13px;box-shadow:0 5px 18px #10233a08}
+    .tile:after{display:none}
+    .tile .ico{width:43px;height:43px;border-radius:13px;background:#f7f9fc!important;color:#17375f!important;border:1px solid #edf0f5;margin-bottom:11px}
+    .tile h3{font-size:13px;color:#122d50}
+    .tile p{font-size:10px}
+    .bottom-nav{position:fixed;left:104px;right:0;bottom:0;justify-content:space-evenly;gap:10px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));box-shadow:0 -7px 25px #10233a12}
+    .bottom-nav a{min-width:70px;font-size:11px}
+    .bottom-nav a.active{color:#c49a2c}
+    footer{margin-bottom:68px}
+    @media(max-width:1000px){.hero-grid.dashboard-grid{grid-template-columns:1fr}.ethio-id-card{min-height:185px}.grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+    @media(max-width:700px){
+      header{height:64px}.nav{padding:0 12px;gap:10px}.menu-toggle{display:block}.brand{font-size:19px;gap:7px}.mark{width:36px;height:36px}.mark img{width:36px;height:36px}
+      .navlinks,.sign-in-link{display:none}.header-actions{gap:8px}.icon-action{width:34px;height:34px}.profile-avatar{width:34px;height:34px}
+      .app-sidebar{top:64px;width:0;padding:20px 0;overflow:hidden;transition:width .2s,padding .2s}.app-sidebar.open{width:190px;padding:20px 12px;box-shadow:10px 0 25px #061a3540}
+      main,.bottom-nav,footer{margin-left:0}
+      .hero{padding:18px 0 22px}.hero-grid.dashboard-grid{padding:0 16px;gap:14px}
+      .dashboard-main{gap:12px}.welcome-card{min-height:94px;padding:0}.welcome-copy h1{font-size:31px;margin-bottom:5px}.welcome-copy .lead{font-size:14px}
+      .search-box{height:48px;border-radius:15px}.search-box kbd{display:none}
+      .ethio-id-card{min-height:160px;padding:18px;border-radius:19px}.id-fingerprint{width:62px;height:62px;font-size:42px;border-radius:15px}.id-card-content{gap:14px}.id-card-content strong{font-size:25px}.id-card-content small{font-size:12px}.id-tagline{font-size:9px;margin-top:8px}
+      .id-status{font-size:8px}.section{padding:26px 0 45px}.services-head{flex-direction:row;align-items:center}.services-head h2{font-size:18px}.availability-note{font-size:9px;padding:6px 9px}
+      .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.tile{min-height:98px;padding:10px 6px;border-radius:13px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
+      .tile .ico{width:38px;height:38px;margin-bottom:7px}.tile .ico svg{width:21px;height:21px}.tile h3{font-size:10px;line-height:1.25;margin:0}.tile p{display:none}
+      .trending-block{margin-top:24px}.trending-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .bottom-nav{left:0;right:0;justify-content:space-around;gap:5px;padding:8px 12px calc(8px + env(safe-area-inset-bottom))}
+      .bottom-nav a{min-width:54px;font-size:10px}.bottom-nav a span{font-size:21px}
+      footer{margin-bottom:66px}
+    }
+    @media(max-width:390px){.grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.tile{min-height:90px;padding:8px 3px}.tile .ico{width:34px;height:34px}.tile h3{font-size:9px}.welcome-copy h1{font-size:28px}}
+
   </style>
 </head>
 <body>
   <a class="skip-link" href="#mainContent">Skip to main content</a>
   <header><div class="wrap nav">
-    <a class="brand" href="#" aria-label="Ethio One home"><span class="mark"><img src="https://raw.githubusercontent.com/mirexf2024-tech/ethio-one/main/ETHIO%20ONE%20logo%20identity.png" alt="Ethio One symbol"></span><span>ETHIO ONE</span></a>
+    <button class="menu-toggle" id="menuToggle" type="button" aria-label="Open navigation" aria-expanded="false">☰</button>
+    <a class="brand" href="/" aria-label="Ethio One home"><span class="mark"><img src="https://raw.githubusercontent.com/mirexf2024-tech/ethio-one/main/ETHIO%20ONE%20logo%20identity.png" alt="Ethio One logo"></span><span>Ethio <b>One</b></span></a>
     <nav class="navlinks" aria-label="Main navigation"><a href="#ecosystem" data-i18n="navServices">Tajaajiloota</a><a href="#vision" data-i18n="navVision">Mul’ata keenya</a><a href="#contact" data-i18n="navContact">Nu qunnamaa</a></nav>
-    <a class="lang" href="/auth.html" style="font-weight:800">Seeni / Galmaa’i</a>
-    <button class="lang" id="languageToggle" type="button" aria-label="Afaan Oromoo — language selection" aria-live="polite">OM</button>
+    <div class="header-actions"><button class="icon-action" type="button" aria-label="Notifications">♧<i></i></button><a class="profile-avatar" href="/auth.html" aria-label="Profile">◉</a><a class="lang sign-in-link" href="/auth.html" style="font-weight:800">Seeni / Galmaa’i</a><button class="lang" id="languageToggle" type="button" aria-label="Afaan Oromoo — language selection" aria-live="polite">OM</button></div>
   </div></header>
+  <aside class="app-sidebar" id="appSidebar" aria-label="App navigation">
+    <a class="side-link active" href="#vision"><span>⌂</span><b data-i18n="navHome">Mana</b></a>
+    <a class="side-link" href="#ecosystem"><span>▦</span><b data-i18n="navExplore">Tajaajiloota</b></a>
+    <a class="side-link" href="#activity"><span>◷</span><b data-i18n="navActivity">Sochii</b></a>
+    <a class="side-link" href="/auth.html"><span>♙</span><b data-i18n="navProfile">Profile</b></a>
+  </aside>
   <main id="mainContent">
     <section class="hero" id="vision">
       <div class="wrap hero-grid dashboard-grid">
         <div class="dashboard-main">
-          <label class="search-box" for="serviceSearch"><span aria-hidden="true">⌕</span><input id="serviceSearch" type="search" placeholder="Tajaajila barbaadi..." data-i18n-placeholder="searchPlaceholder"><kbd>⌘ K</kbd></label>
           <div class="welcome-card">
             <div class="welcome-copy">
               <div class="eyebrow"><span class="dot"></span> ONE ID · MANY SERVICES</div>
@@ -122,9 +205,15 @@
             </div>
             <div class="welcome-art" role="img" aria-label="Ethio One E1 brand artwork"><div class="art-glow"></div><div class="ethiopia-mark">✦</div><div class="art-phone"><img class="art-logo" src="https://raw.githubusercontent.com/mirexf2024-tech/ethio-one/main/ETHIO%20ONE%20logo%20identity.png" alt="Ethio One symbol"></div><div class="art-ribbon">ETHIOPIA</div></div>
           </div>
+          <label class="search-box" for="serviceSearch"><span aria-hidden="true">⌕</span><input id="serviceSearch" type="search" placeholder="Tajaajila barbaadi..." data-i18n-placeholder="searchPlaceholder"><kbd>⌘ K</kbd></label>
           <div class="dashboard-caption"><span data-i18n="homeCaption">Waan barbaaddu bakka tokkotti argadhu.</span><span class="live-dot"></span></div>
         </div>
-        <aside class="brand-panel" aria-label="Ethio One platform overview">
+        <aside class="brand-panel ethio-id-card" aria-label="Ethio ID digital identity">
+          <div class="id-card-top"><span class="id-chip">ETHIO ID</span><span class="id-status">● DIGITAL IDENTITY</span></div>
+          <div class="id-card-content"><div class="id-fingerprint">◎</div><div><strong>ETHIO ID</strong><small>Digital Identity Card</small><span class="id-tagline">One Identity. Many Possibilities.</span></div></div>
+          <div class="id-card-bottom"><span>ETHIO ONE</span><span>SECURE · CONNECTED</span></div>
+        </aside>
+        <div class="brand-panel" style="display:none" aria-hidden="true">
           <div class="panel-brand"><img class="panel-logo-image" src="https://raw.githubusercontent.com/mirexf2024-tech/ethio-one/main/ETHIO%20ONE%20logo%20identity.png" alt="Ethio One symbol"><div><strong>Ethio <em>One</em></strong><small>Connect · Share · Grow</small></div></div>
           <div class="gold-ribbon" data-i18n="ribbonText">Appii Tokko. Carraawwan Dhuma Hin Qabne!</div>
           <h2 data-i18n="panelTitle">Super App Itoophiyaaf ijaarame</h2>
@@ -176,17 +265,30 @@
       </div>
     </div></section>
     <nav class="bottom-nav" aria-label="Quick navigation">
-      <a class="active" href="#vision"><span>⌂</span><b data-i18n="navHome">Home</b></a>
-      <a href="#ecosystem"><span>◈</span><b data-i18n="navExplore">Explore</b></a>
-      <a href="#contact"><span>＋</span><b data-i18n="navMore">More</b></a>
-      <a href="#contact" title="Ethio One service rollout information"><span>▣</span><b data-i18n="navWallet">Wallet</b></a>
-      <a href="#contact"><span>●</span><b data-i18n="navProfile">Profile</b></a>
+      <a class="active" href="#vision"><span>⌂</span><b data-i18n="navHome">Mana</b></a>
+      <a href="#ecosystem"><span>▦</span><b data-i18n="navExplore">Tajaajiloota</b></a>
+      <a href="#activity"><span>◷</span><b data-i18n="navActivity">Sochii</b></a>
+      <a href="/auth.html"><span>♙</span><b data-i18n="navProfile">Profile</b></a>
     </nav>
+    <section class="band" id="activity"><div class="wrap band-inner"><div><h2 data-i18n="activityTitle">Sochii kee bakka tokkotti hordofi.</h2><p>Ethio One — ONE ID · MANY SERVICES.</p></div><a class="btn" href="/auth.html"><span data-i18n="activityAction">Seeni</span> <span aria-hidden="true">→</span></a></div></section>
     <section class="band" id="contact"><div class="wrap band-inner"><div><h2 data-i18n="contactTitle">Egeree dijitaalaa waliin qooddannu as irraa jalqaba.</h2><p>Ethio One — ONE ID · MANY SERVICES.</p></div><a class="btn" href="mailto:hello@ethio.one"><span data-i18n="contactTeam">Garee keenya qunnamaa</span> <span aria-hidden="true">→</span></a></div></section>
   </main>
   <footer><div class="wrap foot"><span>© <span id="year"></span> Ethio One. All rights reserved.</span><span data-i18n="footerTagline">Itoophiyaaf ijaaramaa jira · OM / AM / EN</span></div></footer>
   <script>
   document.getElementById('year').textContent = new Date().getFullYear();
+  const menuToggle = document.getElementById("menuToggle");
+  const appSidebar = document.getElementById("appSidebar");
+  if (menuToggle && appSidebar) menuToggle.addEventListener("click", () => {
+    const opened = appSidebar.classList.toggle("open");
+    menuToggle.setAttribute("aria-expanded", String(opened));
+    menuToggle.setAttribute("aria-label", opened ? "Close navigation" : "Open navigation");
+  });
+  document.addEventListener("click", (event) => {
+    if (appSidebar?.classList.contains("open") && !appSidebar.contains(event.target) && !menuToggle?.contains(event.target)) {
+      appSidebar.classList.remove("open");
+      menuToggle?.setAttribute("aria-expanded", "false");
+    }
+  });
   const serviceSearch = document.getElementById("serviceSearch");
   if (serviceSearch) serviceSearch.addEventListener("input", () => {
     const term = serviceSearch.value.trim().toLocaleLowerCase();
@@ -199,7 +301,7 @@
   });
   const translations = {
     OM: {
-      discoverTitle:"Har’a qoradhu",seeMore:"Dabalata ilaali →",topicMusic:"Muuziqaa fi Live",topicTravel:"Imala Itoophiyaa",topicAI:"AI fi Teeknooloojii",topicSports:"Ispoortii",navHome:"Mana",navExplore:"Qoradhu",navMore:"Dabalata",navWallet:"Wallet",navProfile:"Profile",
+      discoverTitle:"Har’a qoradhu",seeMore:"Dabalata ilaali →",topicMusic:"Muuziqaa fi Live",topicTravel:"Imala Itoophiyaa",topicAI:"AI fi Teeknooloojii",topicSports:"Ispoortii",navHome:"Mana",navExplore:"Qoradhu",navMore:"Dabalata",navWallet:"Wallet",navProfile:"Profile",navActivity:"Sochii",activityTitle:"Sochii kee bakka tokkotti hordofi.",activityAction:"Seeni",
       navServices:"Tajaajiloota",navVision:"Mul’ata keenya",navContact:"Nu qunnamaa",
       heroTitle:'Baga nagaan dhuftan <span>Ethio One</span>',
       searchPlaceholder:"Tajaajila barbaadi...",homeCaption:"Waan barbaaddu bakka tokkotti argadhu.",ribbonText:"Appii Tokko. Carraawwan Dhuma Hin Qabne!",panelTitle:"Super App Itoophiyaaf ijaarame",panelVideo:"Viidiyoo gabaabaa fi kallattii",panelYoutube:"Ilaali fi olkaa’i",panelCommunity:"Namoota fi gareewwan",panelMessenger:"Ergaa, sagalee fi bilbila",panelMarket:"Salphaatti bitii gurguri",panelNews:"Oduu amanamaa fi haaromsa",panelLearning:"Koorsii fi dandeettii",panelAI:"Gaafadhu, baradhu, uumi",panelSecure:"Herrega. Daataa. To’annoo kee.",panelStart:"Email ykn bilbila fayyadami.",comingSoon:"Tartiibaan ni banamu",
@@ -220,7 +322,7 @@
       metaTitle:"Ethio One — Waan hunda bakka tokkotti.",metaDescription:"Ethio One — eenyummaa tokko, tajaajiloota hedduu. Waltajjii dijitaalaa Itoophiyaaf ijaaramaa jiru."
     },
     AM: {
-      discoverTitle:"ዛሬ ይመርምሩ",seeMore:"ተጨማሪ ይመልከቱ →",topicMusic:"ሙዚቃ እና ቀጥታ",topicTravel:"የኢትዮጵያ ጉዞ",topicAI:"AI እና ቴክኖሎጂ",topicSports:"ስፖርት",navHome:"መነሻ",navExplore:"ያስሱ",navMore:"ተጨማሪ",navWallet:"Wallet",navProfile:"Profile",
+      discoverTitle:"ዛሬ ይመርምሩ",seeMore:"ተጨማሪ ይመልከቱ →",topicMusic:"ሙዚቃ እና ቀጥታ",topicTravel:"የኢትዮጵያ ጉዞ",topicAI:"AI እና ቴክኖሎጂ",topicSports:"ስፖርት",navHome:"መነሻ",navExplore:"አገልግሎቶች",navMore:"ተጨማሪ",navWallet:"Wallet",navProfile:"Profile",navActivity:"እንቅስቃሴ",activityTitle:"እንቅስቃሴዎን በአንድ ቦታ ይከታተሉ።",activityAction:"ግባ",
       navServices:"አገልግሎቶች",navVision:"ራዕያችን",navContact:"ያግኙን",
       heroTitle:'እንኳን ወደ <span>Ethio One</span> በደህና መጡ',
       searchPlaceholder:"አገልግሎት ይፈልጉ...",homeCaption:"የሚፈልጉትን ሁሉ በአንድ ቦታ ያግኙ።",ribbonText:"አንድ መተግበሪያ። ያልተገደቡ እድሎች!",panelTitle:"ለኢትዮጵያ የተገነባ ሱፐር አፕ",panelVideo:"አጭር ቪዲዮዎች እና ቀጥታ",panelYoutube:"ይመልከቱ እና ይጫኑ",panelCommunity:"ሰዎች እና ቡድኖች",panelMessenger:"መልዕክት፣ ድምጽ እና ጥሪ",panelMarket:"በቀላሉ ይግዙ እና ይሽጡ",panelNews:"የታመኑ ዜናዎች እና ዝመናዎች",panelLearning:"ኮርሶች እና ክህሎቶች",panelAI:"ይጠይቁ፣ ይማሩ እና ይፍጠሩ",panelSecure:"መለያዎ። ውሂብዎ። ቁጥጥርዎ።",panelStart:"በኢሜይል ወይም በስልክ ይጀምሩ።",comingSoon:"በቅደም ተከተል ይከፈታሉ",
@@ -241,7 +343,7 @@
       metaTitle:"Ethio One — ሁሉም ነገር በአንድ ቦታ።",metaDescription:"Ethio One — አንድ መለያ፣ ብዙ አገልግሎቶች። ለኢትዮጵያ የሚገነባ ዲጂታል መድረክ።"
     },
     EN: {
-      discoverTitle:"Explore today",seeMore:"See more →",topicMusic:"Music & Live",topicTravel:"Travel Ethiopia",topicAI:"AI & Technology",topicSports:"Sports",navHome:"Home",navExplore:"Explore",navMore:"More",navWallet:"Wallet",navProfile:"Profile",
+      discoverTitle:"Explore today",seeMore:"See more →",topicMusic:"Music & Live",topicTravel:"Travel Ethiopia",topicAI:"AI & Technology",topicSports:"Sports",navHome:"Home",navExplore:"Services",navMore:"More",navWallet:"Wallet",navProfile:"Profile",navActivity:"Activity",activityTitle:"Track your activity in one place.",activityAction:"Sign in",
       navServices:"Services",navVision:"Our vision",navContact:"Contact",
       heroTitle:'Welcome to <span>Ethio One</span>',
       searchPlaceholder:"Search services...",homeCaption:"Find what you need, all in one place.",ribbonText:"One App. Endless Possibilities!",panelTitle:"A Super App Built for Ethiopia",panelVideo:"Short videos & live",panelYoutube:"Watch & upload",panelCommunity:"People & groups",panelMessenger:"Chat, voice & calls",panelMarket:"Buy & sell easily",panelNews:"Trusted news & updates",panelLearning:"Courses & skills",panelAI:"Ask, learn & create",panelSecure:"Your account. Your data. Your control.",panelStart:"Get started with email or phone.",comingSoon:"Rolling out in phases",
