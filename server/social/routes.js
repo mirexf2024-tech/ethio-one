@@ -46,7 +46,7 @@ router.use(optionalAuth);
 
 router.get("/profile/me",requireAuth,async(req,res)=>{
  try{
-  const r=await req.app.locals.db.query("SELECT u.id,u.username,u.full_name,u.ethio_id,p.bio,p.avatar_url,p.city,p.region,p.country,(SELECT COUNT(*)::int FROM social_follows WHERE following_id=u.id) AS followers,(SELECT COUNT(*)::int FROM social_follows WHERE follower_id=u.id) AS following,(SELECT COUNT(*)::int FROM social_posts WHERE user_id=u.id AND status='published') AS posts FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id WHERE u.id=$1",[req.socialUserId]);
+  const r=await req.app.locals.db.query("SELECT u.id,u.username,u.full_name,u.ethio_id,p.bio,p.avatar_url,p.city,p.region,p.country,COALESCE(p.profile_visibility,'public') AS profile_visibility,(SELECT COUNT(*)::int FROM social_follows WHERE following_id=u.id) AS followers,(SELECT COUNT(*)::int FROM social_follows WHERE follower_id=u.id) AS following,(SELECT COUNT(*)::int FROM social_posts WHERE user_id=u.id AND status='published') AS posts FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id WHERE u.id=$1",[req.socialUserId]);
   return res.json({profile:r.rows[0]||null});
  }catch{return res.status(503).json({error:"Profile unavailable."});}
 });
@@ -61,7 +61,7 @@ router.get("/users/search",async(req,res)=>{
 router.get("/users/:id/profile",async(req,res)=>{
  if(!uuid(req.params.id))return res.status(400).json({error:"Invalid account."});
  try{
-  const r=await req.app.locals.db.query("SELECT u.id,u.username,u.full_name,p.bio,p.avatar_url,p.city,p.region,p.country,(SELECT COUNT(*)::int FROM social_follows WHERE following_id=u.id) AS followers,(SELECT COUNT(*)::int FROM social_follows WHERE follower_id=u.id) AS following,(SELECT COUNT(*)::int FROM social_posts WHERE user_id=u.id AND status='published') AS posts,CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_follows WHERE follower_id=$2 AND following_id=u.id) END AS is_following FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id WHERE u.id=$1 AND u.status='active' AND ($2::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks WHERE (blocker_id=$2 AND blocked_id=u.id) OR (blocker_id=u.id AND blocked_id=$2)))",[req.params.id,req.socialUserId]);
+  const r=await req.app.locals.db.query("SELECT u.id,u.username,u.full_name,p.bio,p.avatar_url,p.city,p.region,p.country,(SELECT COUNT(*)::int FROM social_follows WHERE following_id=u.id) AS followers,(SELECT COUNT(*)::int FROM social_follows WHERE follower_id=u.id) AS following,(SELECT COUNT(*)::int FROM social_posts WHERE user_id=u.id AND status='published') AS posts,CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_follows WHERE follower_id=$2 AND following_id=u.id) END AS is_following FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id WHERE u.id=$1 AND u.status='active' AND ($2::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks WHERE (blocker_id=$2 AND blocked_id=u.id) OR (blocker_id=u.id AND blocked_id=$2))) AND (COALESCE(p.profile_visibility,'public')='public' OR u.id=$2 OR EXISTS(SELECT 1 FROM social_follows pf WHERE pf.follower_id=$2 AND pf.following_id=u.id))",[req.params.id,req.socialUserId]);
   if(!r.rowCount)return res.status(404).json({error:"Profile not found."});
   return res.json({profile:r.rows[0]});
  }catch{return res.status(503).json({error:"Profile unavailable."});}
@@ -83,7 +83,7 @@ router.get("/feed",async(req,res)=>{
        FROM social_posts p JOIN users u ON u.id=p.user_id LEFT JOIN user_profiles up ON up.user_id=u.id
        WHERE p.status='published' AND (p.visibility='public' OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$1 AND f.following_id=p.user_id))
        AND ($3::text <> 'following' OR EXISTS(SELECT 1 FROM social_follows ff WHERE ff.follower_id=$1 AND ff.following_id=p.user_id))
-       AND ($1::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$1)))
+       AND (COALESCE((SELECT profile_visibility FROM user_profiles WHERE user_id=p.user_id),'public')='public' OR p.user_id=$1 OR EXISTS(SELECT 1 FROM social_follows pv WHERE pv.follower_id=$1 AND pv.following_id=p.user_id)) AND ($1::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$1)))
        ${cursorSql} ORDER BY p.created_at DESC LIMIT $2`,values);
     return res.set("Cache-Control","no-store").json({posts:q.rows});
   }catch{return res.status(503).json({error:"The feed is temporarily unavailable."});}
@@ -118,7 +118,7 @@ router.post("/posts/:id/like",requireAuth,async(req,res)=>{
   if(!uuid(req.params.id)) return res.status(400).json({error:"Invalid post."});
   try{
     const c=await req.app.locals.db.connect(); await c.query("BEGIN");
-    const exists=await c.query("SELECT p.id FROM social_posts p WHERE p.id=$1 AND p.status='published' AND (p.visibility='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id)) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2))",[req.params.id,req.socialUserId]);
+    const exists=await c.query("SELECT p.id FROM social_posts p WHERE p.id=$1 AND p.status='published' AND (p.visibility='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id)) AND (COALESCE((SELECT profile_visibility FROM user_profiles WHERE user_id=p.user_id),'public')='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows pv WHERE pv.follower_id=$2 AND pv.following_id=p.user_id)) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2))",[req.params.id,req.socialUserId]);
     if(!exists.rowCount){await c.query("ROLLBACK");return res.status(404).json({error:"Post not found."});}
     const prior=await c.query("DELETE FROM social_likes WHERE post_id=$1 AND user_id=$2 RETURNING post_id",[req.params.id,req.socialUserId]);
     const liked=!prior.rowCount;
@@ -149,7 +149,7 @@ router.post("/posts/:id/bookmark",requireAuth,async(req,res)=>{
   try{
     const prior=await req.app.locals.db.query("DELETE FROM social_bookmarks WHERE post_id=$1 AND user_id=$2 RETURNING post_id",[req.params.id,req.socialUserId]);
     const saved=!prior.rowCount;
-    if(saved) await req.app.locals.db.query("INSERT INTO social_bookmarks(user_id,post_id) SELECT $1,p.id FROM social_posts p WHERE p.id=$2 AND p.status='published' AND (p.visibility='public' OR p.user_id=$1 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$1 AND f.following_id=p.user_id)) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$1)) ON CONFLICT DO NOTHING",[req.socialUserId,req.params.id]);
+    if(saved) await req.app.locals.db.query("INSERT INTO social_bookmarks(user_id,post_id) SELECT $1,p.id FROM social_posts p WHERE p.id=$2 AND p.status='published' AND (p.visibility='public' OR p.user_id=$1 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$1 AND f.following_id=p.user_id)) AND (COALESCE((SELECT profile_visibility FROM user_profiles WHERE user_id=p.user_id),'public')='public' OR p.user_id=$1 OR EXISTS(SELECT 1 FROM social_follows pv WHERE pv.follower_id=$1 AND pv.following_id=p.user_id)) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$1)) ON CONFLICT DO NOTHING",[req.socialUserId,req.params.id]);
     return res.json({bookmarked:saved});
   }catch{return res.status(503).json({error:"Bookmark could not be updated."});}
 });
@@ -243,7 +243,7 @@ router.get("/stories",async(req,res)=>{
     (SELECT COUNT(*)::int FROM social_story_views v WHERE v.story_id=s.id) AS views,
     CASE WHEN $1::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_story_views v WHERE v.story_id=s.id AND v.viewer_id=$1) END AS viewed
     FROM social_stories s JOIN users u ON u.id=s.user_id LEFT JOIN user_profiles p ON p.user_id=u.id
-    WHERE s.expires_at>NOW() AND (s.visibility='public' OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$1 AND f.following_id=s.user_id))
+    WHERE s.expires_at>NOW() AND (COALESCE((SELECT profile_visibility FROM user_profiles WHERE user_id=s.user_id),'public')='public' OR s.user_id=$1 OR EXISTS(SELECT 1 FROM social_follows pf WHERE pf.follower_id=$1 AND pf.following_id=s.user_id)) AND (s.visibility='public' OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$1 AND f.following_id=s.user_id))
     AND ($1::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=s.user_id) OR (b.blocker_id=s.user_id AND b.blocked_id=$1)))
     ORDER BY s.created_at DESC LIMIT 100`,[req.socialUserId]);
   return res.set("Cache-Control","no-store").json({stories:r.rows});
@@ -263,7 +263,7 @@ router.post("/stories",storyCreateLimit,requireAuth,async(req,res)=>{
 router.post("/stories/:id/view",requireAuth,async(req,res)=>{
  if(!uuid(req.params.id))return res.status(400).json({error:"Invalid story."});
  try{
-  const allowed=await req.app.locals.db.query("SELECT s.id FROM social_stories s WHERE s.id=$1 AND s.expires_at>NOW() AND (s.user_id=$2 OR s.visibility='public' OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=s.user_id)) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=s.user_id) OR (b.blocker_id=s.user_id AND b.blocked_id=$2))",[req.params.id,req.socialUserId]);
+  const allowed=await req.app.locals.db.query("SELECT s.id FROM social_stories s WHERE s.id=$1 AND s.expires_at>NOW() AND (s.user_id=$2 OR ((COALESCE((SELECT profile_visibility FROM user_profiles WHERE user_id=s.user_id),'public')='public' OR EXISTS(SELECT 1 FROM social_follows pf WHERE pf.follower_id=$2 AND pf.following_id=s.user_id)) AND (s.visibility='public' OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=s.user_id)))) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=s.user_id) OR (b.blocker_id=s.user_id AND b.blocked_id=$2))",[req.params.id,req.socialUserId]);
   if(!allowed.rowCount)return res.status(404).json({error:"Story not found."});
   await req.app.locals.db.query("INSERT INTO social_story_views(story_id,viewer_id) VALUES($1,$2) ON CONFLICT(story_id,viewer_id) DO UPDATE SET viewed_at=NOW()",[req.params.id,req.socialUserId]);
   return res.json({ok:true});
