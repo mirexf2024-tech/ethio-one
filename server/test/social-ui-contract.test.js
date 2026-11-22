@@ -71,7 +71,7 @@ test("Creator analytics are only opened from the signed-in owner's profile", () 
   assert.doesNotMatch(html, /<button[^>]*id="creatorInsightsBtn"[^>]*>Creator insights<\\/button>/);
   assert.match(routes, /router\\.get\\("\/creator\/analytics",requireAuth/);
   assert.match(routes, /WITH mine AS \\(SELECT id,created_at FROM social_posts WHERE user_id=\\$1/);
-  assert.match(routes, /Cache-Control", "no-store"/);
+  assert.match(routes, /set\("Cache-Control","no-store"\)/);
 });
 
 test("Group title opens Telegram-style group information", () => {
