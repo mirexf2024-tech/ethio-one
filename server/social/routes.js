@@ -749,6 +749,19 @@ router.get("/groups/:id",requireAuth,async(req,res)=>{
   return res.set("Cache-Control","no-store").json({group:g.rows[0],members:members.rows});
  }catch{return res.status(503).json({error:"Group details are unavailable."});}
 });
+router.patch("/groups/:id",requireAuth,async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid group."});
+ const name=typeof req.body?.name==="string"?req.body.name.trim():"";
+ const description=typeof req.body?.description==="string"?req.body.description.trim():"";
+ if(name.length<2||name.length>80||description.length>300)return res.status(400).json({error:"Group name must be 2–80 characters and description up to 300."});
+ try{
+  const result=await req.app.locals.db.query(
+   "UPDATE social_groups g SET name=$3,description=$4,updated_at=NOW() WHERE g.id=$1 AND EXISTS(SELECT 1 FROM social_group_members m WHERE m.group_id=g.id AND m.user_id=$2 AND m.role='admin') RETURNING g.id,g.name,g.description,g.avatar_url,g.updated_at",
+   [req.params.id,req.socialUserId,name,description]);
+  if(!result.rowCount)return res.status(403).json({error:"Only a group admin can edit group information."});
+  return res.json({group:result.rows[0]});
+ }catch{return res.status(503).json({error:"Group information could not be updated."});}
+});
 router.post("/groups/:id/members",requireAuth,async(req,res)=>{
  const userId=req.body?.userId;if(!uuid(req.params.id)||!uuid(userId))return res.status(400).json({error:"Choose a valid member."});
  try{
