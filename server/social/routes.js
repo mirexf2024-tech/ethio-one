@@ -123,7 +123,7 @@ router.post("/posts/:id/like",requireAuth,async(req,res)=>{
     const prior=await c.query("DELETE FROM social_likes WHERE post_id=$1 AND user_id=$2 RETURNING post_id",[req.params.id,req.socialUserId]);
     const liked=!prior.rowCount;
     if(liked) await c.query("INSERT INTO social_likes(post_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING",[req.params.id,req.socialUserId]);
-    if(liked) await c.query("INSERT INTO notifications(user_id,title,body,kind,data) SELECT p.user_id,'New like',u.full_name||' liked your post.','social_like',jsonb_build_object('postId',p.id,'actorId',u.id) FROM social_posts p JOIN users u ON u.id=$2 WHERE p.id=$1 AND p.user_id<>$2",[req.params.id,req.socialUserId]);
+    if(liked) await c.query("INSERT INTO notifications(user_id,title,body,kind,data) SELECT p.user_id,'New like',u.full_name||' liked your post.','social_like',jsonb_build_object('postId',p.id,'actorId',u.id) FROM social_posts p JOIN users u ON u.id=$2 WHERE p.id=$1 AND p.user_id<>$2 AND COALESCE((SELECT likes FROM social_notification_preferences WHERE user_id=p.user_id),TRUE)",[req.params.id,req.socialUserId]);
     await c.query("COMMIT"); return res.json({liked});
   }catch{return res.status(503).json({error:"Like could not be updated."});}
 });
@@ -140,7 +140,7 @@ router.post("/posts/:id/comments",commentCreateLimit,requireAuth,async(req,res)=
   try{
     const r=await req.app.locals.db.query("INSERT INTO social_comments(post_id,user_id,body) SELECT p.id,$2,$3 FROM social_posts p WHERE p.id=$1 AND p.status='published' AND (p.visibility='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id)) AND (COALESCE((SELECT profile_visibility FROM user_profiles WHERE user_id=p.user_id),'public')='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows pv WHERE pv.follower_id=$2 AND pv.following_id=p.user_id)) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2)) RETURNING id,body,created_at",[req.params.id,req.socialUserId,body]);
     if(!r.rowCount)return res.status(404).json({error:"Post not found."});
-    await req.app.locals.db.query("INSERT INTO notifications(user_id,title,body,kind,data) SELECT p.user_id,'New comment',u.full_name||' commented on your post.','social_comment',jsonb_build_object('postId',p.id,'commentId',$3,'actorId',u.id) FROM social_posts p JOIN users u ON u.id=$2 WHERE p.id=$1 AND p.user_id<>$2",[req.params.id,req.socialUserId,r.rows[0].id]);
+    await req.app.locals.db.query("INSERT INTO notifications(user_id,title,body,kind,data) SELECT p.user_id,'New comment',u.full_name||' commented on your post.','social_comment',jsonb_build_object('postId',p.id,'commentId',$3,'actorId',u.id) FROM social_posts p JOIN users u ON u.id=$2 WHERE p.id=$1 AND p.user_id<>$2 AND COALESCE((SELECT comments FROM social_notification_preferences WHERE user_id=p.user_id),TRUE)",[req.params.id,req.socialUserId,r.rows[0].id]);
     return res.status(201).json({comment:r.rows[0]});
   }catch{return res.status(503).json({error:"Comment could not be added."});}
 });
@@ -163,7 +163,7 @@ router.post("/users/:id/follow",requireAuth,async(req,res)=>{
     const prior=await req.app.locals.db.query("DELETE FROM social_follows WHERE follower_id=$1 AND following_id=$2 RETURNING following_id",[req.socialUserId,req.params.id]);
     const following=!prior.rowCount;
     if(following) await req.app.locals.db.query("INSERT INTO social_follows(follower_id,following_id) SELECT $1,$2 WHERE EXISTS(SELECT 1 FROM users WHERE id=$2 AND status='active') ON CONFLICT DO NOTHING",[req.socialUserId,req.params.id]);
-    if(following) await req.app.locals.db.query("INSERT INTO notifications(user_id,title,body,kind,data) SELECT $2,'New follower',u.full_name||' started following you.','social_follow',jsonb_build_object('actorId',u.id) FROM users u WHERE u.id=$1 AND EXISTS(SELECT 1 FROM social_follows WHERE follower_id=$1 AND following_id=$2)",[req.socialUserId,req.params.id]);
+    if(following) await req.app.locals.db.query("INSERT INTO notifications(user_id,title,body,kind,data) SELECT $2,'New follower',u.full_name||' started following you.','social_follow',jsonb_build_object('actorId',u.id) FROM users u WHERE u.id=$1 AND EXISTS(SELECT 1 FROM social_follows WHERE follower_id=$1 AND following_id=$2) AND COALESCE((SELECT followers FROM social_notification_preferences WHERE user_id=$2),TRUE)",[req.socialUserId,req.params.id]);
     return res.json({following});
   }catch{return res.status(503).json({error:"Follow could not be updated."});}
 });
@@ -337,7 +337,7 @@ router.post("/conversations/:id/messages",messageCreateLimit,requireAuth,async(r
   if(blocked.rowCount){await client.query("ROLLBACK");return res.status(403).json({error:"Messaging is unavailable for this account."});}
   const saved=await client.query("INSERT INTO social_messages(conversation_id,sender_id,body) VALUES($1,$2,$3) RETURNING id,sender_id,body,read_at,created_at",[req.params.id,req.socialUserId,body]);
   await client.query("UPDATE social_conversations SET last_message_at=NOW() WHERE id=$1",[req.params.id]);
-  await client.query("INSERT INTO notifications(user_id,title,body,kind,data) VALUES($1,'New message','You received a new Ethio Social message.','social_message',jsonb_build_object('conversationId',$2,'messageId',$3))",[recipient,req.params.id,saved.rows[0].id]);
+  await client.query("INSERT INTO notifications(user_id,title,body,kind,data) SELECT $1,'New message','You received a new Ethio Social message.','social_message',jsonb_build_object('conversationId',$2,'messageId',$3) WHERE COALESCE((SELECT messages FROM social_notification_preferences WHERE user_id=$1),TRUE)",[recipient,req.params.id,saved.rows[0].id]);
   await client.query("COMMIT");
   return res.status(201).json({message:saved.rows[0]});
  }catch{
