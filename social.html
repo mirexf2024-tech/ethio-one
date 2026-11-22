@@ -427,17 +427,21 @@ async function openGroup(id,name){
   await loadGroupMessages(id);
  }catch(e){if(window.activeConversation===id)$("#messageList").textContent=e.message;toast(e.message)}
 }
-async function loadGroupMessages(id){
+async function loadGroupMessages(id,quiet=false){
+ if(groupMessageBusy)return;groupMessageBusy=true;
  const list=$("#messageList");
  try{
   const d=await api("/groups/"+id+"/messages?limit=60");
   if(activeConversationKind!=="group"||window.activeConversation!==id)return;
-  list.innerHTML=(d.messages||[]).map(m=>{
+  const messages=d.messages||[],signature=messages.map(m=>m.id).join("|");if(signature===groupMessagesSignature)return;
+  const wasNearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<90,firstRender=!groupMessagesSignature;groupMessagesSignature=signature;
+  list.innerHTML=messages.map(m=>{
    const media=(m.media||[]).map(x=>x.type==="image"?'<img class="message-attachment" src="'+esc(x.url)+'" alt="Shared photo">':x.type==="video"?'<video class="message-attachment" controls playsinline src="'+esc(x.url)+'"></video>':'<a class="message-file" target="_blank" rel="noopener" href="'+esc(x.url)+'">📄 '+esc(x.name||"Open file")+'</a>').join("");
    return '<div class="message-row '+(m.sender_id===myUserId?"mine":"")+'" data-group-message="'+esc(m.id)+'"><div class="message-bubble"><small class="hint">'+esc(m.full_name||m.username||"Member")+' · '+esc(m.role||"member")+'</small><div>'+(m.body?esc(m.body):"")+media+'</div><small class="message-meta">'+esc(time(m.created_at))+'</small>'+((m.sender_id===myUserId||["admin","moderator"].includes(groupCurrentRole))?'<button type="button" class="group-manage-btn" data-delete-group-message="'+esc(m.id)+'">Delete</button>':"")+'</div></div>';
   }).join("")||'<p class="hint">No messages yet. Say hello to your group.</p>';
-  list.scrollTop=list.scrollHeight;
- }catch(e){if(activeConversationKind==="group"&&window.activeConversation===id)list.textContent=e.message}
+  if(firstRender||wasNearBottom)list.scrollTop=list.scrollHeight;
+ }catch(e){if(activeConversationKind==="group"&&window.activeConversation===id&&!quiet)list.textContent=e.message}
+ finally{groupMessageBusy=false}
 }
 $("#newGroupBtn").onclick=()=>{$("#createGroupModal").classList.add("open");$("#newGroupName").focus()};
 $("#createGroupSubmit").onclick=async()=>{
@@ -513,19 +517,22 @@ async function startConversation(userId,displayName){
  try{const d=await api("/conversations",{method:"POST",body:JSON.stringify({userId})});window.activeConversation=d.conversationId;activeConversationName=displayName||"Member";await openInbox();if(activeConversationKind==="group")await loadGroupMessages(window.activeConversation);else await (activeConversationKind==="group"?loadGroupMessages(window.activeConversation):loadMessages(window.activeConversation))}
  catch(e){toast(e.message)}
 }
-async function loadMessages(id){
+async function loadMessages(id,quiet=false){
  activeConversationKind="private";$("#groupSettingsBtn").hidden=true;
- if(!id)return;
+ if(!id||privateMessageBusy)return;privateMessageBusy=true;
  try{
   const d=await api("/conversations/"+id+"/messages?limit=50"),list=$("#messageList");
   if(activeConversationKind!=="private"||window.activeConversation!==id)return;
-  list.innerHTML=(d.messages||[]).map(m=>{
+  const messages=d.messages||[],signature=messages.map(m=>m.id+":"+(m.read_at||"")).join("|");if(signature===privateMessagesSignature)return;
+  const wasNearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<90,firstRender=!privateMessagesSignature;privateMessagesSignature=signature;
+  list.innerHTML=messages.map(m=>{
    const media=Array.isArray(m.media)?m.media.map(x=>x.type==="image"?'<img class="message-attachment" src="'+esc(x.url)+'" alt="Shared photo">':x.type==="video"?'<video class="message-attachment" controls playsinline src="'+esc(x.url)+'"></video>':'<a class="message-file" target="_blank" rel="noopener" href="'+esc(x.url)+'">📄 '+esc(x.name||"Open file")+'</a>').join(""):"";
    return '<div class="message-row '+(m.sender_id===myUserId?"mine":"")+'"><div class="message-bubble">'+(m.body?esc(m.body):"")+media+'<small class="message-meta">'+esc(time(m.created_at))+(m.sender_id===myUserId?(m.read_at?" · Read":" · Sent"):"")+'</small></div></div>';
   }).join("")||'<p class="hint">'+tr("noMessages")+'</p>';
-  $("#chatHeader").textContent=activeConversationName;$("#audioCallBtn").disabled=false;$("#videoCallBtn").disabled=false;$("#messageInput").disabled=false;$("#emojiToggle").disabled=false;$("#chatPresence").textContent="Private conversation";list.scrollTop=list.scrollHeight;
-  await api("/conversations/"+id+"/read",{method:"POST",body:"{}"});await loadConversations();await refreshNoticeBadge();
- }catch(e){$("#messageList").textContent=e.message}
+  $("#chatHeader").textContent=activeConversationName;$("#audioCallBtn").disabled=false;$("#videoCallBtn").disabled=false;$("#messageInput").disabled=false;$("#emojiToggle").disabled=false;$("#chatPresence").textContent="Private conversation";if(firstRender||wasNearBottom)list.scrollTop=list.scrollHeight;
+  await api("/conversations/"+id+"/read",{method:"POST",body:"{}"}).catch(()=>{});if(!quiet){await loadConversations();await refreshNoticeBadge()}
+ }catch(e){if(activeConversationKind==="private"&&window.activeConversation===id&&!quiet)$("#messageList").textContent=e.message}
+ finally{privateMessageBusy=false}
 }
 $("#messagesBtn").onclick=openInbox;
 $("#conversationSearch").addEventListener("input",()=>{const q=$("#conversationSearch").value.trim().toLocaleLowerCase();document.querySelectorAll("#conversationList .messenger-person").forEach(row=>row.hidden=!row.textContent.toLocaleLowerCase().includes(q))});
