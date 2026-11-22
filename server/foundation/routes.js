@@ -1,5 +1,6 @@
 const express = require("express");
 const crypto = require("node:crypto");
+const rateLimit = require("express-rate-limit");
 const router = express.Router();
 
 function tokenPayload(req, env) {
@@ -133,7 +134,7 @@ router.get("/media", async (req,res) => {
   } catch { return res.status(503).json({error:"Media library is temporarily unavailable."}); }
 });
 
-router.post("/media/sign", async (req,res) => {
+router.post("/media/sign", rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:"draft-7",legacyHeaders:false,handler:(_req,res)=>res.status(429).json({error:"Too many upload attempts. Please try again later."})}), async (req,res) => {
   const env=req.app.locals.authEnv||process.env;
   if(!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) return res.status(503).json({error:"Media upload is not configured yet."});
   const resourceType=req.body?.resourceType==="video"?"video":"image";
@@ -145,12 +146,17 @@ router.post("/media/sign", async (req,res) => {
   return res.json({cloudName:env.CLOUDINARY_CLOUD_NAME,apiKey:env.CLOUDINARY_API_KEY,timestamp,folder,signature,resourceType});
 });
 
-router.post("/media", async (req,res) => {
+router.post("/media", rateLimit({windowMs:60*60*1000,limit:30,standardHeaders:"draft-7",legacyHeaders:false,handler:(_req,res)=>res.status(429).json({error:"Too many media registrations. Please try again later."})}), async (req,res) => {
   const b=req.body||{};
-  if(typeof b.publicId!=="string" || b.publicId.length>255 || typeof b.secureUrl!=="string" || b.secureUrl.length>1000 ||
-     !b.secureUrl.startsWith("https://res.cloudinary.com/") || !b.secureUrl.includes("/upload/") ||
+  const ownFolder="ethio-one/"+req.account.id+"/";
+  let mediaUrl=null;
+  try { mediaUrl=new URL(b.secureUrl); } catch {}
+  if(typeof b.publicId!=="string" || b.publicId.length>255 || !b.publicId.startsWith(ownFolder) || b.publicId.includes("..") ||
+     typeof b.secureUrl!=="string" || b.secureUrl.length>1000 || !mediaUrl || mediaUrl.protocol!=="https:" ||
+     mediaUrl.hostname!=="res.cloudinary.com" || !mediaUrl.pathname.includes("/"+b.resourceType+"/upload/") ||
+     !mediaUrl.pathname.includes("/"+ownFolder) ||
      !["image","video"].includes(b.resourceType) || !Number.isSafeInteger(b.bytes) || b.bytes<1 || b.bytes>100*1024*1024) {
-    return res.status(400).json({error:"Invalid media details."});
+    return res.status(400).json({error:"Invalid media details or media ownership."});
   }
   try {
     const r=await req.app.locals.db.query("INSERT INTO media_assets (user_id,public_id,secure_url,resource_type,bytes) VALUES ($1,$2,$3,$4,$5) RETURNING id,secure_url,resource_type,bytes,created_at",[req.account.id,b.publicId,b.secureUrl,b.resourceType,b.bytes]);
