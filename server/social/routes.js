@@ -299,6 +299,7 @@ router.post("/conversations/:id/read",requireAuth,async(req,res)=>{
   const r=await req.app.locals.db.query(
    "UPDATE social_messages SET read_at=NOW() WHERE conversation_id=$1 AND sender_id<>$2 AND read_at IS NULL AND EXISTS(SELECT 1 FROM social_conversations c WHERE c.id=$1 AND (c.participant_one_id=$2 OR c.participant_two_id=$2)) RETURNING id",
    [req.params.id,req.socialUserId]);
+  await req.app.locals.db.query("UPDATE notifications SET read_at=COALESCE(read_at,NOW()) WHERE user_id=$1 AND kind='social_message' AND data->>'conversationId'=$2 AND read_at IS NULL",[req.socialUserId,req.params.id]);
   return res.json({ok:true,markedRead:r.rowCount});
  }catch{return res.status(503).json({error:"Messages could not be marked as read."});}
 });
