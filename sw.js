@@ -1,5 +1,5 @@
-const CACHE="ethio-one-shell-v1";
-const SHELL=["/","/social.html","/icons/ethio-one-app.svg"];
+const CACHE="ethio-one-shell-v2";
+const SHELL=["/","/social.html","/pwa.js","/icons/ethio-one-app.svg"];
 self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()))});
 self.addEventListener("activate",event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener("fetch",event=>{
