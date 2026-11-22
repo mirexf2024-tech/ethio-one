@@ -9,7 +9,7 @@ const html = fs.readFileSync(path.join(root, "social.html"), "utf8");
 const routes = fs.readFileSync(path.join(root, "server", "social", "routes.js"), "utf8");
 
 test("Ethio Social browser scripts parse without syntax errors", () => {
-  const scripts = [...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)]
+  const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
     .map((match) => match[1].trim())
     .filter(Boolean);
   assert.ok(scripts.length > 0, "social.html should contain its application script");
