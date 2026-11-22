@@ -38,6 +38,19 @@ test("Ethio Social frontend retains its implemented API workflows", () => {
   }
 });
 
+test("Group chats keep group refreshes separate from private conversations", () => {
+  assert.match(html, /activeConversationKind==="group"\?loadGroupMessages\(window\.activeConversation\):loadMessages\(window\.activeConversation\)/);
+  assert.match(html, /if\(activeConversationKind!=="group"\|\|window\.activeConversation!==id\)return/);
+  assert.match(html, /if\(activeConversationKind!=="private"\|\|window\.activeConversation!==id\)return/);
+});
+
+test("Group information includes members and an add-member flow", () => {
+  for (const id of ["groupInfoHero", "groupInfoSummary", "groupAddMemberBtn", "groupMemberSearch", "groupMemberList"]) {
+    assert.match(html, new RegExp(`id=["']${id}["']`), `missing group information element: ${id}`);
+  }
+  assert.match(html, /activeGroupMembers\.some/);
+});
+
 test("Ethio Social API keeps authentication, media validation and core routes", () => {
   for (const route of [
     'router.get("/feed"', 'router.post("/posts"',
