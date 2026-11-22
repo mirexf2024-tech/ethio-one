@@ -118,7 +118,7 @@ router.post("/posts/:id/like",requireAuth,async(req,res)=>{
   if(!uuid(req.params.id)) return res.status(400).json({error:"Invalid post."});
   try{
     const c=await req.app.locals.db.connect(); await c.query("BEGIN");
-    const exists=await c.query("SELECT id FROM social_posts WHERE id=$1 AND status='published'",[req.params.id]);
+    const exists=await c.query("SELECT p.id FROM social_posts p WHERE p.id=$1 AND p.status='published' AND (p.visibility='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id)) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2))",[req.params.id,req.socialUserId]);
     if(!exists.rowCount){await c.query("ROLLBACK");return res.status(404).json({error:"Post not found."});}
     const prior=await c.query("DELETE FROM social_likes WHERE post_id=$1 AND user_id=$2 RETURNING post_id",[req.params.id,req.socialUserId]);
     const liked=!prior.rowCount;
@@ -130,7 +130,7 @@ router.post("/posts/:id/like",requireAuth,async(req,res)=>{
 router.get("/posts/:id/comments",async(req,res)=>{
   if(!uuid(req.params.id)) return res.status(400).json({error:"Invalid post."});
   try{
-    const r=await req.app.locals.db.query("SELECT c.id,c.body,c.created_at,u.username,u.full_name,up.avatar_url FROM social_comments c JOIN users u ON u.id=c.user_id LEFT JOIN user_profiles up ON up.user_id=u.id WHERE c.post_id=$1 AND c.status='published' ORDER BY c.created_at ASC LIMIT 100",[req.params.id]);
+    const r=await req.app.locals.db.query("SELECT c.id,c.body,c.created_at,u.username,u.full_name,up.avatar_url FROM social_comments c JOIN social_posts p ON p.id=c.post_id JOIN users u ON u.id=c.user_id LEFT JOIN user_profiles up ON up.user_id=u.id WHERE c.post_id=$1 AND c.status='published' AND p.status='published' AND (p.visibility='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id)) AND ($2::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2))) AND ($2::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=c.user_id) OR (b.blocker_id=c.user_id AND b.blocked_id=$2))) ORDER BY c.created_at ASC LIMIT 100",[req.params.id,req.socialUserId]);
     return res.json({comments:r.rows});
   }catch{return res.status(503).json({error:"Comments are temporarily unavailable."});}
 });
@@ -138,7 +138,7 @@ router.post("/posts/:id/comments",commentCreateLimit,requireAuth,async(req,res)=
   const body=typeof req.body?.body==="string"?req.body.body.trim():"";
   if(!uuid(req.params.id)||!body||body.length>1000) return res.status(400).json({error:"Write a comment of up to 1,000 characters."});
   try{
-    const r=await req.app.locals.db.query("INSERT INTO social_comments(post_id,user_id,body) SELECT $1,$2,$3 WHERE EXISTS(SELECT 1 FROM social_posts WHERE id=$1 AND status='published') RETURNING id,body,created_at",[req.params.id,req.socialUserId,body]);
+    const r=await req.app.locals.db.query("INSERT INTO social_comments(post_id,user_id,body) SELECT p.id,$2,$3 FROM social_posts p WHERE p.id=$1 AND p.status='published' AND (p.visibility='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id)) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2)) RETURNING id,body,created_at",[req.params.id,req.socialUserId,body]);
     if(!r.rowCount)return res.status(404).json({error:"Post not found."});
     await req.app.locals.db.query("INSERT INTO notifications(user_id,title,body,kind,data) SELECT p.user_id,'New comment',u.full_name||' commented on your post.','social_comment',jsonb_build_object('postId',p.id,'commentId',$3,'actorId',u.id) FROM social_posts p JOIN users u ON u.id=$2 WHERE p.id=$1 AND p.user_id<>$2",[req.params.id,req.socialUserId,r.rows[0].id]);
     return res.status(201).json({comment:r.rows[0]});
@@ -149,13 +149,17 @@ router.post("/posts/:id/bookmark",requireAuth,async(req,res)=>{
   try{
     const prior=await req.app.locals.db.query("DELETE FROM social_bookmarks WHERE post_id=$1 AND user_id=$2 RETURNING post_id",[req.params.id,req.socialUserId]);
     const saved=!prior.rowCount;
-    if(saved) await req.app.locals.db.query("INSERT INTO social_bookmarks(user_id,post_id) SELECT $1,$2 WHERE EXISTS(SELECT 1 FROM social_posts WHERE id=$2 AND status='published') ON CONFLICT DO NOTHING",[req.socialUserId,req.params.id]);
+    if(saved) await req.app.locals.db.query("INSERT INTO social_bookmarks(user_id,post_id) SELECT $1,p.id FROM social_posts p WHERE p.id=$2 AND p.status='published' AND (p.visibility='public' OR p.user_id=$1 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$1 AND f.following_id=p.user_id)) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$1)) ON CONFLICT DO NOTHING",[req.socialUserId,req.params.id]);
     return res.json({bookmarked:saved});
   }catch{return res.status(503).json({error:"Bookmark could not be updated."});}
 });
 router.post("/users/:id/follow",requireAuth,async(req,res)=>{
   if(!uuid(req.params.id)||req.params.id===req.socialUserId) return res.status(400).json({error:"Invalid account."});
   try{
+    const target=await req.app.locals.db.query("SELECT id FROM users WHERE id=$1 AND status='active'",[req.params.id]);
+    if(!target.rowCount)return res.status(404).json({error:"Account not found."});
+    const blocked=await req.app.locals.db.query("SELECT 1 FROM social_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1",[req.socialUserId,req.params.id]);
+    if(blocked.rowCount)return res.status(403).json({error:"Following is unavailable for this account."});
     const prior=await req.app.locals.db.query("DELETE FROM social_follows WHERE follower_id=$1 AND following_id=$2 RETURNING following_id",[req.socialUserId,req.params.id]);
     const following=!prior.rowCount;
     if(following) await req.app.locals.db.query("INSERT INTO social_follows(follower_id,following_id) SELECT $1,$2 WHERE EXISTS(SELECT 1 FROM users WHERE id=$2 AND status='active') ON CONFLICT DO NOTHING",[req.socialUserId,req.params.id]);
