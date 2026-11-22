@@ -484,6 +484,13 @@ router.post("/conversations/:id/read",requireAuth,async(req,res)=>{
 
 
 /* WebRTC one-to-one audio/video call signaling. Media stays peer-to-peer. */
+router.get("/calls/ice-servers",requireAuth,async(req,res)=>{
+ const env=req.app.locals.authEnv||process.env;
+ const iceServers=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
+ const urls=String(env.SOCIAL_TURN_URLS||"").split(",").map(x=>x.trim()).filter(Boolean);
+ if(urls.length&&env.SOCIAL_TURN_USERNAME&&env.SOCIAL_TURN_CREDENTIAL)iceServers.push({urls,username:env.SOCIAL_TURN_USERNAME,credential:env.SOCIAL_TURN_CREDENTIAL});
+ return res.set("Cache-Control","no-store").json({iceServers,relayConfigured:iceServers.length>2});
+});
 router.get("/calls/incoming",requireAuth,async(req,res)=>{
  try{
   await req.app.locals.db.query("UPDATE social_calls SET status='missed',ended_at=NOW() WHERE callee_id=$1 AND status='ringing' AND created_at<NOW()-INTERVAL '90 seconds'",[req.socialUserId]);
