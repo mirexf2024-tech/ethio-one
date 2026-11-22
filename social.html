@@ -347,7 +347,7 @@ async function startConversation(userId,displayName){
 async function loadMessages(id){
  if(!id)return;
  try{const d=await api("/conversations/"+id+"/messages?limit=50");const list=$("#messageList");
-  list.innerHTML=(d.messages||[]).map(m=>'<div style="display:flex;justify-content:'+(m.sender_id===myUserId?"flex-end":"flex-start")+';margin:7px 0"><div style="max-width:82%;padding:9px 12px;border-radius:13px;background:'+(m.sender_id===myUserId?"#082b59":"#eef2f7")+';color:'+(m.sender_id===myUserId?"#fff":"#26364a")+';font-size:12px;overflow-wrap:anywhere">'+esc(m.body)+'<small style="display:block;opacity:.65;margin-top:4px;font-size:9px">'+esc(time(m.created_at))+'</small></div></div>').join("")||'<p class="hint">'+tr("noMessages")+'</p>';
+  list.innerHTML=(d.messages||[]).map(m=>'<div class="message-row '+(m.sender_id===myUserId?"mine":"")+'"><div class="message-bubble">'+esc(m.body)+'<small class="message-meta">'+esc(time(m.created_at))+(m.sender_id===myUserId?(m.read_at?" · Read":" · Sent"):"")+'</small></div></div>').join("")||'<p class="hint">'+tr("noMessages")+'</p>';
   $("#chatHeader").textContent=activeConversationName;$("#audioCallBtn").disabled=false;$("#videoCallBtn").disabled=false;$("#messageInput").disabled=false;$("#emojiToggle").disabled=false;$("#chatPresence").textContent="Private conversation";list.scrollTop=list.scrollHeight;
   await api("/conversations/"+id+"/read",{method:"POST",body:"{}"});await loadConversations();await refreshNoticeBadge();
  }catch(e){$("#messageList").textContent=e.message}
@@ -358,7 +358,7 @@ $("#sendMessageBtn").onclick=async()=>{const input=$("#messageInput"),body=input
 $("#messageInput").addEventListener("input",()=>{$("#sendMessageBtn").disabled=!window.activeConversation||!$("#messageInput").value.trim()});
 
 /* Messenger call client: WebRTC media is peer-to-peer; API carries authenticated signaling only. */
-let activeCall=null,peerConnection=null,localCallStream=null,callPollTimer=null,incomingPollTimer=null,lastCallSignalId=0,incomingCallId=null,callMuted=false,cameraOff=false;
+let activeCall=null,peerConnection=null,localCallStream=null,callPollTimer=null,incomingPollTimer=null,lastCallSignalId=0,incomingCallId=null,callMuted=false,cameraOff=false,pendingCallCandidates=[];
 const callApi=(path,opts={})=>api(path,opts);
 function showCall(status){$("#callStatus").textContent=status;$("#callModal").classList.add("open")}
 function stopCallMedia(){
@@ -366,7 +366,7 @@ function stopCallMedia(){
  if(peerConnection){peerConnection.onicecandidate=null;peerConnection.ontrack=null;peerConnection.close();peerConnection=null}
  if(localCallStream){localCallStream.getTracks().forEach(t=>t.stop());localCallStream=null}
  $("#localCallVideo").srcObject=null;$("#remoteCallVideo").srcObject=null;
- $("#callModal").classList.remove("open");activeCall=null;lastCallSignalId=0;callMuted=false;cameraOff=false;
+ $("#callModal").classList.remove("open");activeCall=null;incomingCallId=null;lastCallSignalId=0;pendingCallCandidates=[];callMuted=false;cameraOff=false;
  $("#muteCallBtn").textContent="🎙 Mute";$("#cameraCallBtn").textContent="▣ Camera";
 }
 async function sendCallSignal(type,payload){
@@ -379,7 +379,7 @@ async function preparePeer(type){
  peerConnection=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]});
  stream.getTracks().forEach(track=>peerConnection.addTrack(track,stream));
  peerConnection.ontrack=e=>{const remote=e.streams[0];if(remote){if(type==="video")$("#remoteCallVideo").srcObject=remote;else{const a=document.createElement("audio");a.autoplay=true;a.srcObject=remote;$("#remoteCallAudio").replaceChildren(a)}}};
- peerConnection.onicecandidate=e=>{if(e.candidate)sendCallSignal("ice",e.candidate.toJSON()).catch(()=>{})};
+ peerConnection.onicecandidate=e=>{if(!e.candidate)return;const candidate=e.candidate.toJSON();if(activeCall)sendCallSignal("ice",candidate).catch(()=>{});else pendingCallCandidates.push(candidate)};
  peerConnection.onconnectionstatechange=()=>{if(!peerConnection)return;const state=peerConnection.connectionState;$("#callStatus").textContent=state==="connected"?"Connected":state==="connecting"?"Connecting…":state==="failed"?"Connection failed":state==="disconnected"?"Reconnecting…":state};
 }
 async function startSocialCall(type){
@@ -388,17 +388,19 @@ async function startSocialCall(type){
  try{
   await preparePeer(type);const offer=await peerConnection.createOffer();await peerConnection.setLocalDescription(offer);
   const d=await callApi("/conversations/"+window.activeConversation+"/calls",{method:"POST",body:JSON.stringify({type,offer:peerConnection.localDescription.toJSON()})});
-  activeCall={id:d.call.id,role:"caller",type};showCall("Calling…");startCallPolling();
+  activeCall={id:d.call.id,role:"caller",type};for(const candidate of pendingCallCandidates.splice(0))sendCallSignal("ice",candidate).catch(()=>{});showCall("Calling…");startCallPolling();
  }catch(e){stopCallMedia();toast(e.message||"Could not start the call. Check microphone/camera permission.");}
 }
 async function acceptSocialCall(callId){
  try{
   const d=await callApi("/calls/"+callId+"?after=0");const call=d.call;
+  window.activeConversation=call.conversation_id;activeConversationName=call.caller_name||call.caller_username||"Member";$("#messagesModal").classList.add("open");await loadConversations();await loadMessages(window.activeConversation);
   await preparePeer(call.call_type);activeCall={id:callId,role:"callee",type:call.call_type};
   const offer=d.signals.find(x=>x.signal_type==="offer");if(!offer)throw new Error("Call offer is not available.");
   await peerConnection.setRemoteDescription(offer.payload);
   const answer=await peerConnection.createAnswer();await peerConnection.setLocalDescription(answer);
   await sendCallSignal("answer",peerConnection.localDescription.toJSON());
+  for(const candidate of pendingCallCandidates.splice(0))sendCallSignal("ice",candidate).catch(()=>{});
   await callApi("/calls/"+callId,{method:"PATCH",body:JSON.stringify({status:"accepted"})});
   $("#incomingCallModal").classList.remove("open");showCall("Connecting…");startCallPolling();
  }catch(e){stopCallMedia();toast(e.message||"Could not accept the call.");}
@@ -448,7 +450,8 @@ $("#emojiToggle").onclick=()=>{$("#emojiPicker").hidden=!$("#emojiPicker").hidde
 $("#emojiPicker").onclick=e=>{const b=e.target.closest("button");if(!b)return;const input=$("#messageInput");input.value+=b.textContent;input.focus();$("#sendMessageBtn").disabled=!input.value.trim();$("#emojiPicker").hidden=true};
 $("#conversationSearch").addEventListener("input",()=>{const q=$("#conversationSearch").value.trim().toLowerCase();document.querySelectorAll(".messenger-person").forEach(el=>el.hidden=!el.textContent.toLowerCase().includes(q))});
 if(incomingPollTimer)clearInterval(incomingPollTimer);
-incomingPollTimer=setInterval(pollIncomingCalls,3500);pollIncomingCalls();
+incomingPollTimer=setInterval(pollIncomingCalls,7000);pollIncomingCalls();
+setInterval(()=>{if($("#messagesModal")?.classList.contains("open")&&window.activeConversation&&!activeCall)loadMessages(window.activeConversation)},7000);
 
 
 let searchTimer;
