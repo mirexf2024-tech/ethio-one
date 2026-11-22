@@ -114,8 +114,8 @@ router.get("/roles", async (req,res) => {
 router.get("/notifications", async (req,res) => {
   const limit=Math.min(50,Math.max(1,Number.parseInt(req.query.limit,10)||20));
   try {
-    const r=await req.app.locals.db.query("SELECT id,title,body,kind,data,read_at,created_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2",[req.account.id,limit]);
-    return res.set("Cache-Control","no-store").json({notifications:r.rows});
+    const [r,u]=await Promise.all([req.app.locals.db.query("SELECT id,title,body,kind,data,read_at,created_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2",[req.account.id,limit]),req.app.locals.db.query("SELECT COUNT(*)::int AS unread_count FROM notifications WHERE user_id=$1 AND read_at IS NULL",[req.account.id])]);
+    return res.set("Cache-Control","no-store").json({notifications:r.rows,unreadCount:u.rows[0]?.unread_count||0});
   } catch { return res.status(503).json({error:"Notifications are temporarily unavailable."}); }
 });
 router.post("/notifications/:id/read", async (req,res) => {
