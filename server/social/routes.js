@@ -116,6 +116,7 @@ router.post("/posts/:id/like",requireAuth,async(req,res)=>{
     const prior=await c.query("DELETE FROM social_likes WHERE post_id=$1 AND user_id=$2 RETURNING post_id",[req.params.id,req.socialUserId]);
     const liked=!prior.rowCount;
     if(liked) await c.query("INSERT INTO social_likes(post_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING",[req.params.id,req.socialUserId]);
+    if(liked) await c.query("INSERT INTO notifications(user_id,title,body,kind,data) SELECT p.user_id,'New like',u.full_name||' liked your post.','social_like',jsonb_build_object('postId',p.id,'actorId',u.id) FROM social_posts p JOIN users u ON u.id=$2 WHERE p.id=$1 AND p.user_id<>$2",[req.params.id,req.socialUserId]);
     await c.query("COMMIT"); return res.json({liked});
   }catch{return res.status(503).json({error:"Like could not be updated."});}
 });
@@ -131,7 +132,9 @@ router.post("/posts/:id/comments",requireAuth,async(req,res)=>{
   if(!uuid(req.params.id)||!body||body.length>1000) return res.status(400).json({error:"Write a comment of up to 1,000 characters."});
   try{
     const r=await req.app.locals.db.query("INSERT INTO social_comments(post_id,user_id,body) SELECT $1,$2,$3 WHERE EXISTS(SELECT 1 FROM social_posts WHERE id=$1 AND status='published') RETURNING id,body,created_at",[req.params.id,req.socialUserId,body]);
-    return r.rowCount?res.status(201).json({comment:r.rows[0]}):res.status(404).json({error:"Post not found."});
+    if(!r.rowCount)return res.status(404).json({error:"Post not found."});
+    await req.app.locals.db.query("INSERT INTO notifications(user_id,title,body,kind,data) SELECT p.user_id,'New comment',u.full_name||' commented on your post.','social_comment',jsonb_build_object('postId',p.id,'commentId',$3,'actorId',u.id) FROM social_posts p JOIN users u ON u.id=$2 WHERE p.id=$1 AND p.user_id<>$2",[req.params.id,req.socialUserId,r.rows[0].id]);
+    return res.status(201).json({comment:r.rows[0]});
   }catch{return res.status(503).json({error:"Comment could not be added."});}
 });
 router.post("/posts/:id/bookmark",requireAuth,async(req,res)=>{
@@ -149,6 +152,7 @@ router.post("/users/:id/follow",requireAuth,async(req,res)=>{
     const prior=await req.app.locals.db.query("DELETE FROM social_follows WHERE follower_id=$1 AND following_id=$2 RETURNING following_id",[req.socialUserId,req.params.id]);
     const following=!prior.rowCount;
     if(following) await req.app.locals.db.query("INSERT INTO social_follows(follower_id,following_id) SELECT $1,$2 WHERE EXISTS(SELECT 1 FROM users WHERE id=$2 AND status='active') ON CONFLICT DO NOTHING",[req.socialUserId,req.params.id]);
+    if(following) await req.app.locals.db.query("INSERT INTO notifications(user_id,title,body,kind,data) SELECT $2,'New follower',u.full_name||' started following you.','social_follow',jsonb_build_object('actorId',u.id) FROM users u WHERE u.id=$1 AND EXISTS(SELECT 1 FROM social_follows WHERE follower_id=$1 AND following_id=$2)",[req.socialUserId,req.params.id]);
     return res.json({following});
   }catch{return res.status(503).json({error:"Follow could not be updated."});}
 });
@@ -177,4 +181,48 @@ router.get("/moderation/reports",requireAuth,async(req,res)=>{
     return res.json({reports:r.rows});
   }catch{return res.status(503).json({error:"Moderation queue is unavailable."});}
 });
+
+/* 24-hour stories */
+router.get("/stories",async(req,res)=>{
+ try{
+  const r=await req.app.locals.db.query(
+   `SELECT s.id,s.user_id,s.media_url,s.media_type,s.caption,s.visibility,s.created_at,s.expires_at,
+    u.username,u.full_name,p.avatar_url,
+    (SELECT COUNT(*)::int FROM social_story_views v WHERE v.story_id=s.id) AS views,
+    CASE WHEN $1::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_story_views v WHERE v.story_id=s.id AND v.viewer_id=$1) END AS viewed
+    FROM social_stories s JOIN users u ON u.id=s.user_id LEFT JOIN user_profiles p ON p.user_id=u.id
+    WHERE s.expires_at>NOW() AND (s.visibility='public' OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$1 AND f.following_id=s.user_id))
+    AND ($1::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=s.user_id) OR (b.blocker_id=s.user_id AND b.blocked_id=$1)))
+    ORDER BY s.created_at DESC LIMIT 100`,[req.socialUserId]);
+  return res.set("Cache-Control","no-store").json({stories:r.rows});
+ }catch{return res.status(503).json({error:"Stories are temporarily unavailable."});}
+});
+router.post("/stories",requireAuth,async(req,res)=>{
+ const b=req.body||{},caption=typeof b.caption==="string"?b.caption.trim():"";
+ if(typeof b.publicId!=="string"||b.publicId.length>255||typeof b.url!=="string"||!b.url.startsWith("https://res.cloudinary.com/")||!b.url.includes("/upload/")||!["image","video"].includes(b.type)||caption.length>240||!["public","followers"].includes(b.visibility||"public"))
+  return res.status(400).json({error:"Check your story media and caption."});
+ try{
+  const owned=await req.app.locals.db.query("SELECT id FROM media_assets WHERE user_id=$1 AND public_id=$2 AND secure_url=$3 AND resource_type=$4 LIMIT 1",[req.socialUserId,b.publicId,b.url,b.type]);
+  if(!owned.rowCount)return res.status(403).json({error:"This media does not belong to your account."});
+  const r=await req.app.locals.db.query("INSERT INTO social_stories(user_id,media_public_id,media_url,media_type,caption,visibility) VALUES($1,$2,$3,$4,$5,$6) RETURNING id,media_url,media_type,caption,visibility,created_at,expires_at",[req.socialUserId,b.publicId,b.url,b.type,caption,b.visibility||"public"]);
+  return res.status(201).json({story:r.rows[0]});
+ }catch{return res.status(503).json({error:"Story could not be published."});}
+});
+router.post("/stories/:id/view",requireAuth,async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid story."});
+ try{
+  const allowed=await req.app.locals.db.query("SELECT s.id FROM social_stories s WHERE s.id=$1 AND s.expires_at>NOW() AND (s.user_id=$2 OR s.visibility='public' OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=s.user_id)) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=s.user_id) OR (b.blocker_id=s.user_id AND b.blocked_id=$2))",[req.params.id,req.socialUserId]);
+  if(!allowed.rowCount)return res.status(404).json({error:"Story not found."});
+  await req.app.locals.db.query("INSERT INTO social_story_views(story_id,viewer_id) VALUES($1,$2) ON CONFLICT(story_id,viewer_id) DO UPDATE SET viewed_at=NOW()",[req.params.id,req.socialUserId]);
+  return res.json({ok:true});
+ }catch{return res.status(503).json({error:"Story view could not be saved."});}
+});
+router.delete("/stories/:id",requireAuth,async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid story."});
+ try{
+  const r=await req.app.locals.db.query("DELETE FROM social_stories WHERE id=$1 AND user_id=$2 RETURNING id",[req.params.id,req.socialUserId]);
+  return r.rowCount?res.json({ok:true}):res.status(404).json({error:"Story not found."});
+ }catch{return res.status(503).json({error:"Story could not be removed."});}
+});
+
 module.exports=router;
