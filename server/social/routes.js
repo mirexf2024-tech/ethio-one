@@ -482,4 +482,90 @@ router.post("/conversations/:id/read",requireAuth,async(req,res)=>{
  }catch{return res.status(503).json({error:"Messages could not be marked as read."});}
 });
 
+
+/* WebRTC one-to-one audio/video call signaling. Media stays peer-to-peer. */
+router.get("/calls/incoming",requireAuth,async(req,res)=>{
+ try{
+  const r=await req.app.locals.db.query(
+   `SELECT c.id,c.conversation_id,c.call_type,c.status,c.created_at,u.id AS caller_id,u.username,u.full_name,p.avatar_url
+    FROM social_calls c JOIN users u ON u.id=c.caller_id LEFT JOIN user_profiles p ON p.user_id=u.id
+    WHERE c.callee_id=$1 AND c.status='ringing' AND c.created_at>NOW()-INTERVAL '90 seconds'
+    AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=u.id) OR (b.blocker_id=u.id AND b.blocked_id=$1))
+    ORDER BY c.created_at DESC LIMIT 5`,[req.socialUserId]);
+  return res.set("Cache-Control","no-store").json({calls:r.rows});
+ }catch{return res.status(503).json({error:"Incoming calls are temporarily unavailable."});}
+});
+router.post("/conversations/:id/calls",interactionLimit,requireAuth,async(req,res)=>{
+ const type=req.body?.type;
+ const offer=req.body?.offer;
+ if(!uuid(req.params.id)||!["audio","video"].includes(type)||!offer||typeof offer!=="object"||JSON.stringify(offer).length>30000)
+  return res.status(400).json({error:"Invalid call request."});
+ try{
+  const c=await req.app.locals.db.query(
+   `SELECT participant_one_id,participant_two_id FROM social_conversations
+    WHERE id=$1 AND (participant_one_id=$2 OR participant_two_id=$2)`,[req.params.id,req.socialUserId]);
+  if(!c.rowCount)return res.status(404).json({error:"Conversation not found."});
+  const recipient=c.rows[0].participant_one_id===req.socialUserId?c.rows[0].participant_two_id:c.rows[0].participant_one_id;
+  const block=await req.app.locals.db.query("SELECT 1 FROM social_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1)",[req.socialUserId,recipient]);
+  if(block.rowCount)return res.status(403).json({error:"Calling is unavailable for this account."});
+  const call=await req.app.locals.db.query(
+   "INSERT INTO social_calls(conversation_id,caller_id,callee_id,call_type) VALUES($1,$2,$3,$4) RETURNING id,conversation_id,call_type,status,created_at",
+   [req.params.id,req.socialUserId,recipient,type]);
+  await req.app.locals.db.query("INSERT INTO social_call_signals(call_id,sender_id,signal_type,payload) VALUES($1,$2,'offer',$3::jsonb)",[call.rows[0].id,req.socialUserId,JSON.stringify(offer)]);
+  await req.app.locals.db.query(
+   "INSERT INTO notifications(user_id,title,body,kind,data) VALUES($1,$2,$3,'social_call',$4::jsonb)",
+   [recipient,type==="video"?"Incoming video call":"Incoming audio call","Someone is calling you on Ethio Social.",JSON.stringify({callId:call.rows[0].id,conversationId:req.params.id,callType:type})]);
+  return res.status(201).json({call:call.rows[0],recipientId:recipient,iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]});
+ }catch(e){
+  if(e&&e.code==="23505")return res.status(409).json({error:"A call is already active in this conversation."});
+  return res.status(503).json({error:"Call could not be started."});
+ }
+});
+router.get("/calls/:id",requireAuth,async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid call."});
+ const after=Math.max(0,Number.parseInt(req.query.after,10)||0);
+ try{
+  const call=await req.app.locals.db.query(
+   `SELECT c.id,c.conversation_id,c.caller_id,c.callee_id,c.call_type,c.status,c.created_at,c.answered_at,c.ended_at,
+    u.full_name AS caller_name,u.username AS caller_username
+    FROM social_calls c JOIN users u ON u.id=c.caller_id
+    WHERE c.id=$1 AND (c.caller_id=$2 OR c.callee_id=$2)
+    AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=CASE WHEN c.caller_id=$2 THEN c.callee_id ELSE c.caller_id END) OR (b.blocker_id=CASE WHEN c.caller_id=$2 THEN c.callee_id ELSE c.caller_id END AND b.blocked_id=$2))`,
+   [req.params.id,req.socialUserId]);
+  if(!call.rowCount)return res.status(404).json({error:"Call not found."});
+  const signals=await req.app.locals.db.query(
+   "SELECT id,signal_type,payload,sender_id,created_at FROM social_call_signals WHERE call_id=$1 AND id>$2 AND sender_id<>$3 ORDER BY id ASC LIMIT 100",
+   [req.params.id,after,req.socialUserId]);
+  return res.set("Cache-Control","no-store").json({call:call.rows[0],signals:signals.rows});
+ }catch{return res.status(503).json({error:"Call status is unavailable."});}
+});
+router.post("/calls/:id/signals",interactionLimit,requireAuth,async(req,res)=>{
+ const type=req.body?.type,payload=req.body?.payload;
+ if(!uuid(req.params.id)||!["answer","ice"].includes(type)||!payload||typeof payload!=="object"||JSON.stringify(payload).length>30000)
+  return res.status(400).json({error:"Invalid call signal."});
+ try{
+  const call=await req.app.locals.db.query("SELECT id FROM social_calls WHERE id=$1 AND (caller_id=$2 OR callee_id=$2) AND status IN ('ringing','accepted') AND created_at>NOW()-INTERVAL '30 minutes'",[req.params.id,req.socialUserId]);
+  if(!call.rowCount)return res.status(404).json({error:"Active call not found."});
+  const r=await req.app.locals.db.query("INSERT INTO social_call_signals(call_id,sender_id,signal_type,payload) VALUES($1,$2,$3,$4::jsonb) RETURNING id",[req.params.id,req.socialUserId,type,JSON.stringify(payload)]);
+  return res.status(201).json({ok:true,signalId:r.rows[0].id});
+ }catch{return res.status(503).json({error:"Call signal could not be sent."});}
+});
+router.patch("/calls/:id",requireAuth,async(req,res)=>{
+ const status=req.body?.status;
+ if(!uuid(req.params.id)||!["accepted","rejected","ended","missed"].includes(status))return res.status(400).json({error:"Invalid call status."});
+ try{
+  const call=await req.app.locals.db.query("SELECT caller_id,callee_id,status FROM social_calls WHERE id=$1 AND (caller_id=$2 OR callee_id=$2) FOR UPDATE",[req.params.id,req.socialUserId]);
+  if(!call.rowCount)return res.status(404).json({error:"Call not found."});
+  const row=call.rows[0];
+  if(status==="accepted"&&row.callee_id!==req.socialUserId)return res.status(403).json({error:"Only the receiving member can accept this call."});
+  if(status==="rejected"&&row.callee_id!==req.socialUserId)return res.status(403).json({error:"Only the receiving member can reject this call."});
+  if(status==="missed"&&row.callee_id!==req.socialUserId)return res.status(403).json({error:"Invalid call action."});
+  const updated=await req.app.locals.db.query(
+   "UPDATE social_calls SET status=$2,answered_at=CASE WHEN $2='accepted' THEN NOW() ELSE answered_at END,ended_at=CASE WHEN $2 IN ('rejected','ended','missed') THEN NOW() ELSE ended_at END WHERE id=$1 AND status IN ('ringing','accepted') RETURNING id,status,answered_at,ended_at",
+   [req.params.id,status]);
+  if(!updated.rowCount)return res.status(409).json({error:"This call has already finished."});
+  return res.json({call:updated.rows[0]});
+ }catch{return res.status(503).json({error:"Call status could not be updated."});}
+});
+
 module.exports=router;
