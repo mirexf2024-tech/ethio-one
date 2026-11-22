@@ -68,6 +68,28 @@ router.get("/users/:id/profile",async(req,res)=>{
  }catch{return res.status(503).json({error:"Profile unavailable."});}
 });
 
+const postSearchLimit=actionLimiter(20,60*1000,"You are searching too quickly. Please wait a moment.");
+router.get("/posts/search",postSearchLimit,async(req,res)=>{
+  const term=String(req.query.q||"").trim().slice(0,80);
+  if(term.length<2)return res.json({posts:[]});
+  try{
+    const q=await req.app.locals.db.query(
+      `SELECT p.id,p.body,p.media,p.visibility,p.created_at,u.id AS author_id,u.username,u.full_name,up.avatar_url,
+       (SELECT COUNT(*)::int FROM social_likes l WHERE l.post_id=p.id) AS like_count,
+       (SELECT COUNT(*)::int FROM social_comments c WHERE c.post_id=p.id AND c.status='published') AS comment_count,
+       CASE WHEN $1::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_likes l WHERE l.post_id=p.id AND l.user_id=$1) END AS liked,
+       CASE WHEN $1::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_bookmarks b WHERE b.post_id=p.id AND b.user_id=$1) END AS bookmarked
+       FROM social_posts p JOIN users u ON u.id=p.user_id LEFT JOIN user_profiles up ON up.user_id=u.id
+       WHERE p.status='published' AND p.body ILIKE $2
+       AND (p.user_id=$1 OR p.visibility='public' OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$1 AND f.following_id=p.user_id))
+       AND (COALESCE((SELECT profile_visibility FROM user_profiles WHERE user_id=p.user_id),'public')='public' OR p.user_id=$1 OR EXISTS(SELECT 1 FROM social_follows pv WHERE pv.follower_id=$1 AND pv.following_id=p.user_id))
+       AND ($1::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$1)))
+       ORDER BY p.created_at DESC LIMIT 30`,
+      [req.socialUserId,"%"+term+"%"]
+    );
+    return res.set("Cache-Control","no-store").json({posts:q.rows});
+  }catch{return res.status(503).json({error:"Post search is temporarily unavailable."});}
+});
 router.get("/feed",async(req,res)=>{
   const limit=Math.min(30,Math.max(1,Number.parseInt(req.query.limit,10)||15));
   const cursor=typeof req.query.before==="string" && uuid(req.query.before)?req.query.before:null;
