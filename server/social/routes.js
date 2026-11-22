@@ -175,6 +175,19 @@ router.post("/users/:id/block",requireAuth,async(req,res)=>{
     return res.json({blocked:true});
   }catch{return res.status(503).json({error:"Account could not be blocked."});}
 });
+router.get("/blocks",requireAuth,async(req,res)=>{
+  try{
+    const r=await req.app.locals.db.query("SELECT u.id,u.username,u.full_name,p.avatar_url,b.created_at FROM social_blocks b JOIN users u ON u.id=b.blocked_id LEFT JOIN user_profiles p ON p.user_id=u.id WHERE b.blocker_id=$1 AND u.status='active' ORDER BY b.created_at DESC LIMIT 200",[req.socialUserId]);
+    return res.set("Cache-Control","no-store").json({blockedUsers:r.rows});
+  }catch{return res.status(503).json({error:"Blocked accounts are temporarily unavailable."});}
+});
+router.delete("/blocks/:id",requireAuth,async(req,res)=>{
+  if(!uuid(req.params.id)||req.params.id===req.socialUserId)return res.status(400).json({error:"Invalid account."});
+  try{
+    const r=await req.app.locals.db.query("DELETE FROM social_blocks WHERE blocker_id=$1 AND blocked_id=$2 RETURNING blocked_id",[req.socialUserId,req.params.id]);
+    return r.rowCount?res.json({blocked:false}):res.status(404).json({error:"Blocked account not found."});
+  }catch{return res.status(503).json({error:"Account could not be unblocked."});}
+});
 router.post("/reports",reportCreateLimit,requireAuth,async(req,res)=>{
   const b=req.body||{};
   if(!["post","comment","user"].includes(b.targetType)||!uuid(b.targetId)||!["spam","harassment","hate","violence","nudity","misinformation","impersonation","other"].includes(b.reason)|| (b.details!==undefined && (typeof b.details!=="string"||b.details.length>500)))
