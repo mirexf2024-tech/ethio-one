@@ -29,7 +29,7 @@ async function requireAuth(req,res,next) {
   next();
 }
 const uuid=v=>typeof v==="string" && /^[0-9a-f-]{36}$/i.test(v);
-const safeMedia = media => Array.isArray(media) && media.length<=4 && media.every(x=>x && typeof x.url==="string" && x.url.startsWith("https://res.cloudinary.com/") && ["image","video"].includes(x.type));
+const safeMedia = media => Array.isArray(media) && media.length<=4 && media.every(x=>x && typeof x.publicId==="string" && x.publicId.length<=255 && typeof x.url==="string" && x.url.startsWith("https://res.cloudinary.com/") && x.url.includes("/upload/") && ["image","video"].includes(x.type));
 router.use(async(req,res,next)=>{
   if(!req.app.locals.db) return res.status(503).json({error:"Social service is temporarily unavailable."});
   next();
@@ -87,6 +87,14 @@ router.post("/posts",requireAuth,async(req,res)=>{
   if(body.length>2000 || (!body && !media.length) || !safeMedia(media) || !["public","followers"].includes(b.visibility||"public"))
     return res.status(400).json({error:"Check your post text and attachments."});
   try{
+    // Only attach Cloudinary assets that this signed-in account previously registered.
+    for (const item of media) {
+      const owned = await req.app.locals.db.query(
+        "SELECT id FROM media_assets WHERE user_id=$1 AND public_id=$2 AND secure_url=$3 AND resource_type=$4 LIMIT 1",
+        [req.socialUserId,item.publicId,item.url,item.type]
+      );
+      if (!owned.rowCount) return res.status(403).json({error:"One or more attachments do not belong to this account."});
+    }
     const r=await req.app.locals.db.query("INSERT INTO social_posts(user_id,body,media,visibility) VALUES($1,$2,$3::jsonb,$4) RETURNING id,body,media,visibility,created_at",
       [req.socialUserId,body,JSON.stringify(media),b.visibility||"public"]);
     return res.status(201).json({post:r.rows[0]});
