@@ -50,6 +50,12 @@ router.patch("/profile", async (req,res) => {
   }
   if(b.locale!==undefined && !["om","am","en"].includes(b.locale)) return res.status(400).json({error:"Unsupported language."});
   if(b.avatarUrl!==undefined && (typeof b.avatarUrl!=="string" || b.avatarUrl.length>1000 || !b.avatarUrl.startsWith("https://res.cloudinary.com/"))) return res.status(400).json({error:"Please use an approved profile image."});
+  if (b.avatarUrl !== undefined) {
+    try {
+      const owned = await req.app.locals.db.query("SELECT id FROM media_assets WHERE user_id=$1 AND secure_url=$2 AND resource_type='image' LIMIT 1", [req.account.id,b.avatarUrl]);
+      if (!owned.rowCount) return res.status(403).json({error:"This profile image does not belong to your account."});
+    } catch { return res.status(503).json({error:"Profile image could not be verified."}); }
+  }
   try {
     await req.app.locals.db.query(
       "INSERT INTO user_profiles (user_id,country,region,city,bio,avatar_url,locale) VALUES ($1,COALESCE($2,'Ethiopia'),$3,$4,$5,$6,COALESCE($7,'om')) ON CONFLICT (user_id) DO UPDATE SET country=COALESCE($2,user_profiles.country),region=COALESCE($3,user_profiles.region),city=COALESCE($4,user_profiles.city),bio=COALESCE($5,user_profiles.bio),avatar_url=COALESCE($6,user_profiles.avatar_url),locale=COALESCE($7,user_profiles.locale),updated_at=NOW()",
