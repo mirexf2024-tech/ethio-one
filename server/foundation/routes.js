@@ -113,6 +113,25 @@ router.get("/roles", async (req,res) => {
   } catch { return res.status(503).json({error:"Roles are temporarily unavailable."}); }
 });
 
+router.get("/notification-preferences",async(req,res)=>{
+  try{
+    const r=await req.app.locals.db.query("SELECT likes,comments,followers,messages FROM social_notification_preferences WHERE user_id=$1",[req.account.id]);
+    return res.set("Cache-Control","no-store").json({preferences:r.rows[0]||{likes:true,comments:true,followers:true,messages:true}});
+  }catch{return res.status(503).json({error:"Notification preferences are temporarily unavailable."});}
+});
+router.patch("/notification-preferences",async(req,res)=>{
+  const b=req.body||{};
+  const keys=["likes","comments","followers","messages"];
+  if(!keys.some(k=>typeof b[k]==="boolean") || keys.some(k=>b[k]!==undefined && typeof b[k]!=="boolean"))
+    return res.status(400).json({error:"Choose valid notification preferences."});
+  try{
+    const r=await req.app.locals.db.query(
+      "INSERT INTO social_notification_preferences(user_id,likes,comments,followers,messages) VALUES($1,COALESCE($2,TRUE),COALESCE($3,TRUE),COALESCE($4,TRUE),COALESCE($5,TRUE)) ON CONFLICT(user_id) DO UPDATE SET likes=COALESCE($2,social_notification_preferences.likes),comments=COALESCE($3,social_notification_preferences.comments),followers=COALESCE($4,social_notification_preferences.followers),messages=COALESCE($5,social_notification_preferences.messages),updated_at=NOW() RETURNING likes,comments,followers,messages",
+      [req.account.id,b.likes??null,b.comments??null,b.followers??null,b.messages??null]);
+    return res.set("Cache-Control","no-store").json({preferences:r.rows[0]});
+  }catch{return res.status(503).json({error:"Notification preferences could not be saved."});}
+});
+
 router.get("/notifications", async (req,res) => {
   const limit=Math.min(50,Math.max(1,Number.parseInt(req.query.limit,10)||20));
   try {
