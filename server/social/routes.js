@@ -520,28 +520,36 @@ router.get("/calls/incoming",requireAuth,async(req,res)=>{
 router.post("/conversations/:id/calls",interactionLimit,requireAuth,async(req,res)=>{
  const type=req.body?.type;
  const offer=req.body?.offer;
- if(!uuid(req.params.id)||!["audio","video"].includes(type)||!offer||typeof offer!=="object"||JSON.stringify(offer).length>30000)
+ if(!uuid(req.params.id)||!["audio","video"].includes(type)||!offer||typeof offer!=="object"||Array.isArray(offer)||JSON.stringify(offer).length>30000)
   return res.status(400).json({error:"Invalid call request."});
+ const db=req.app.locals.db;
+ let client,committed=false;
  try{
-  const c=await req.app.locals.db.query(
+  client=await db.connect();
+  await client.query("BEGIN");
+  const c=await client.query(
    `SELECT participant_one_id,participant_two_id FROM social_conversations
     WHERE id=$1 AND (participant_one_id=$2 OR participant_two_id=$2)`,[req.params.id,req.socialUserId]);
-  if(!c.rowCount)return res.status(404).json({error:"Conversation not found."});
+  if(!c.rowCount){await client.query("ROLLBACK");return res.status(404).json({error:"Conversation not found."});}
   const recipient=c.rows[0].participant_one_id===req.socialUserId?c.rows[0].participant_two_id:c.rows[0].participant_one_id;
-  const block=await req.app.locals.db.query("SELECT 1 FROM social_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1)",[req.socialUserId,recipient]);
-  if(block.rowCount)return res.status(403).json({error:"Calling is unavailable for this account."});
-  const call=await req.app.locals.db.query(
+  const block=await client.query("SELECT 1 FROM social_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1)",[req.socialUserId,recipient]);
+  if(block.rowCount){await client.query("ROLLBACK");return res.status(403).json({error:"Calling is unavailable for this account."});}
+  const call=await client.query(
    "INSERT INTO social_calls(conversation_id,caller_id,callee_id,call_type) VALUES($1,$2,$3,$4) RETURNING id,conversation_id,call_type,status,created_at",
    [req.params.id,req.socialUserId,recipient,type]);
-  await req.app.locals.db.query("INSERT INTO social_call_signals(call_id,sender_id,signal_type,payload) VALUES($1,$2,'offer',$3::jsonb)",[call.rows[0].id,req.socialUserId,JSON.stringify(offer)]);
-  await req.app.locals.db.query(
+  await client.query("INSERT INTO social_call_signals(call_id,sender_id,signal_type,payload) VALUES($1,$2,'offer',$3::jsonb)",[call.rows[0].id,req.socialUserId,JSON.stringify(offer)]);
+  await client.query("COMMIT");
+  committed=true;
+  await client.query(
    "INSERT INTO notifications(user_id,title,body,kind,data) VALUES($1,$2,$3,'social_call',$4::jsonb)",
-   [recipient,type==="video"?"Incoming video call":"Incoming audio call","Someone is calling you on Ethio Social.",JSON.stringify({callId:call.rows[0].id,conversationId:req.params.id,callType:type})]);
+   [recipient,type==="video"?"Incoming video call":"Incoming audio call","Someone is calling you on Ethio Social.",JSON.stringify({callId:call.rows[0].id,conversationId:req.params.id,callType:type})]
+  ).catch(()=>{});
   return res.status(201).json({call:call.rows[0],recipientId:recipient,iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]});
  }catch(e){
+  if(client&&!committed)await client.query("ROLLBACK").catch(()=>{});
   if(e&&e.code==="23505")return res.status(409).json({error:"A call is already active in this conversation."});
   return res.status(503).json({error:"Call could not be started."});
- }
+ }finally{client?.release();}
 });
 router.get("/calls/:id",requireAuth,async(req,res)=>{
  if(!uuid(req.params.id))return res.status(400).json({error:"Invalid call."});
