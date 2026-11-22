@@ -134,19 +134,24 @@ router.get("/feed",async(req,res)=>{
   const cursor=typeof req.query.before==="string" && uuid(req.query.before)?req.query.before:null;
   try{
     const feed=req.query.feed==="following"?"following":"all";
-    const values=[req.socialUserId,limit,feed]; let cursorSql="";
-    if(cursor){values.push(cursor);cursorSql=" AND p.created_at < (SELECT created_at FROM social_posts WHERE id=$4)";}
+    const type=["video","photo","text"].includes(req.query.type)?req.query.type:"all";
+    const values=[req.socialUserId,limit,feed,type]; let cursorSql="";
+    if(cursor){values.push(cursor);cursorSql=" AND p.created_at < (SELECT created_at FROM social_posts WHERE id=$5)";}
     const q=await req.app.locals.db.query(
       `SELECT p.id,p.body,p.media,p.visibility,p.created_at,u.id AS author_id,u.username,u.full_name,up.avatar_url,
        (SELECT COUNT(*)::int FROM social_likes l WHERE l.post_id=p.id) AS like_count,
        (SELECT COUNT(*)::int FROM social_comments c WHERE c.post_id=p.id AND c.status='published') AS comment_count,
        (SELECT COUNT(*)::int FROM social_post_views v WHERE v.post_id=p.id) AS video_view_count,
+       (SELECT COUNT(*)::int FROM social_post_impressions i WHERE i.post_id=p.id) AS impression_count,
+       (SELECT COUNT(DISTINCT i.user_id)::int FROM social_post_impressions i WHERE i.post_id=p.id) AS reach_count,
+       (SELECT COUNT(*)::int FROM social_post_shares sh WHERE sh.post_id=p.id) AS share_count,
        COALESCE((SELECT show_video_views FROM user_profiles WHERE user_id=p.user_id),TRUE) AS show_video_views,
        CASE WHEN $1::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_likes l WHERE l.post_id=p.id AND l.user_id=$1) END AS liked,
        CASE WHEN $1::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_bookmarks b WHERE b.post_id=p.id AND b.user_id=$1) END AS bookmarked
        FROM social_posts p JOIN users u ON u.id=p.user_id LEFT JOIN user_profiles up ON up.user_id=u.id
        WHERE p.status='published' AND (p.user_id=$1 OR p.visibility='public' OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$1 AND f.following_id=p.user_id))
        AND ($3::text <> 'following' OR EXISTS(SELECT 1 FROM social_follows ff WHERE ff.follower_id=$1 AND ff.following_id=p.user_id))
+       AND ($4::text='all' OR ($4::text='video' AND EXISTS(SELECT 1 FROM jsonb_array_elements(COALESCE(p.media,'[]'::jsonb)) m WHERE m->>'type'='video')) OR ($4::text='photo' AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(COALESCE(p.media,'[]'::jsonb)) m WHERE m->>'type'='video') AND EXISTS(SELECT 1 FROM jsonb_array_elements(COALESCE(p.media,'[]'::jsonb)) m WHERE m->>'type'='image')) OR ($4::text='text' AND jsonb_array_length(COALESCE(p.media,'[]'::jsonb))=0))
        AND (COALESCE((SELECT profile_visibility FROM user_profiles WHERE user_id=p.user_id),'public')='public' OR p.user_id=$1 OR EXISTS(SELECT 1 FROM social_follows pv WHERE pv.follower_id=$1 AND pv.following_id=p.user_id)) AND ($1::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$1)))
        ${cursorSql} ORDER BY p.created_at DESC LIMIT $2`,values);
     return res.set("Cache-Control","no-store").json({posts:q.rows});
@@ -617,6 +622,56 @@ router.patch("/calls/:id",requireAuth,async(req,res)=>{
 
 
 /* Video view insights: one counted view per signed-in account and video. */
+/* Creator analytics: one feed impression per account, post and day. */
+router.post("/posts/:id/impression",interactionLimit,requireAuth,async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid post."});
+ try{
+  const visible=await req.app.locals.db.query(
+   \`SELECT p.id,p.user_id FROM social_posts p LEFT JOIN user_profiles up ON up.user_id=p.user_id
+    WHERE p.id=$1 AND p.status='published'
+    AND (p.user_id=$2 OR p.visibility='public' OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id))
+    AND (COALESCE(up.profile_visibility,'public')='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id))
+    AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2))\`,
+   [req.params.id,req.socialUserId]);
+  if(!visible.rowCount)return res.status(404).json({error:"Post not found."});
+  if(visible.rows[0].user_id===req.socialUserId)return res.json({recorded:false});
+  await req.app.locals.db.query("INSERT INTO social_post_impressions(post_id,user_id) VALUES($1,$2) ON CONFLICT(post_id,user_id,impression_day) DO NOTHING",[req.params.id,req.socialUserId]);
+  const counts=await req.app.locals.db.query("SELECT COUNT(*)::int AS impressions,COUNT(DISTINCT user_id)::int AS reach FROM social_post_impressions WHERE post_id=$1",[req.params.id]);
+  return res.set("Cache-Control","no-store").json({recorded:true,...counts.rows[0]});
+ }catch{return res.status(503).json({error:"Post impression could not be recorded."});}
+});
+router.post("/posts/:id/share",interactionLimit,requireAuth,async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid post."});
+ try{
+  const visible=await req.app.locals.db.query(
+   \`SELECT p.id FROM social_posts p LEFT JOIN user_profiles up ON up.user_id=p.user_id
+    WHERE p.id=$1 AND p.status='published' AND (p.user_id=$2 OR p.visibility='public' OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id))
+    AND (COALESCE(up.profile_visibility,'public')='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id))
+    AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2))\`,
+   [req.params.id,req.socialUserId]);
+  if(!visible.rowCount)return res.status(404).json({error:"Post not found."});
+  await req.app.locals.db.query("INSERT INTO social_post_shares(post_id,user_id) VALUES($1,$2)",[req.params.id,req.socialUserId]);
+  return res.json({ok:true});
+ }catch{return res.status(503).json({error:"Share could not be recorded."});}
+});
+router.get("/creator/analytics",requireAuth,async(req,res)=>{
+ const days=Math.min(90,Math.max(7,Number.parseInt(req.query.days,10)||30));
+ try{
+  const q=await req.app.locals.db.query(
+   \`SELECT COUNT(DISTINCT p.id)::int AS posts,
+    COALESCE(SUM((SELECT COUNT(*) FROM social_post_impressions i WHERE i.post_id=p.id AND i.impression_day>=CURRENT_DATE-($2::int-1))),0)::int AS impressions,
+    COALESCE(SUM((SELECT COUNT(DISTINCT i.user_id) FROM social_post_impressions i WHERE i.post_id=p.id AND i.impression_day>=CURRENT_DATE-($2::int-1))),0)::int AS reach,
+    COALESCE(SUM((SELECT COUNT(*) FROM social_post_views v WHERE v.post_id=p.id AND v.viewed_at>=NOW()-($2::int||' days')::interval)),0)::int AS video_views,
+    COALESCE(SUM((SELECT COUNT(*) FROM social_likes l WHERE l.post_id=p.id AND l.created_at>=NOW()-($2::int||' days')::interval)),0)::int AS likes,
+    COALESCE(SUM((SELECT COUNT(*) FROM social_comments c WHERE c.post_id=p.id AND c.status='published' AND c.created_at>=NOW()-($2::int||' days')::interval)),0)::int AS comments,
+    COALESCE(SUM((SELECT COUNT(*) FROM social_post_shares sh WHERE sh.post_id=p.id AND sh.shared_at>=NOW()-($2::int||' days')::interval)),0)::int AS shares,
+    COALESCE(SUM((SELECT COUNT(*) FROM social_bookmarks b WHERE b.post_id=p.id AND b.created_at>=NOW()-($2::int||' days')::interval)),0)::int AS saves
+    FROM social_posts p WHERE p.user_id=$1 AND p.status='published' AND p.created_at>=NOW()-($2::int||' days')::interval\`,
+   [req.socialUserId,days]);
+  const a=q.rows[0],engagement=Number(a.likes)+Number(a.comments)+Number(a.shares)+Number(a.saves);
+  return res.set("Cache-Control","no-store").json({periodDays:days,...a,engagement,engagementRate:Number(a.reach)>0?Number((engagement/Number(a.reach)*100).toFixed(2)):0});
+ }catch{return res.status(503).json({error:"Creator analytics are temporarily unavailable."});}
+});
 router.post("/posts/:id/view",interactionLimit,requireAuth,async(req,res)=>{
  if(!uuid(req.params.id))return res.status(400).json({error:"Invalid post."});
  try{
