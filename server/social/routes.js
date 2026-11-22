@@ -36,6 +36,7 @@ const commentCreateLimit=actionLimiter(15,60*1000,"You are commenting too quickl
 const reportCreateLimit=actionLimiter(5,15*60*1000,"You have reached the report limit. Please try again later.");
 const storyCreateLimit=actionLimiter(4,60*60*1000,"You have reached the story limit. Please try again later.");
 const messageCreateLimit=actionLimiter(20,60*1000,"You are sending messages too quickly. Please wait a moment.");
+const interactionLimit=actionLimiter(60,60*1000,"You are doing that too quickly. Please wait a moment.");
 const safeMedia = media => Array.isArray(media) && media.length<=4 && media.every(x=>x && typeof x.publicId==="string" && x.publicId.length<=255 && typeof x.url==="string" && x.url.startsWith("https://res.cloudinary.com/") && x.url.includes("/upload/") && ["image","video"].includes(x.type));
 router.use(async(req,res,next)=>{
   if(!req.app.locals.db) return res.status(503).json({error:"Social service is temporarily unavailable."});
@@ -114,7 +115,7 @@ router.delete("/posts/:id",requireAuth,async(req,res)=>{
     return r.rowCount?res.json({ok:true}):res.status(404).json({error:"Post not found."});
   }catch{return res.status(503).json({error:"Post could not be removed."});}
 });
-router.post("/posts/:id/like",requireAuth,async(req,res)=>{
+router.post("/posts/:id/like",interactionLimit,requireAuth,async(req,res)=>{
   if(!uuid(req.params.id)) return res.status(400).json({error:"Invalid post."});
   try{
     const c=await req.app.locals.db.connect(); await c.query("BEGIN");
@@ -144,7 +145,7 @@ router.post("/posts/:id/comments",commentCreateLimit,requireAuth,async(req,res)=
     return res.status(201).json({comment:r.rows[0]});
   }catch{return res.status(503).json({error:"Comment could not be added."});}
 });
-router.post("/posts/:id/bookmark",requireAuth,async(req,res)=>{
+router.post("/posts/:id/bookmark",interactionLimit,requireAuth,async(req,res)=>{
   if(!uuid(req.params.id)) return res.status(400).json({error:"Invalid post."});
   const client=await req.app.locals.db.connect();
   try{
@@ -159,7 +160,7 @@ router.post("/posts/:id/bookmark",requireAuth,async(req,res)=>{
   }catch{await client.query("ROLLBACK").catch(()=>{});return res.status(503).json({error:"Bookmark could not be updated."});}
   finally{client.release();}
 });
-router.post("/users/:id/follow",requireAuth,async(req,res)=>{
+router.post("/users/:id/follow",interactionLimit,requireAuth,async(req,res)=>{
   if(!uuid(req.params.id)||req.params.id===req.socialUserId) return res.status(400).json({error:"Invalid account."});
   try{
     const target=await req.app.locals.db.query("SELECT id FROM users WHERE id=$1 AND status='active'",[req.params.id]);
@@ -173,7 +174,7 @@ router.post("/users/:id/follow",requireAuth,async(req,res)=>{
     return res.json({following});
   }catch{return res.status(503).json({error:"Follow could not be updated."});}
 });
-router.post("/users/:id/block",requireAuth,async(req,res)=>{
+router.post("/users/:id/block",interactionLimit,requireAuth,async(req,res)=>{
   if(!uuid(req.params.id)||req.params.id===req.socialUserId) return res.status(400).json({error:"Invalid account."});
   try{
     await req.app.locals.db.query("INSERT INTO social_blocks(blocker_id,blocked_id) VALUES($1,$2) ON CONFLICT DO NOTHING",[req.socialUserId,req.params.id]);
@@ -187,7 +188,7 @@ router.get("/blocks",requireAuth,async(req,res)=>{
     return res.set("Cache-Control","no-store").json({blockedUsers:r.rows});
   }catch{return res.status(503).json({error:"Blocked accounts are temporarily unavailable."});}
 });
-router.delete("/blocks/:id",requireAuth,async(req,res)=>{
+router.delete("/blocks/:id",interactionLimit,requireAuth,async(req,res)=>{
   if(!uuid(req.params.id)||req.params.id===req.socialUserId)return res.status(400).json({error:"Invalid account."});
   try{
     const r=await req.app.locals.db.query("DELETE FROM social_blocks WHERE blocker_id=$1 AND blocked_id=$2 RETURNING blocked_id",[req.socialUserId,req.params.id]);
@@ -266,7 +267,7 @@ router.post("/stories",storyCreateLimit,requireAuth,async(req,res)=>{
   return res.status(201).json({story:r.rows[0]});
  }catch{return res.status(503).json({error:"Story could not be published."});}
 });
-router.post("/stories/:id/view",requireAuth,async(req,res)=>{
+router.post("/stories/:id/view",interactionLimit,requireAuth,async(req,res)=>{
  if(!uuid(req.params.id))return res.status(400).json({error:"Invalid story."});
  try{
   const allowed=await req.app.locals.db.query("SELECT s.id FROM social_stories s WHERE s.id=$1 AND s.expires_at>NOW() AND (s.user_id=$2 OR ((COALESCE((SELECT profile_visibility FROM user_profiles WHERE user_id=s.user_id),'public')='public' OR EXISTS(SELECT 1 FROM social_follows pf WHERE pf.follower_id=$2 AND pf.following_id=s.user_id)) AND (s.visibility='public' OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=s.user_id)))) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=s.user_id) OR (b.blocker_id=s.user_id AND b.blocked_id=$2))",[req.params.id,req.socialUserId]);
