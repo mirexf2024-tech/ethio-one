@@ -34,7 +34,7 @@ router.use(async (req,res,next) => {
 router.get("/profile", async (req,res) => {
   try {
     const [p,r] = await Promise.all([
-      req.app.locals.db.query("SELECT country,region,city,bio,avatar_url,locale,updated_at FROM user_profiles WHERE user_id=$1",[req.account.id]),
+      req.app.locals.db.query("SELECT country,region,city,bio,avatar_url,locale,profile_visibility,updated_at FROM user_profiles WHERE user_id=$1",[req.account.id]),
       req.app.locals.db.query("SELECT ur.role_key, r.display_name, COALESCE(array_agg(rp.permission_key) FILTER (WHERE rp.permission_key IS NOT NULL),'{}') AS permissions FROM user_roles ur JOIN roles r ON r.role_key=ur.role_key LEFT JOIN role_permissions rp ON rp.role_key=ur.role_key WHERE ur.user_id=$1 GROUP BY ur.role_key,r.display_name",[req.account.id])
     ]);
     return res.set("Cache-Control","no-store").json({user:{id:req.account.id,ethioId:req.account.ethio_id,fullName:req.account.full_name,username:req.account.username,email:req.account.email,phone:req.account.phone,identityVerificationStatus:req.account.identity_verification_status||"unverified",identityVerificationUpdatedAt:req.account.identity_verification_updated_at||null,profile:p.rows[0]||{country:"Ethiopia",locale:"om"}},roles:r.rows});
@@ -43,13 +43,14 @@ router.get("/profile", async (req,res) => {
 
 router.patch("/profile", async (req,res) => {
   const b=req.body||{};
-  const fields={country: b.country, region:b.region, city:b.city, bio:b.bio, locale:b.locale};
+  const fields={country: b.country, region:b.region, city:b.city, bio:b.bio, locale:b.locale, profileVisibility:b.profileVisibility};
   for(const [key,value] of Object.entries(fields)) {
     if(value===undefined) continue;
-    const max={country:80,region:100,city:100,bio:280,locale:5}[key];
+    const max={country:80,region:100,city:100,bio:280,locale:5,profileVisibility:16}[key];
     if(typeof value!=="string" || value.length>max || /[\\r\\n]/.test(value)) return res.status(400).json({error:"Please check your profile details."});
   }
   if(b.locale!==undefined && !["om","am","en"].includes(b.locale)) return res.status(400).json({error:"Unsupported language."});
+  if(b.profileVisibility!==undefined && !["public","followers"].includes(b.profileVisibility)) return res.status(400).json({error:"Choose a valid profile privacy setting."});
   if(b.avatarUrl!==undefined && (typeof b.avatarUrl!=="string" || b.avatarUrl.length>1000 || !b.avatarUrl.startsWith("https://res.cloudinary.com/"))) return res.status(400).json({error:"Please use an approved profile image."});
   if (b.avatarUrl !== undefined) {
     try {
@@ -59,8 +60,8 @@ router.patch("/profile", async (req,res) => {
   }
   try {
     await req.app.locals.db.query(
-      "INSERT INTO user_profiles (user_id,country,region,city,bio,avatar_url,locale) VALUES ($1,COALESCE($2,'Ethiopia'),$3,$4,$5,$6,COALESCE($7,'om')) ON CONFLICT (user_id) DO UPDATE SET country=COALESCE($2,user_profiles.country),region=COALESCE($3,user_profiles.region),city=COALESCE($4,user_profiles.city),bio=COALESCE($5,user_profiles.bio),avatar_url=COALESCE($6,user_profiles.avatar_url),locale=COALESCE($7,user_profiles.locale),updated_at=NOW()",
-      [req.account.id,b.country??null,b.region??null,b.city??null,b.bio??null,b.avatarUrl??null,b.locale??null]);
+      "INSERT INTO user_profiles (user_id,country,region,city,bio,avatar_url,locale,profile_visibility) VALUES ($1,COALESCE($2,'Ethiopia'),$3,$4,$5,$6,COALESCE($7,'om'),COALESCE($8,'public')) ON CONFLICT (user_id) DO UPDATE SET country=COALESCE($2,user_profiles.country),region=COALESCE($3,user_profiles.region),city=COALESCE($4,user_profiles.city),bio=COALESCE($5,user_profiles.bio),avatar_url=COALESCE($6,user_profiles.avatar_url),locale=COALESCE($7,user_profiles.locale),profile_visibility=COALESCE($8,user_profiles.profile_visibility),updated_at=NOW()",
+      [req.account.id,b.country??null,b.region??null,b.city??null,b.bio??null,b.avatarUrl??null,b.locale??null,b.profileVisibility??null]);
     return res.json({ok:true});
   } catch { return res.status(503).json({error:"Profile could not be updated."}); }
 });
