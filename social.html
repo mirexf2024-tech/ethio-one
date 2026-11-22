@@ -435,13 +435,13 @@ function stopRinging(){
 }
 function startRinging(){
  stopRinging();
- const ring=()=>{if(navigator.vibrate)navigator.vibrate([220,120,220])};
- ring();
- ringTimer=setInterval(ring,2600);
+ const vibrate=()=>{if(navigator.vibrate)navigator.vibrate([220,120,220])};
+ const AudioCtx=window.AudioContext||window.webkitAudioContext;
+ let beep=()=>{};
  try{
-  const AudioCtx=window.AudioContext||window.webkitAudioContext;
-  if(AudioCtx){ringContext=new AudioCtx();const beep=()=>{if(!ringContext||ringContext.state==="closed")return;const osc=ringContext.createOscillator(),gain=ringContext.createGain();osc.frequency.value=440;gain.gain.setValueAtTime(.0001,ringContext.currentTime);gain.gain.exponentialRampToValueAtTime(.07,ringContext.currentTime+.04);gain.gain.exponentialRampToValueAtTime(.0001,ringContext.currentTime+.42);osc.connect(gain);gain.connect(ringContext.destination);osc.start();osc.stop(ringContext.currentTime+.45)};beep();ringTimer=setInterval(beep,1800)}
+  if(AudioCtx){ringContext=new AudioCtx();beep=()=>{if(!ringContext||ringContext.state==="closed")return;const osc=ringContext.createOscillator(),gain=ringContext.createGain();osc.frequency.value=440;gain.gain.setValueAtTime(.0001,ringContext.currentTime);gain.gain.exponentialRampToValueAtTime(.055,ringContext.currentTime+.04);gain.gain.exponentialRampToValueAtTime(.0001,ringContext.currentTime+.36);osc.connect(gain);gain.connect(ringContext.destination);osc.start();osc.stop(ringContext.currentTime+.4)}}
  }catch{}
+ const ring=()=>{vibrate();beep()};ring();ringTimer=setInterval(ring,2200);
 }
 function stopCallMedia(){
  stopRinging();
@@ -565,9 +565,14 @@ async function endSocialCall(){
  stopCallMedia();
 }
 async function pollIncomingCalls(){
- if(!token()||activeCall||incomingCallId||incomingPollBusy||document.hidden)return;
+ if(!token()||activeCall||incomingPollBusy)return;
  incomingPollBusy=true;
  try{
+  if(incomingCallId){
+   const current=await callApi("/calls/"+incomingCallId+"?after=0");
+   if(current.call.status!=="ringing"){stopRinging();incomingCallId=null;$("#incomingCallModal").classList.remove("open");if(current.call.status==="ended"||current.call.status==="rejected")toast(callText("callEnded"))}
+   return;
+  }
   const d=await callApi("/calls/incoming"),call=(d.calls||[])[0];if(!call)return;
   incomingCallId=call.id;const name=call.full_name||call.username||"Ethio Social member";
   $("#incomingCallName").textContent=name;$("#incomingCallType").textContent=call.call_type==="video"?callText("callIncomingVideo"):callText("callIncomingAudio");
