@@ -659,8 +659,8 @@ router.get("/creator/analytics",requireAuth,async(req,res)=>{
  const days=Math.min(90,Math.max(7,Number.parseInt(req.query.days,10)||30));
  try{
   const q=await req.app.locals.db.query(
-   `WITH mine AS (SELECT id FROM social_posts WHERE user_id=$1 AND status='published' AND created_at>=NOW()-($2::int||' days')::interval)
-    SELECT (SELECT COUNT(*)::int FROM mine) AS posts,
+   `WITH mine AS (SELECT id,created_at FROM social_posts WHERE user_id=$1 AND status='published')
+    SELECT (SELECT COUNT(*)::int FROM mine WHERE created_at>=NOW()-($2::int||' days')::interval) AS posts,
      (SELECT COUNT(*)::int FROM social_post_impressions i JOIN mine p ON p.id=i.post_id WHERE i.impression_day>=CURRENT_DATE-($2::int-1)) AS impressions,
      (SELECT COUNT(DISTINCT i.user_id)::int FROM social_post_impressions i JOIN mine p ON p.id=i.post_id WHERE i.impression_day>=CURRENT_DATE-($2::int-1)) AS reach,
      (SELECT COUNT(*)::int FROM social_post_views v JOIN mine p ON p.id=v.post_id WHERE v.viewed_at>=NOW()-($2::int||' days')::interval) AS video_views,
