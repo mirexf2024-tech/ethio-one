@@ -628,11 +628,11 @@ router.post("/posts/:id/impression",interactionLimit,requireAuth,async(req,res)=
  if(!uuid(req.params.id))return res.status(400).json({error:"Invalid post."});
  try{
   const visible=await req.app.locals.db.query(
-   \`SELECT p.id,p.user_id FROM social_posts p LEFT JOIN user_profiles up ON up.user_id=p.user_id
+   `SELECT p.id,p.user_id FROM social_posts p LEFT JOIN user_profiles up ON up.user_id=p.user_id
     WHERE p.id=$1 AND p.status='published'
     AND (p.user_id=$2 OR p.visibility='public' OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id))
     AND (COALESCE(up.profile_visibility,'public')='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id))
-    AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2))\`,
+    AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2))`,
    [req.params.id,req.socialUserId]);
   if(!visible.rowCount)return res.status(404).json({error:"Post not found."});
   if(visible.rows[0].user_id===req.socialUserId)return res.json({recorded:false});
@@ -645,10 +645,10 @@ router.post("/posts/:id/share",interactionLimit,requireAuth,async(req,res)=>{
  if(!uuid(req.params.id))return res.status(400).json({error:"Invalid post."});
  try{
   const visible=await req.app.locals.db.query(
-   \`SELECT p.id FROM social_posts p LEFT JOIN user_profiles up ON up.user_id=p.user_id
+   `SELECT p.id FROM social_posts p LEFT JOIN user_profiles up ON up.user_id=p.user_id
     WHERE p.id=$1 AND p.status='published' AND (p.user_id=$2 OR p.visibility='public' OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id))
     AND (COALESCE(up.profile_visibility,'public')='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id))
-    AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2))\`,
+    AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2))`,
    [req.params.id,req.socialUserId]);
   if(!visible.rowCount)return res.status(404).json({error:"Post not found."});
   await req.app.locals.db.query("INSERT INTO social_post_shares(post_id,user_id) VALUES($1,$2)",[req.params.id,req.socialUserId]);
