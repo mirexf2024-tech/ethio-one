@@ -435,7 +435,7 @@ async function loadGroupMessages(id){
    return '<div class="message-row '+(m.sender_id===myUserId?"mine":"")+'" data-group-message="'+esc(m.id)+'"><div class="message-bubble"><small class="hint">'+esc(m.full_name||m.username||"Member")+' · '+esc(m.role||"member")+'</small><div>'+(m.body?esc(m.body):"")+media+'</div><small class="message-meta">'+esc(time(m.created_at))+'</small>'+((m.sender_id===myUserId||["admin","moderator"].includes(groupCurrentRole))?'<button type="button" class="group-manage-btn" data-delete-group-message="'+esc(m.id)+'">Delete</button>':"")+'</div></div>';
   }).join("")||'<p class="hint">No messages yet. Say hello to your group.</p>';
   list.scrollTop=list.scrollHeight;
- }catch(e){list.textContent=e.message}
+ }catch(e){if(activeConversationKind==="group"&&window.activeConversation===id)list.textContent=e.message}
 }
 $("#newGroupBtn").onclick=()=>{$("#createGroupModal").classList.add("open");$("#newGroupName").focus()};
 $("#createGroupSubmit").onclick=async()=>{
@@ -515,6 +515,7 @@ async function loadMessages(id){
  if(!id)return;
  try{
   const d=await api("/conversations/"+id+"/messages?limit=50"),list=$("#messageList");
+  if(activeConversationKind!=="private"||window.activeConversation!==id)return;
   list.innerHTML=(d.messages||[]).map(m=>{
    const media=Array.isArray(m.media)?m.media.map(x=>x.type==="image"?'<img class="message-attachment" src="'+esc(x.url)+'" alt="Shared photo">':x.type==="video"?'<video class="message-attachment" controls playsinline src="'+esc(x.url)+'"></video>':'<a class="message-file" target="_blank" rel="noopener" href="'+esc(x.url)+'">📄 '+esc(x.name||"Open file")+'</a>').join(""):"";
    return '<div class="message-row '+(m.sender_id===myUserId?"mine":"")+'"><div class="message-bubble">'+(m.body?esc(m.body):"")+media+'<small class="message-meta">'+esc(time(m.created_at))+(m.sender_id===myUserId?(m.read_at?" · Read":" · Sent"):"")+'</small></div></div>';
