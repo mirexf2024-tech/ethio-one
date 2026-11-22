@@ -6,6 +6,27 @@
 header{background:var(--navy);color:white;padding:15px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px}header a{color:white;text-decoration:none;font-weight:800}header b{color:var(--gold)}
 main{max-width:920px;margin:28px auto;padding:0 16px}.intro,.report{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 8px 26px #082b590b}.intro{padding:20px;margin-bottom:16px}.intro h1{margin:0 0 6px;font-size:22px;color:var(--navy)}.muted{color:var(--muted);font-size:12px}
 #queue{display:grid;gap:12px}.report{padding:16px}.head{display:flex;justify-content:space-between;gap:12px;align-items:center}.tag{font-size:10px;font-weight:800;border-radius:30px;padding:5px 9px;background:#fff4d2;color:#735500}.meta{font-size:11px;color:#7b8798;margin:9px 0}.details{white-space:pre-wrap;overflow-wrap:anywhere;background:#f7f9fc;padding:10px;border-radius:9px;font-size:12px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.actions button{border:0;border-radius:9px;padding:9px 12px;font-size:11px;font-weight:800;cursor:pointer}.review{background:#e9f1fc;color:#174d83}.resolve{background:#e7f6ed;color:#17633b}.dismiss{background:#fceeee;color:#9c2b2b}.remove{background:#9c2b2b;color:white}.empty{padding:38px;text-align:center;background:#fff;border:1px dashed #d5dfeb;border-radius:14px;color:var(--muted)}button:disabled{opacity:.5;cursor:wait}
+
+/* Ethio One moderation workspace — unified premium UI */
+:root{--navy:#082b59;--gold:#d9a928;--ink:#102d50;--muted:#68788f;--line:#e3eaf3;--bg:#f3f6fb}
+body{background:radial-gradient(circle at 92% 0%,#e6edf8 0,transparent 30%),var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,sans-serif}
+header{padding:16px max(18px,calc((100vw - 1120px)/2));background:linear-gradient(105deg,#061a35,#082b59 75%,#104477);box-shadow:0 8px 24px #082b591e}
+header a{font-size:14px}header b{color:#f0c84e}
+main{max-width:980px;margin:30px auto;padding:0 18px}
+.intro,.report{border:1px solid var(--line);border-radius:19px;box-shadow:0 8px 24px #10233a08}
+.intro{padding:23px;background:linear-gradient(135deg,#fff,#f8fafd)}
+.intro h1{font-size:25px;letter-spacing:-.04em;color:var(--navy)}
+#status{margin-top:12px;padding:9px 12px;border-radius:10px;background:#f1f5fa;color:#53657c}
+.report{padding:19px}.head{align-items:flex-start}.tag{border-radius:99px;padding:6px 11px;background:#fff4d2;color:#735500}
+.meta{font-size:11px;color:#75849a}.details{border:1px solid #e6edf5;border-radius:12px;background:#f7f9fc;line-height:1.65}
+.actions button{border-radius:10px;padding:10px 14px;transition:transform .15s,filter .15s}
+.actions button:hover{transform:translateY(-1px);filter:brightness(.97)}
+.review{background:#eaf2fc;color:#174d83}.resolve{background:#e7f6ed;color:#17633b}.dismiss{background:#fceeee;color:#9c2b2b}
+.empty{border:1px dashed #d5dfeb;border-radius:18px;padding:46px 20px}
+button:focus-visible,a:focus-visible{outline:3px solid #d9a92888;outline-offset:2px}
+@media(max-width:620px){header{padding:14px 16px}main{margin:16px auto;padding:0 12px}.intro,.report{border-radius:15px;padding:16px}.head{flex-direction:column;align-items:flex-start}.actions button{flex:1}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+
 </style></head><body>
 <header><a href="/">Ethio <b>One</b> · Moderation</a><a href="/social.html">Back to Social</a></header>
 <main><section class="intro"><h1>Community reports</h1><p class="muted">Review reported content and record a moderation decision. Only moderator, admin and super admin accounts can access this queue.</p><div class="muted" id="status">Loading moderation queue…</div></section><section id="queue"><div class="empty">Loading reports…</div></section></main>
