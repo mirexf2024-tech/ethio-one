@@ -146,12 +146,18 @@ router.post("/posts/:id/comments",commentCreateLimit,requireAuth,async(req,res)=
 });
 router.post("/posts/:id/bookmark",requireAuth,async(req,res)=>{
   if(!uuid(req.params.id)) return res.status(400).json({error:"Invalid post."});
+  const client=await req.app.locals.db.connect();
   try{
-    const prior=await req.app.locals.db.query("DELETE FROM social_bookmarks WHERE post_id=$1 AND user_id=$2 RETURNING post_id",[req.params.id,req.socialUserId]);
+    await client.query("BEGIN");
+    const visible=await client.query("SELECT p.id FROM social_posts p WHERE p.id=$1 AND p.status='published' AND (p.visibility='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id)) AND (COALESCE((SELECT profile_visibility FROM user_profiles WHERE user_id=p.user_id),'public')='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows pv WHERE pv.follower_id=$2 AND pv.following_id=p.user_id)) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2)) FOR UPDATE",[req.params.id,req.socialUserId]);
+    if(!visible.rowCount){await client.query("ROLLBACK");return res.status(404).json({error:"Post not found."});}
+    const prior=await client.query("DELETE FROM social_bookmarks WHERE post_id=$1 AND user_id=$2 RETURNING post_id",[req.params.id,req.socialUserId]);
     const saved=!prior.rowCount;
-    if(saved) await req.app.locals.db.query("INSERT INTO social_bookmarks(user_id,post_id) SELECT $1,p.id FROM social_posts p WHERE p.id=$2 AND p.status='published' AND (p.visibility='public' OR p.user_id=$1 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$1 AND f.following_id=p.user_id)) AND (COALESCE((SELECT profile_visibility FROM user_profiles WHERE user_id=p.user_id),'public')='public' OR p.user_id=$1 OR EXISTS(SELECT 1 FROM social_follows pv WHERE pv.follower_id=$1 AND pv.following_id=p.user_id)) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$1)) ON CONFLICT DO NOTHING",[req.socialUserId,req.params.id]);
+    if(saved) await client.query("INSERT INTO social_bookmarks(user_id,post_id) VALUES($1,$2) ON CONFLICT DO NOTHING",[req.socialUserId,req.params.id]);
+    await client.query("COMMIT");
     return res.json({bookmarked:saved});
-  }catch{return res.status(503).json({error:"Bookmark could not be updated."});}
+  }catch{await client.query("ROLLBACK").catch(()=>{});return res.status(503).json({error:"Bookmark could not be updated."});}
+  finally{client.release();}
 });
 router.post("/users/:id/follow",requireAuth,async(req,res)=>{
   if(!uuid(req.params.id)||req.params.id===req.socialUserId) return res.status(400).json({error:"Invalid account."});
