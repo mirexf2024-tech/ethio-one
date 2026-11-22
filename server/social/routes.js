@@ -245,6 +245,23 @@ router.delete("/posts/:postId/comments/:commentId",requireAuth,async(req,res)=>{
     return removed.rowCount?res.json({ok:true}):res.status(404).json({error:"Your comment was not found."});
   }catch{return res.status(503).json({error:"Comment could not be removed."});}
 });
+router.get("/bookmarks",requireAuth,async(req,res)=>{
+ try{
+  const r=await req.app.locals.db.query(
+   `SELECT p.id,p.body,p.media,p.visibility,p.created_at,u.id AS author_id,u.username,u.full_name,up.avatar_url,
+    (SELECT COUNT(*)::int FROM social_likes l WHERE l.post_id=p.id) AS like_count,
+    (SELECT COUNT(*)::int FROM social_comments c WHERE c.post_id=p.id AND c.status='published') AS comment_count,
+    EXISTS(SELECT 1 FROM social_likes l WHERE l.post_id=p.id AND l.user_id=$1) AS liked,
+    true AS bookmarked
+    FROM social_bookmarks b JOIN social_posts p ON p.id=b.post_id JOIN users u ON u.id=p.user_id LEFT JOIN user_profiles up ON up.user_id=u.id
+    WHERE b.user_id=$1 AND p.status='published'
+    AND (p.visibility='public' OR p.user_id=$1 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$1 AND f.following_id=p.user_id))
+    AND (COALESCE(up.profile_visibility,'public')='public' OR p.user_id=$1 OR EXISTS(SELECT 1 FROM social_follows pf WHERE pf.follower_id=$1 AND pf.following_id=p.user_id))
+    AND NOT EXISTS(SELECT 1 FROM social_blocks bl WHERE (bl.blocker_id=$1 AND bl.blocked_id=p.user_id) OR (bl.blocker_id=p.user_id AND bl.blocked_id=$1))
+    ORDER BY b.created_at DESC LIMIT 100`,[req.socialUserId]);
+  return res.set("Cache-Control","no-store").json({posts:r.rows});
+ }catch{return res.status(503).json({error:"Saved posts are temporarily unavailable."});}
+});
 router.post("/posts/:id/bookmark",interactionLimit,requireAuth,async(req,res)=>{
   if(!uuid(req.params.id)) return res.status(400).json({error:"Invalid post."});
   const client=await req.app.locals.db.connect();
