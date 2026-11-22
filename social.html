@@ -222,7 +222,7 @@ body.dark .messenger-search input,body.dark .messenger-compose textarea{backgrou
 <script>
 const API="https://ethio-one-api.onrender.com/api/v1/social";
 const $=s=>document.querySelector(s);
-let feedMode="all",reportTarget=null,actionTarget=null,me=null,myUserId=null,activeConversationName="",activeConversationKind="private",uploadedMedia=[],stories=[],editingPostId=null,feedCursor=null,feedHasMore=false,feedSearchActive=false;window.activeConversation=null;
+let feedMode="all",reportTarget=null,actionTarget=null,me=null,myUserId=null,activeConversationName="",activeConversationKind="private",groupCurrentRole="member",uploadedMedia=[],stories=[],editingPostId=null,feedCursor=null,feedHasMore=false,feedSearchActive=false;window.activeConversation=null;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const token=()=>sessionStorage.getItem("ethioOneAccessToken");
 const toast=m=>{const t=$("#toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2600)};
@@ -379,7 +379,7 @@ async function loadGroups(){
  }catch(e){toast(e.message)}
 }
 async function openGroup(id,name){
- activeConversationKind="group";window.activeConversation=id;activeConversationName=name||"Group";
+ activeConversationKind="group";window.activeConversation=id;activeConversationName=name||"Group";const info=await api("/groups/"+id);groupCurrentRole=info.group.role;
  $("#chatHeader").textContent=activeConversationName;$("#chatAvatar").textContent="👥";$("#chatPresence").textContent="Group conversation";
  $("#audioCallBtn").disabled=true;$("#videoCallBtn").disabled=true;$("#groupSettingsBtn").hidden=false;$("#messageInput").disabled=false;$("#emojiToggle").disabled=false;
  await loadGroupMessages(id);
@@ -390,7 +390,7 @@ async function loadGroupMessages(id){
   const d=await api("/groups/"+id+"/messages?limit=60");
   list.innerHTML=(d.messages||[]).map(m=>{
    const media=(m.media||[]).map(x=>x.type==="image"?'<img class="message-attachment" src="'+esc(x.url)+'" alt="Shared photo">':x.type==="video"?'<video class="message-attachment" controls playsinline src="'+esc(x.url)+'"></video>':'<a class="message-file" target="_blank" rel="noopener" href="'+esc(x.url)+'">📄 '+esc(x.name||"Open file")+'</a>').join("");
-   return '<div class="message-row '+(m.sender_id===myUserId?"mine":"")+'"><div class="message-bubble"><small class="hint">'+esc(m.full_name||m.username||"Member")+' · '+esc(m.role||"member")+'</small><div>'+(m.body?esc(m.body):"")+media+'</div><small class="message-meta">'+esc(time(m.created_at))+'</small></div></div>';
+   return '<div class="message-row '+(m.sender_id===myUserId?"mine":"")+'" data-group-message="'+esc(m.id)+'"><div class="message-bubble"><small class="hint">'+esc(m.full_name||m.username||"Member")+' · '+esc(m.role||"member")+'</small><div>'+(m.body?esc(m.body):"")+media+'</div><small class="message-meta">'+esc(time(m.created_at))+'</small>'+((m.sender_id===myUserId||["admin","moderator"].includes(groupCurrentRole))?'<button type="button" class="group-manage-btn" data-delete-group-message="'+esc(m.id)+'">Delete</button>':"")+'</div></div>';
   }).join("")||'<p class="hint">No messages yet. Say hello to your group.</p>';
   list.scrollTop=list.scrollHeight;
  }catch(e){list.textContent=e.message}
@@ -415,7 +415,7 @@ async function openGroupSettings(id){
  $("#groupManageTitle").textContent=d.group.name+" · "+d.group.member_count+" members";
  $("#groupManageDescription").textContent=d.group.description||"Manage group members and roles.";
  $("#groupAddMemberArea").hidden=!canAdd;
- $("#groupMemberList").innerHTML=(d.members||[]).map(m=>'<div class="group-member-row"><div class="avatar">'+(m.avatar_url?'<img src="'+esc(m.avatar_url)+'" alt="">':esc(initials(m.full_name||m.username)))+'</div><div style="flex:1;min-width:0"><b>'+esc(m.full_name||m.username)+'</b><div class="hint">@'+esc(m.username||"member")+'</div></div>'+(isAdmin&&m.id!==myUserId?'<select data-group-role="'+esc(m.id)+'"><option value="member" '+(m.role==="member"?"selected":"")+'>Member</option><option value="moderator" '+(m.role==="moderator"?"selected":"")+'>Moderator</option><option value="admin" '+(m.role==="admin"?"selected":"")+'>Admin</option><option value="remove">Remove</option></select>':'<span class="group-role">'+esc(m.role)+'</span>')+'</div>').join("");
+ $("#groupMemberList").innerHTML=(d.members||[]).map(m=>'<div class="group-member-row"><div class="avatar">'+(m.avatar_url?'<img src="'+esc(m.avatar_url)+'" alt="">':esc(initials(m.full_name||m.username)))+'</div><div style="flex:1;min-width:0"><b>'+esc(m.full_name||m.username)+'</b><div class="hint">@'+esc(m.username||"member")+'</div></div>'+(isAdmin&&m.id!==myUserId?'<select data-group-role="'+esc(m.id)+'"><option value="member" '+(m.role==="member"?"selected":"")+'>Member</option><option value="moderator" '+(m.role==="moderator"?"selected":"")+'>Moderator</option><option value="admin" '+(m.role==="admin"?"selected":"")+'>Admin</option><option value="remove">Remove</option></select>':(!isAdmin&&d.group.role==="moderator"&&m.role==="member"?'<button type="button" class="group-manage-btn" data-remove-group-member="'+esc(m.id)+'">Remove</button>':'<span class="group-role">'+esc(m.role)+'</span>'))+'</div>').join("");
  $("#groupManageModal").classList.add("open");
 }
 $("#groupMemberSearch").addEventListener("input",()=>{
@@ -427,6 +427,15 @@ $("#groupMemberSearch").addEventListener("input",()=>{
 $("#groupMemberSearchResults").addEventListener("click",async e=>{
  const b=e.target.closest("[data-add-group-user]");if(!b||activeConversationKind!=="group")return;b.disabled=true;
  try{await api("/groups/"+window.activeConversation+"/members",{method:"POST",body:JSON.stringify({userId:b.dataset.addGroupUser})});toast("Member added.");await openGroupSettings(window.activeConversation)}catch(err){toast(err.message);b.disabled=false}
+});
+$("#groupMemberList").addEventListener("click",async e=>{
+ const b=e.target.closest("[data-remove-group-member]");if(!b)return;
+ try{await api("/groups/"+window.activeConversation+"/members/"+b.dataset.removeGroupMember,{method:"PATCH",body:JSON.stringify({role:"remove"})});toast("Member removed.");await openGroupSettings(window.activeConversation)}catch(err){toast(err.message)}
+});
+$("#messageList").addEventListener("click",async e=>{
+ const b=e.target.closest("[data-delete-group-message]");if(!b||activeConversationKind!=="group")return;
+ if(!confirm("Remove this group message?"))return;
+ try{await api("/groups/"+window.activeConversation+"/messages/"+b.dataset.deleteGroupMessage,{method:"DELETE"});await loadGroupMessages(window.activeConversation)}catch(err){toast(err.message)}
 });
 $("#groupMemberList").addEventListener("change",async e=>{
  const sel=e.target.closest("[data-group-role]");if(!sel)return;
