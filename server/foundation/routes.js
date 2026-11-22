@@ -47,7 +47,7 @@ router.patch("/profile", async (req,res) => {
   for(const [key,value] of Object.entries(fields)) {
     if(value===undefined) continue;
     const max={country:80,region:100,city:100,bio:280,locale:5,profileVisibility:16}[key];
-    if(typeof value!=="string" || value.length>max || /[\\r\\n]/.test(value)) return res.status(400).json({error:"Please check your profile details."});
+    if(typeof value!=="string" || value.length>max || (key!=="bio" && /[\r\n]/.test(value))) return res.status(400).json({error:"Please check your profile details."});
   }
   if(b.locale!==undefined && !["om","am","en"].includes(b.locale)) return res.status(400).json({error:"Unsupported language."});
   if(b.profileVisibility!==undefined && !["public","followers"].includes(b.profileVisibility)) return res.status(400).json({error:"Choose a valid profile privacy setting."});
