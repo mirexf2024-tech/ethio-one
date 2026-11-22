@@ -423,7 +423,7 @@
   const read = key => { try { return sessionStorage.getItem(key); } catch { return null; } };
   const save = (key,value) => { try { sessionStorage.setItem(key,value); } catch {} };
   const clear = () => { Object.values(keys).forEach(k => { try { sessionStorage.removeItem(k); } catch {} }); };
-  const initials = name => String(name || "U").trim().split(/\\s+/).slice(0,2).map(x=>x[0]||"").join("").toUpperCase();
+  const initials = name => String(name || "U").trim().split(/\s+/).slice(0,2).map(x=>x[0]||"").join("").toUpperCase();
 
   let menu = document.getElementById("accountMenu");
   if (!menu) {
