@@ -16,7 +16,31 @@
     .two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.panel h2{font-size:17px;margin:0 0 14px}.service-list{display:grid;gap:10px}.service{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #29496e88}.service:last-child{border:0}.pill{font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:4px 8px;border-radius:99px;background:#1c456e;color:#d7e6f8}.events{overflow:auto}table{border-collapse:collapse;width:100%;min-width:520px;font-size:13px}th,td{text-align:left;padding:11px 10px;border-bottom:1px solid #29496e88;vertical-align:top}th{color:var(--muted);font-weight:600}.sev{font-weight:800;text-transform:uppercase;font-size:10px}.sev.high,.sev.critical{color:var(--red)}.sev.warning{color:var(--amber)}.sev.info{color:var(--green)}.footer{color:#8299b5;text-align:center;font-size:12px;padding:28px 0 8px}
     @media(max-width:760px){.shell{padding:16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.two{grid-template-columns:1fr}.top{align-items:flex-start}.heading{align-items:flex-start;flex-direction:column}.stat strong{font-size:25px}.panel{padding:17px}}
     @media(max-width:420px){.top{flex-wrap:wrap}.top-actions{width:100%;justify-content:flex-end}.brand b{font-size:15px}}
-  </style>
+  
+/* Ethio One unified premium admin experience — presentation only */
+:root{--navy:#082b59;--deep:#061a35;--gold:#d9a928;--panel:#102f55;--line:#315173}
+body{background:radial-gradient(ellipse at 8% 0%,#174879 0,transparent 42%),linear-gradient(145deg,#061a35,#082b59 65%,#071d38);font-family:Inter,ui-sans-serif,system-ui,sans-serif}
+.shell{max-width:1240px;padding:clamp(16px,3vw,32px)}
+.top{padding:14px 18px;border:1px solid #ffffff14;border-radius:18px;background:#ffffff08;backdrop-filter:blur(14px);margin-bottom:26px}
+.mark{border-radius:14px;box-shadow:0 8px 20px #d9a92830}
+.brand b{letter-spacing:-.035em}
+.panel{border-radius:19px;border-color:#ffffff18;background:linear-gradient(145deg,#12365fef,#0a2444f5);box-shadow:0 18px 50px #0002}
+button{border-radius:11px;transition:transform .16s,filter .16s,box-shadow .16s}
+button:not(:disabled):hover{filter:brightness(1.06);transform:translateY(-1px);box-shadow:0 7px 18px #0002}
+input,select{border-radius:12px;transition:border-color .16s,box-shadow .16s}
+input:focus,select:focus{border-color:var(--gold);box-shadow:0 0 0 3px #d9a92825}
+.stat{min-height:118px}.stat strong{font-size:31px;letter-spacing:-.04em}
+.heading h1{letter-spacing:-.04em}
+.pill{border:1px solid #ffffff12;border-radius:99px}
+table{border-collapse:separate;border-spacing:0}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.07em}
+td,th{padding:13px 12px;border-bottom:1px solid #ffffff12}
+tr:hover td{background:#ffffff08}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #d9a92888;outline-offset:2px}
+@media(max-width:760px){.shell{padding:14px}.top{padding:12px}.panel{border-radius:16px}.stat{min-height:105px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+
+</style>
 </head>
 <body>
   <div class="shell">
