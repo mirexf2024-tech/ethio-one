@@ -106,6 +106,37 @@ body.dark .sidebar-head button{background:#243252;color:#eaf1ff}
 .commentbox .gold{border-radius:20px;white-space:nowrap;padding:9px 14px}
 body.dark .comment{background:#202d49}body.dark .comment-author b,body.dark .comment p{color:#eaf1ff}body.dark .view-comments{color:#e9c45e}body.dark .commentbox input{background:#172440;color:#eaf1ff}
 @media(max-width:900px){#profileBox{margin-bottom:12px}}
+
+/* Facebook-inspired post experience, styled for Ethio One */
+.post{overflow:hidden;border:1px solid var(--line);box-shadow:0 5px 20px rgba(8,43,89,.055)}
+.post-head{gap:11px;min-height:44px}
+.post-head .avatar{width:44px;height:44px;flex-basis:44px;border-radius:50%;border:2px solid #edf2f8;cursor:pointer}
+.post-head .author{display:flex;flex-direction:column;gap:3px}
+.post-head .author strong{font-size:13px;font-weight:800;line-height:1.3}
+.post-head .author small{font-size:10px;line-height:1.4;color:var(--muted)}
+.post-head .more{width:36px;height:36px;border-radius:50%;font-size:22px;display:grid;place-items:center}
+.post-head .more:hover{background:var(--surface-low)}
+.post-body{font-size:13px;line-height:1.72;margin:14px 0 12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.post-media-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;overflow:hidden;border-radius:13px;background:var(--surface-low);margin:10px 0 2px}
+.post-media-grid.media-count-1{grid-template-columns:minmax(0,1fr)}
+.post-media-grid .post-media{display:block;width:100%;height:100%;max-height:430px;min-height:170px;object-fit:cover;border-radius:0;margin:0;background:var(--surface-low)}
+.post-media-grid.media-count-1 .post-media{max-height:520px;min-height:120px;object-fit:contain;background:#101a28}
+.post-media-grid.media-count-3 .post-media:nth-child(3){grid-column:1/-1;max-height:300px}
+.post-media-grid.media-count-4 .post-media{height:210px;min-height:140px}
+.post-stats{align-items:center;min-height:40px;font-size:11px;padding:9px 3px 8px}
+.post-stats span:first-child{font-weight:650;color:var(--muted)}
+.post-actions{gap:5px;padding:7px 0 5px;border-bottom:1px solid var(--line)}
+.post-actions button{min-height:38px;border-radius:9px;font-size:11px;font-weight:750}
+.post-actions button.on{background:#edf4ff;color:#075ca5}
+.comment-preview{padding-top:7px}
+.composer{border:1px solid var(--line);box-shadow:var(--shadow-soft)}
+.compose-trigger{min-height:42px;border-radius:24px;font-size:12px;padding:11px 15px}
+.compose-tools{border-top:1px solid var(--line);padding-top:10px;margin-top:11px}
+body.dark .post{border-color:var(--line);box-shadow:0 8px 25px #0003}
+body.dark .post-head .avatar{border-color:#293755}
+body.dark .post-actions button.on{background:#1b3557;color:#9bcaff}
+body.dark .post-media-grid{background:#0d172d}
+@media(max-width:620px){.post{padding:13px}.post-head .avatar{width:40px;height:40px;flex-basis:40px}.post-media-grid .post-media{min-height:130px;max-height:330px}.post-media-grid.media-count-1 .post-media{max-height:430px}.post-media-grid.media-count-4 .post-media{height:155px;min-height:115px}.post-actions{gap:2px}.post-actions button{font-size:10px;padding:8px 1px}.post-body{font-size:13px}}
 </style></head><body>
 <header class="top"><div class="topin"><button id="sidebarToggle" class="hamburger" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="socialSidebar">☰</button><a class="brand" href="/">Ethio <b>One</b></a><nav class="topnav"><a class="active" href="/social.html">Social</a><button id="messagesBtn" type="button">Messages</button><button id="notificationsBtn" type="button">Notifications <span id="noticeBadge" hidden style="display:none;margin-left:4px;background:#d9a928;color:#082b59;border-radius:20px;padding:1px 6px;font-size:9px;font-weight:900"></span></button><select id="languageSelector" aria-label="Language" style="border:1px solid #ffffff35;background:#ffffff12;color:#fff;border-radius:8px;padding:7px 5px;font-size:10px"><option value="om">OM</option><option value="am">አማ</option><option value="en">EN</option></select><a href="/">Services</a><button id="themeToggle" type="button" aria-label="Toggle dark mode">◐</button><a id="accountLink" href="/auth.html">Sign in</a></nav></div></header>
 <main class="wrap">
@@ -131,8 +162,23 @@ async function refresh(){const rt=sessionStorage.getItem("ethioOneRefreshToken")
 async function api(path,opts={}){const headers={"Content-Type":"application/json",...(opts.headers||{})};if(token())headers.Authorization="Bearer "+token();let r=await fetch(API+path,{...opts,headers});if(r.status===401&&token()&&await refresh()){headers.Authorization="Bearer "+token();r=await fetch(API+path,{...opts,headers})}const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"Something went wrong.");return d}
 function time(v){const d=new Date(v);return isNaN(d)? "":d.toLocaleString()}
 function initials(n){return String(n||"E1").split(/\s+/).slice(0,2).map(x=>x[0]||"").join("").toUpperCase()}
-function card(p){const name=p.full_name||p.username||"Ethio One member";const t=translations[langSelect.value]||translations.om;const avatar=p.avatar_url?'<img src="'+esc(p.avatar_url)+'" alt="">':esc(initials(name));const media=Array.isArray(p.media)?p.media.map(m=>m.type==="video"?'<video class="post-media" controls preload="metadata" src="'+esc(m.url)+'"></video>':'<img class="post-media" loading="lazy" src="'+esc(m.url)+'" alt="Post image">').join(""):"";
-return '<article class="post" data-id="'+esc(p.id)+'" data-visibility="'+esc(p.visibility||"public")+'"><div class="post-head"><div class="avatar" data-user="'+esc(p.author_id)+'">'+avatar+'</div><div class="author"><strong data-user="'+esc(p.author_id)+'">'+esc(name)+' <span style="color:#9aa5b4;font-weight:500">@'+esc(p.username||"member")+'</span></strong><small>'+esc(time(p.created_at))+' · '+(p.visibility==="followers"?t.followersOnly:t.public)+'</small></div><button class="more" data-action="menu" aria-label="'+t.more+'">⋯</button></div><div class="post-body">'+esc(p.body)+'</div>'+media+'<div class="post-stats"><span>♥ '+Number(p.like_count||0)+' '+t.likes+'</span><span>'+Number(p.comment_count||0)+' '+t.comments+'</span></div><div class="post-actions"><button data-action="like" class="'+(p.liked?"on":"")+'">'+(p.liked?"♥ "+t.liked:"♡ "+t.like)+'</button><button data-action="comments">▤ '+t.comment+'</button><button data-action="bookmark" class="'+(p.bookmarked?"on":"")+'">'+(p.bookmarked?"▣ "+t.saved:"▢ "+t.save)+'</button><button data-action="share">↗ '+t.shareAction+'</button></div><div class="comment-preview"></div><div class="comments" hidden><div class="comment-list"></div></div><div class="commentbox"><input maxlength="1000" placeholder="'+t.writeComment+'" aria-label="'+t.writeComment+'"><button class="gold" data-action="send-comment">'+t.send+'</button></div></article>'}
+function card(p){
+ const name=p.full_name||p.username||"Ethio One member";
+ const t=translations[langSelect.value]||translations.om;
+ const avatar=p.avatar_url?'<img src="'+esc(p.avatar_url)+'" alt="">':esc(initials(name));
+ const files=Array.isArray(p.media)?p.media:[];
+ const media=files.length?'<div class="post-media-grid media-count-'+Math.min(files.length,4)+'">'+files.map(m=>m.type==="video"?'<video class="post-media" controls preload="metadata" src="'+esc(m.url)+'"></video>':'<img class="post-media" loading="lazy" src="'+esc(m.url)+'" alt="Post image">').join("")+'</div>':"";
+ const body=p.body?'<div class="post-body">'+esc(p.body)+'</div>':"";
+ return '<article class="post" data-id="'+esc(p.id)+'" data-visibility="'+esc(p.visibility||"public")+'">'+
+ '<div class="post-head"><div class="avatar" data-user="'+esc(p.author_id)+'">'+avatar+'</div>'+
+ '<div class="author"><strong data-user="'+esc(p.author_id)+'">'+esc(name)+'</strong><small>@'+esc(p.username||"member")+' · '+esc(time(p.created_at))+' · '+(p.visibility==="followers"?t.followersOnly:t.public)+'</small></div>'+
+ '<button class="more" data-action="menu" aria-label="'+t.more+'" title="'+t.more+'">⋯</button></div>'+
+ body+media+
+ '<div class="post-stats"><span>♥ '+Number(p.like_count||0)+' '+t.likes+'</span><span>'+Number(p.comment_count||0)+' '+t.comments+'</span></div>'+
+ '<div class="post-actions"><button data-action="like" class="'+(p.liked?"on":"")+'">'+(p.liked?"♥ "+t.liked:"♡ "+t.like)+'</button><button data-action="comments">▤ '+t.comment+'</button><button data-action="bookmark" class="'+(p.bookmarked?"on":"")+'">'+(p.bookmarked?"▣ "+t.saved:"▢ "+t.save)+'</button><button data-action="share">↗ '+t.shareAction+'</button></div>'+
+ '<div class="comment-preview"></div><div class="comments" hidden><div class="comment-list"></div></div>'+
+ '<div class="commentbox"><input maxlength="1000" placeholder="'+t.writeComment+'" aria-label="'+t.writeComment+'"><button class="gold" data-action="send-comment">'+t.send+'</button></div></article>';
+}
 function renderComments(items){return (items||[]).map(c=>'<div class="comment" data-comment-id="'+esc(c.id)+'"><div class="comment-author"><span class="comment-avatar">'+(c.avatar_url?'<img src="'+esc(c.avatar_url)+'" alt="">':esc(initials(c.full_name||c.username)))+'</span><span><b data-user="'+esc(c.author_id)+'">'+esc(c.full_name||c.username||"Member")+'</b><small>'+esc(time(c.created_at))+'</small></span>'+(myUserId===c.author_id?'<button type="button" data-action="delete-comment" aria-label="Delete comment">⋯</button>':'')+'</div><p>'+esc(c.body)+'</p></div>').join("")}
 async function loadCommentPreviews(root=document){const posts=[...root.querySelectorAll(".post")].filter(p=>Number(p.querySelector(".post-stats span:nth-child(2)")?.textContent.match(/\d+/)?.[0]||0)>0&&!p.dataset.previewLoaded);await Promise.allSettled(posts.map(async post=>{post.dataset.previewLoaded="1";try{const d=await api("/posts/"+post.dataset.id+"/comments");const comments=d.comments||[];if(!comments.length)return;const preview=post.querySelector(".comment-preview");if(!preview)return;preview.innerHTML=renderComments(comments.slice(-2))+'<button type="button" class="view-comments" data-action="comments">'+tr("viewAllComments")+' ('+comments.length+')</button>'}catch{}}))}
 async function loadFeed(append=false){const el=$("#feed");if(!append){feedSearchActive=false;feedCursor=null;feedHasMore=false;el.innerHTML='<div class="empty"><b>'+tr("loading")+'</b>'+tr("wait")+'</div>'}try{const cursor=append&&feedCursor?"&before="+encodeURIComponent(feedCursor):"";const d=await api("/feed?limit=20&feed="+feedMode+cursor);const posts=d.posts||[];if(!append)el.innerHTML=posts.length?posts.map(card).join(""):'<div class="empty"><b>'+tr("noPosts")+'</b>'+tr("firstPost")+'</div>';else if(posts.length)el.insertAdjacentHTML("beforeend",posts.map(card).join(""));feedCursor=posts.length?posts[posts.length-1].id:feedCursor;feedHasMore=posts.length===20;el.querySelector("#loadMorePosts")?.remove();if(feedHasMore)el.insertAdjacentHTML("beforeend",'<div style="text-align:center;padding:12px"><button class="gold" id="loadMorePosts" data-action="load-more" type="button">'+tr("loadMore")+'</button></div>');await loadCommentPreviews(el);if(feedMode==="following"&&!append)el.insertAdjacentHTML("afterbegin",'<div class="hint" style="padding:8px">'+tr("followingEmpty")+'</div>')}catch(e){if(!append)el.innerHTML='<div class="empty"><b>'+tr("feedError")+'</b>'+esc(e.message)+'</div>';else toast(e.message)}}
