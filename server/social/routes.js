@@ -486,6 +486,7 @@ router.post("/conversations/:id/read",requireAuth,async(req,res)=>{
 /* WebRTC one-to-one audio/video call signaling. Media stays peer-to-peer. */
 router.get("/calls/incoming",requireAuth,async(req,res)=>{
  try{
+  await req.app.locals.db.query("UPDATE social_calls SET status='missed',ended_at=NOW() WHERE callee_id=$1 AND status='ringing' AND created_at<NOW()-INTERVAL '90 seconds'",[req.socialUserId]);
   const r=await req.app.locals.db.query(
    `SELECT c.id,c.conversation_id,c.call_type,c.status,c.created_at,u.id AS caller_id,u.username,u.full_name,p.avatar_url
     FROM social_calls c JOIN users u ON u.id=c.caller_id LEFT JOIN user_profiles p ON p.user_id=u.id
