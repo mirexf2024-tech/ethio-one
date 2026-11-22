@@ -162,7 +162,7 @@ router.post("/media/sign", rateLimit({windowMs:15*60*1000,limit:12,standardHeade
   const folder="ethio-one/"+req.account.id;
   const params={folder,timestamp};
   const canonical=Object.keys(params).sort().map(k=>k+"="+params[k]).join("&");
-  const signature=crypto.createHmac("sha1",env.CLOUDINARY_API_SECRET).update(canonical).digest("hex");
+  const signature=crypto.createHash("sha1").update(canonical+env.CLOUDINARY_API_SECRET,"utf8").digest("hex");
   return res.json({cloudName:env.CLOUDINARY_CLOUD_NAME,apiKey:env.CLOUDINARY_API_KEY,timestamp,folder,signature,resourceType});
 });
 
