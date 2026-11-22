@@ -458,13 +458,31 @@
     name.style.cssText = "display:block;color:#082b59;font-size:15px;margin-bottom:4px";
     const id = document.createElement("div"); id.textContent = user.ethioId || ""; id.style.cssText = "font-size:12px;color:#8a6a16;font-weight:800;margin-bottom:5px";
     const detail = document.createElement("div"); detail.textContent = user.email || user.username || ""; detail.style.cssText = "font-size:12px;color:#667085;margin-bottom:14px;overflow-wrap:anywhere";
-    const logout = document.createElement("button"); logout.type = "button"; logout.textContent = "Sign out"; logout.style.cssText = "width:100%;padding:10px;border:0;border-radius:10px;background:#082b59;color:#fff;font-weight:750;cursor:pointer";
+    const divider = document.createElement("div"); divider.style.cssText = "height:1px;background:#e9edf3;margin:12px 0";
+    const makeItem = (label, action, disabled=false) => {
+      const item = document.createElement("button"); item.type = "button"; item.textContent = label;
+      item.disabled = disabled;
+      item.style.cssText = "display:flex;width:100%;align-items:center;justify-content:space-between;padding:10px 8px;border:0;border-radius:9px;background:transparent;color:"+(disabled?"#98a2b3":"#26364d")+";font-size:13px;text-align:left;cursor:"+(disabled?"default":"pointer");
+      if (!disabled) item.onclick = action;
+      return item;
+    };
+    const profileItem = makeItem("My Profile", () => {
+      detail.textContent = [user.fullName,user.username,user.email,user.phone].filter(Boolean).join(" · ");
+      id.textContent = "My Profile";
+    });
+    const identityItem = makeItem("Ethio ID", () => {
+      id.textContent = "Ethio ID: " + (user.ethioId || "Not assigned");
+    });
+    const settingsItem = makeItem("Account Settings · Coming soon", () => {}, true);
+    const securityItem = makeItem("Security · Coming soon", () => {}, true);
+    const languageItem = makeItem("Language / Afaan", () => { language?.click(); });
+    const logout = document.createElement("button"); logout.type = "button"; logout.textContent = "Sign out"; logout.style.cssText = "width:100%;padding:10px;margin-top:8px;border:0;border-radius:10px;background:#082b59;color:#fff;font-weight:750;cursor:pointer";
     logout.onclick = async () => {
       logout.disabled = true;
       try { const refreshToken = read(keys.refresh); if (refreshToken) await fetch(AUTH + "/logout", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({refreshToken})}); } catch {}
       clear(); currentUser = null; renderSignedOut(); window.location.reload();
     };
-    menu.replaceChildren(name,id,detail,logout);
+    menu.replaceChildren(name,id,detail,divider,profileItem,identityItem,settingsItem,securityItem,languageItem,logout);
   };
 
   async function loadIdentity() {
