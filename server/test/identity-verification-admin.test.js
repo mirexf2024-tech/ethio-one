@@ -38,7 +38,7 @@ test("signed-in users can request review but cannot set their own verified statu
   const routes = fs.readFileSync(path.join(__dirname, "../foundation/routes.js"), "utf8");
   assert.match(routes, /router\.post\("\/identity-verification\/request"/);
   assert.match(routes, /WHERE id=\$1 AND status='active' FOR UPDATE/);
-  assert.match(routes, /\["unverified", "needs_more_info"\]\.includes\(status\)/);
+  assert.match(routes, /\["unverified",\s*"needs_more_info"\]\.includes\(status\)/);
   assert.match(routes, /identity_verification_status='pending_review'/);
   assert.doesNotMatch(routes, /identity_verification_status=req\.body/);
   assert.match(routes, /identity_verification_requested/);
