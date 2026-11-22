@@ -47,7 +47,7 @@ router.use(optionalAuth);
 router.get("/profile/me",requireAuth,async(req,res)=>{
  try{
   const r=await req.app.locals.db.query("SELECT u.id,u.username,u.full_name,u.ethio_id,p.bio,p.avatar_url,p.city,p.region,p.country,COALESCE(p.profile_visibility,'public') AS profile_visibility,(SELECT COUNT(*)::int FROM social_follows WHERE following_id=u.id) AS followers,(SELECT COUNT(*)::int FROM social_follows WHERE follower_id=u.id) AS following,(SELECT COUNT(*)::int FROM social_posts WHERE user_id=u.id AND status='published') AS posts FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id WHERE u.id=$1",[req.socialUserId]);
-  return res.json({profile:r.rows[0]||null});
+  return res.set("Cache-Control","no-store").json({profile:r.rows[0]||null});
  }catch{return res.status(503).json({error:"Profile unavailable."});}
 });
 router.get("/users/search",async(req,res)=>{
@@ -63,7 +63,7 @@ router.get("/users/:id/profile",async(req,res)=>{
  try{
   const r=await req.app.locals.db.query("SELECT u.id,u.username,u.full_name,p.bio,p.avatar_url,p.city,p.region,p.country,COALESCE(p.profile_visibility,'public') AS profile_visibility,(SELECT COUNT(*)::int FROM social_follows WHERE following_id=u.id) AS followers,(SELECT COUNT(*)::int FROM social_follows WHERE follower_id=u.id) AS following,(SELECT COUNT(*)::int FROM social_posts WHERE user_id=u.id AND status='published') AS posts,CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_follows WHERE follower_id=$2 AND following_id=u.id) END AS is_following FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id WHERE u.id=$1 AND u.status='active' AND ($2::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks WHERE (blocker_id=$2 AND blocked_id=u.id) OR (blocker_id=u.id AND blocked_id=$2))) AND (COALESCE(p.profile_visibility,'public')='public' OR u.id=$2 OR EXISTS(SELECT 1 FROM social_follows pf WHERE pf.follower_id=$2 AND pf.following_id=u.id))",[req.params.id,req.socialUserId]);
   if(!r.rowCount)return res.status(404).json({error:"Profile not found."});
-  return res.json({profile:r.rows[0]});
+  return res.set("Cache-Control","no-store").json({profile:r.rows[0]});
  }catch{return res.status(503).json({error:"Profile unavailable."});}
 });
 
