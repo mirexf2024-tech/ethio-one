@@ -37,6 +37,26 @@ const reportCreateLimit=actionLimiter(5,15*60*1000,"You have reached the report 
 const storyCreateLimit=actionLimiter(4,60*60*1000,"You have reached the story limit. Please try again later.");
 const messageCreateLimit=actionLimiter(20,60*1000,"You are sending messages too quickly. Please wait a moment.");
 const interactionLimit=actionLimiter(60,60*1000,"You are doing that too quickly. Please wait a moment.");
+async function notifyMentions(db,body,actorId,postId,commentId=null){
+  const handles=[...new Set((String(body||"").match(/(?:^|[^A-Za-z0-9_])@([A-Za-z0-9_]{3,30})/g)||[]).map(x=>x.trim().slice(1).toLowerCase()))].slice(0,10);
+  if(!handles.length)return;
+  await db.query(
+    `INSERT INTO notifications(user_id,title,body,kind,data)
+     SELECT DISTINCT recipient.id,'You were mentioned',actor.full_name||actor.username||'A member',
+       'social_mention',
+       jsonb_build_object('postId',p.id,'commentId',$5::uuid,'actorId',actor.id)
+     FROM users recipient
+     JOIN social_posts p ON p.id=$3 AND p.status='published'
+     JOIN users actor ON actor.id=$2
+     WHERE recipient.status='active' AND recipient.id<>actor.id
+       AND lower(recipient.username)=ANY($1::text[])
+       AND (p.visibility='public' OR p.user_id=recipient.id OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=recipient.id AND f.following_id=p.user_id))
+       AND (COALESCE((SELECT profile_visibility FROM user_profiles WHERE user_id=p.user_id),'public')='public' OR p.user_id=recipient.id OR EXISTS(SELECT 1 FROM social_follows pf WHERE pf.follower_id=recipient.id AND pf.following_id=p.user_id))
+       AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=recipient.id AND b.blocked_id=actor.id) OR (b.blocker_id=actor.id AND b.blocked_id=recipient.id))
+       AND ($5::uuid IS NULL OR EXISTS(SELECT 1 FROM social_comments c WHERE c.id=$5 AND c.post_id=p.id AND c.status='published'))`,
+    [handles,actorId,postId,commentId]
+  );
+}
 const safeMedia = media => Array.isArray(media) && media.length<=4 && media.every(x=>x && typeof x.publicId==="string" && x.publicId.length<=255 && typeof x.url==="string" && x.url.startsWith("https://res.cloudinary.com/") && x.url.includes("/upload/") && ["image","video"].includes(x.type));
 router.use(async(req,res,next)=>{
   if(!req.app.locals.db) return res.status(503).json({error:"Social service is temporarily unavailable."});
@@ -112,6 +132,26 @@ router.get("/feed",async(req,res)=>{
   }catch{return res.status(503).json({error:"The feed is temporarily unavailable."});}
 });
 
+router.get("/posts/:id",async(req,res)=>{
+  if(!uuid(req.params.id))return res.status(400).json({error:"Invalid post."});
+  try{
+    const q=await req.app.locals.db.query(
+      `SELECT p.id,p.body,p.media,p.visibility,p.created_at,u.id AS author_id,u.username,u.full_name,up.avatar_url,
+       (SELECT COUNT(*)::int FROM social_likes l WHERE l.post_id=p.id) AS like_count,
+       (SELECT COUNT(*)::int FROM social_comments c WHERE c.post_id=p.id AND c.status='published') AS comment_count,
+       CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_likes l WHERE l.post_id=p.id AND l.user_id=$2) END AS liked,
+       CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_bookmarks b WHERE b.post_id=p.id AND b.user_id=$2) END AS bookmarked
+       FROM social_posts p JOIN users u ON u.id=p.user_id LEFT JOIN user_profiles up ON up.user_id=u.id
+       WHERE p.id=$1 AND p.status='published'
+       AND (p.visibility='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id))
+       AND (COALESCE(up.profile_visibility,'public')='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows pf WHERE pf.follower_id=$2 AND pf.following_id=p.user_id))
+       AND ($2::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2)))`,
+      [req.params.id,req.socialUserId]
+    );
+    if(!q.rowCount)return res.status(404).json({error:"Post not found or not available to you."});
+    return res.set("Cache-Control","no-store").json({post:q.rows[0]});
+  }catch{return res.status(503).json({error:"Post is temporarily unavailable."});}
+});
 router.post("/posts",postCreateLimit,requireAuth,async(req,res)=>{
   const b=req.body||{}, body=typeof b.body==="string"?b.body.trim():"", media=b.media===undefined?[]:b.media;
   if(body.length>2000 || (!body && !media.length) || !safeMedia(media) || !["public","followers"].includes(b.visibility||"public"))
@@ -127,6 +167,7 @@ router.post("/posts",postCreateLimit,requireAuth,async(req,res)=>{
     }
     const r=await req.app.locals.db.query("INSERT INTO social_posts(user_id,body,media,visibility) VALUES($1,$2,$3::jsonb,$4) RETURNING id,body,media,visibility,created_at",
       [req.socialUserId,body,JSON.stringify(media),b.visibility||"public"]);
+    await notifyMentions(req.app.locals.db,body,req.socialUserId,r.rows[0].id);
     return res.status(201).json({post:r.rows[0]});
   }catch{return res.status(503).json({error:"Your post could not be published."});}
 });
@@ -178,6 +219,7 @@ router.post("/posts/:id/comments",commentCreateLimit,requireAuth,async(req,res)=
     const r=await req.app.locals.db.query("INSERT INTO social_comments(post_id,user_id,body) SELECT p.id,$2,$3 FROM social_posts p WHERE p.id=$1 AND p.status='published' AND (p.visibility='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id)) AND (COALESCE((SELECT profile_visibility FROM user_profiles WHERE user_id=p.user_id),'public')='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows pv WHERE pv.follower_id=$2 AND pv.following_id=p.user_id)) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2)) RETURNING id,body,created_at",[req.params.id,req.socialUserId,body]);
     if(!r.rowCount)return res.status(404).json({error:"Post not found."});
     await req.app.locals.db.query("INSERT INTO notifications(user_id,title,body,kind,data) SELECT p.user_id,'New comment',u.full_name||' commented on your post.','social_comment',jsonb_build_object('postId',p.id,'commentId',$3,'actorId',u.id) FROM social_posts p JOIN users u ON u.id=$2 WHERE p.id=$1 AND p.user_id<>$2 AND COALESCE((SELECT comments FROM social_notification_preferences WHERE user_id=p.user_id),TRUE)",[req.params.id,req.socialUserId,r.rows[0].id]);
+    await notifyMentions(req.app.locals.db,body,req.socialUserId,req.params.id,r.rows[0].id);
     return res.status(201).json({comment:r.rows[0]});
   }catch{return res.status(503).json({error:"Comment could not be added."});}
 });
