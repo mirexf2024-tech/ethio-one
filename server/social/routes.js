@@ -54,8 +54,8 @@ router.get("/users/search",async(req,res)=>{
  const q=String(req.query.q||"").trim().slice(0,50);
  if(q.length<2)return res.json({users:[]});
  try{
-  const r=await req.app.locals.db.query("SELECT u.id,u.username,u.full_name,p.avatar_url,(SELECT COUNT(*)::int FROM social_follows f WHERE f.following_id=u.id) AS followers,CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=u.id) END AS following FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id WHERE u.status='active' AND (u.username ILIKE $1 OR u.full_name ILIKE $1) AND ($2::uuid IS NULL OR u.id<>$2) ORDER BY u.full_name LIMIT 20",["%"+q+"%",req.socialUserId]);
-  return res.json({users:r.rows});
+  const r=await req.app.locals.db.query("SELECT u.id,u.username,u.full_name,p.avatar_url,(SELECT COUNT(*)::int FROM social_follows f WHERE f.following_id=u.id) AS followers,CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=u.id) END AS following FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id WHERE u.status='active' AND (u.username ILIKE $1 OR u.full_name ILIKE $1) AND ($2::uuid IS NULL OR u.id<>$2) AND ($2::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=u.id) OR (b.blocker_id=u.id AND b.blocked_id=$2))) ORDER BY u.full_name LIMIT 20",["%"+q+"%",req.socialUserId]);
+  return res.set("Cache-Control","no-store").json({users:r.rows});
  }catch{return res.status(503).json({error:"Search unavailable."});}
 });
 router.get("/users/:id/profile",async(req,res)=>{
