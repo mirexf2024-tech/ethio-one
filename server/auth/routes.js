@@ -2,7 +2,7 @@ const express = require("express");
 const crypto = require("node:crypto");
 const security = require("./security");
 const { recordSecurityEvent } = require("../admin/audit");
-const { sendVerificationEmail } = require("../providers");
+const { sendVerificationEmail, sendVerificationSms } = require("../providers");
 
 const router = express.Router();
 const ACCESS_TTL = 900;
@@ -68,7 +68,7 @@ router.post("/register", async (req,res) => {
       return res.status(400).json({error:"Please check the required registration details."});
     }
     const channel=b.channel;
-    if (channel !== "email" || !email) {
+    if (!["email","sms"].includes(channel) || (channel === "email" && !email) || (channel === "sms" && !phone)) {
       return res.status(400).json({error:"Choose a verification method you provided."});
     }
     const passwordHash=await security.hashPassword(b.password);
@@ -92,9 +92,10 @@ router.post("/register", async (req,res) => {
       throw e;
     } finally { c.release(); }
     try {
-      await sendVerificationEmail({to:email,code,expiresMinutes:5});
+      if (channel === "sms") await sendVerificationSms({to:phone,code,expiresMinutes:5});
+      else await sendVerificationEmail({to:email,code,expiresMinutes:5});
     } catch (mailError) {
-      console.error("Verification email delivery failed:", {
+      console.error(channel === "sms" ? "Verification SMS delivery failed:" : "Verification email delivery failed:", {
         name: mailError?.name || "Error",
         code: mailError?.code || null,
         responseCode: mailError?.responseCode || null
@@ -242,7 +243,7 @@ router.post("/logout", async (req,res) => {
 
 router.post("/verification/resend", async (req,res) => {
   const db=req.app.locals.db, env=req.app.locals.authEnv||process.env, b=req.body||{};
-  if(typeof b.userId!=="string" || !/^[0-9a-f-]{36}$/i.test(b.userId) || b.channel !== "email") {
+  if(typeof b.userId!=="string" || !/^[0-9a-f-]{36}$/i.test(b.userId) || !["email","sms"].includes(b.channel)) {
     return res.status(400).json({error:"Invalid verification request."});
   }
   try {
@@ -262,9 +263,10 @@ router.post("/verification/resend", async (req,res) => {
     await db.query("INSERT INTO auth_challenges (user_id,channel,purpose,code_digest,expires_at) VALUES ($1,$2,'verify_contact',$3,NOW()+INTERVAL '5 minutes')",
       [user.id,b.channel,security.digestChallenge(code,env.AUTH_CHALLENGE_PEPPER)]);
     try {
-      await sendVerificationEmail({to:user.destination,code,expiresMinutes:5});
+      if (b.channel === "sms") await sendVerificationSms({to:user.destination,code,expiresMinutes:5});
+      else await sendVerificationEmail({to:user.destination,code,expiresMinutes:5});
     } catch (mailError) {
-      console.error("Verification email resend failed:", {
+      console.error(b.channel === "sms" ? "Verification SMS resend failed:" : "Verification email resend failed:", {
         name: mailError?.name || "Error",
         code: mailError?.code || null,
         responseCode: mailError?.responseCode || null
