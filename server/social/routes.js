@@ -108,6 +108,20 @@ router.post("/posts",postCreateLimit,requireAuth,async(req,res)=>{
     return res.status(201).json({post:r.rows[0]});
   }catch{return res.status(503).json({error:"Your post could not be published."});}
 });
+router.patch("/posts/:id",requireAuth,async(req,res)=>{
+  if(!uuid(req.params.id)) return res.status(400).json({error:"Invalid post."});
+  const body=typeof req.body?.body==="string"?req.body.body.trim():null;
+  const visibility=req.body?.visibility;
+  if(body===null || body.length>2000 || (visibility!==undefined && !["public","followers"].includes(visibility)))
+    return res.status(400).json({error:"Check your post text and visibility."});
+  try{
+    const updated=await req.app.locals.db.query(
+      "UPDATE social_posts SET body=$3,visibility=COALESCE($4,visibility),updated_at=NOW() WHERE id=$1 AND user_id=$2 AND status='published' RETURNING id,body,visibility,updated_at",
+      [req.params.id,req.socialUserId,body,visibility??null]
+    );
+    return updated.rowCount?res.json({post:updated.rows[0]}):res.status(404).json({error:"Post not found."});
+  }catch{return res.status(503).json({error:"Post could not be updated."});}
+});
 router.delete("/posts/:id",requireAuth,async(req,res)=>{
   if(!uuid(req.params.id)) return res.status(400).json({error:"Invalid post."});
   try{
@@ -131,7 +145,7 @@ router.post("/posts/:id/like",interactionLimit,requireAuth,async(req,res)=>{
 router.get("/posts/:id/comments",async(req,res)=>{
   if(!uuid(req.params.id)) return res.status(400).json({error:"Invalid post."});
   try{
-    const r=await req.app.locals.db.query("SELECT c.id,c.body,c.created_at,u.username,u.full_name,up.avatar_url FROM social_comments c JOIN social_posts p ON p.id=c.post_id JOIN users u ON u.id=c.user_id LEFT JOIN user_profiles up ON up.user_id=u.id WHERE c.post_id=$1 AND c.status='published' AND p.status='published' AND (p.visibility='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id)) AND (COALESCE((SELECT profile_visibility FROM user_profiles WHERE user_id=p.user_id),'public')='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows pv WHERE pv.follower_id=$2 AND pv.following_id=p.user_id)) AND ($2::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2))) AND ($2::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=c.user_id) OR (b.blocker_id=c.user_id AND b.blocked_id=$2))) ORDER BY c.created_at ASC LIMIT 100",[req.params.id,req.socialUserId]);
+    const r=await req.app.locals.db.query("SELECT c.id,c.user_id AS author_id,c.body,c.created_at,u.username,u.full_name,up.avatar_url FROM social_comments c JOIN social_posts p ON p.id=c.post_id JOIN users u ON u.id=c.user_id LEFT JOIN user_profiles up ON up.user_id=u.id WHERE c.post_id=$1 AND c.status='published' AND p.status='published' AND (p.visibility='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id)) AND (COALESCE((SELECT profile_visibility FROM user_profiles WHERE user_id=p.user_id),'public')='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows pv WHERE pv.follower_id=$2 AND pv.following_id=p.user_id)) AND ($2::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2))) AND ($2::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=c.user_id) OR (b.blocker_id=c.user_id AND b.blocked_id=$2))) ORDER BY c.created_at ASC LIMIT 100",[req.params.id,req.socialUserId]);
     return res.set("Cache-Control","no-store").json({comments:r.rows});
   }catch{return res.status(503).json({error:"Comments are temporarily unavailable."});}
 });
@@ -144,6 +158,16 @@ router.post("/posts/:id/comments",commentCreateLimit,requireAuth,async(req,res)=
     await req.app.locals.db.query("INSERT INTO notifications(user_id,title,body,kind,data) SELECT p.user_id,'New comment',u.full_name||' commented on your post.','social_comment',jsonb_build_object('postId',p.id,'commentId',$3,'actorId',u.id) FROM social_posts p JOIN users u ON u.id=$2 WHERE p.id=$1 AND p.user_id<>$2 AND COALESCE((SELECT comments FROM social_notification_preferences WHERE user_id=p.user_id),TRUE)",[req.params.id,req.socialUserId,r.rows[0].id]);
     return res.status(201).json({comment:r.rows[0]});
   }catch{return res.status(503).json({error:"Comment could not be added."});}
+});
+router.delete("/posts/:postId/comments/:commentId",requireAuth,async(req,res)=>{
+  if(!uuid(req.params.postId)||!uuid(req.params.commentId)) return res.status(400).json({error:"Invalid comment."});
+  try{
+    const removed=await req.app.locals.db.query(
+      "DELETE FROM social_comments c USING social_posts p WHERE c.id=$1 AND c.post_id=$2 AND c.user_id=$3 AND p.id=c.post_id RETURNING c.id",
+      [req.params.commentId,req.params.postId,req.socialUserId]
+    );
+    return removed.rowCount?res.json({ok:true}):res.status(404).json({error:"Your comment was not found."});
+  }catch{return res.status(503).json({error:"Comment could not be removed."});}
 });
 router.post("/posts/:id/bookmark",interactionLimit,requireAuth,async(req,res)=>{
   if(!uuid(req.params.id)) return res.status(400).json({error:"Invalid post."});
