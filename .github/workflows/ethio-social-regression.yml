@@ -1,0 +1,40 @@
+name: Ethio Social regression checks
+
+on:
+  push:
+    paths:
+      - "social.html"
+      - "server/social/**"
+      - "server/test/**"
+      - "server/package.json"
+      - ".github/workflows/ethio-social-regression.yml"
+  pull_request:
+    paths:
+      - "social.html"
+      - "server/social/**"
+      - "server/test/**"
+      - "server/package.json"
+      - ".github/workflows/ethio-social-regression.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  social-regression:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install API dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run API and Ethio Social regression tests
+        run: npm test
+      - name: Check Ethio Social API syntax
+        run: node --check social/routes.js
