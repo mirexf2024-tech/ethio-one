@@ -7,18 +7,24 @@
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "orientation": "portrait-primary",
   "background_color": "#f3f6fa",
   "theme_color": "#082b59",
-  "categories": ["social", "communication"],
+  "categories": [
+    "social",
+    "communication"
+  ],
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/icons/ethio-one-app.svg",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "https://raw.githubusercontent.com/mirexf2024-tech/ethio-one/main/ETHIO%20ONE%20logo%20identity.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
