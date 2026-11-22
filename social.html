@@ -108,8 +108,7 @@ async function uploadOne(file){
  const isVideo=file.type.startsWith("video/");
  if(!(file.type.startsWith("image/")||isVideo))throw new Error("Unsupported file type.");
  if(file.size>(isVideo?50:8)*1024*1024)throw new Error(isVideo?"Video must be under 50MB.":"Image must be under 8MB.");
- const sign=await fetch("https://ethio-one-api.onrender.com/api/v1/account/media/sign",{method:"POST",headers:{Authorization:"Bearer "+token(),"Content-Type":"application/json"},body:JSON.stringify({resourceType:isVideo?"video":"image"})});
- const cfg=await sign.json();if(!sign.ok)throw new Error(cfg.error||"Upload is not configured.");
+ const cfg=await apiAccount("/media/sign",{method:"POST",body:JSON.stringify({resourceType:isVideo?"video":"image"})});
  const fd=new FormData();fd.append("file",file);fd.append("api_key",cfg.apiKey);fd.append("timestamp",cfg.timestamp);fd.append("folder",cfg.folder);fd.append("signature",cfg.signature);
  const up=await fetch("https://api.cloudinary.com/v1_1/"+cfg.cloudName+"/"+cfg.resourceType+"/upload",{method:"POST",body:fd});
  const asset=await up.json();if(!up.ok)throw new Error(asset.error?.message||"Upload failed.");
@@ -140,6 +139,7 @@ async function loadMyProfile(){
  if(!token())return;
  try{const d=await api("/profile/me");const p=d.profile;if(!p)return;myUserId=p.id;
  $("#profileBox").style.display="block";
+  $("#myAvatar").innerHTML=p.avatar_url?'<img src="'+esc(p.avatar_url)+'" alt="Profile photo">':esc(initials(p.full_name));
  $("#profileBox").innerHTML='<div style="display:flex;gap:12px;align-items:center"><div class="avatar" style="width:54px;height:54px">'+(p.avatar_url?'<img src="'+esc(p.avatar_url)+'" alt="">':esc(initials(p.full_name)))+'</div><div style="flex:1"><b style="color:#082b59">'+esc(p.full_name)+'</b><div class="hint">@'+esc(p.username||"member")+'</div></div><button class="gold" id="editProfileBtn">'+tr("editProfile")+'</button></div><p class="hint">'+esc(p.bio||tr("addBio"))+'</p><div class="right-stat"><span>'+tr("posts")+'</span><b>'+p.posts+'</b><span>'+tr("followers")+'</span><b>'+p.followers+'</b><span>'+tr("followingCount")+'</span><b>'+p.following+'</b></div>';
  $("#editProfileBtn").onclick=async()=>{try{const d=await apiAccount("/profile");const q=d.user?.profile||{};$("#editCity").value=q.city||"";$("#editRegion").value=q.region||"";$("#editCountry").value=q.country||"Ethiopia";$("#editBio").value=q.bio||"";$("#editProfileVisibility").value=q.profile_visibility||"public";$("#profileEditModal").classList.add("open")}catch(e){toast(e.message)}};
 
