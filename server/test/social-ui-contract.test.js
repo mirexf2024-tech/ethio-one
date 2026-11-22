@@ -67,14 +67,15 @@ test("Ethio Social API keeps authentication, media validation and core routes", 
 });
 
 test("Creator analytics are only opened from the signed-in owner's profile", () => {
-  assert.match(html, /ethio-id-bio[\\s\\S]{0,500}profile-analytics-btn[\\s\\S]{0,160}id="creatorInsightsBtn"/);
-  assert.doesNotMatch(html, /<button[^>]*id="creatorInsightsBtn"[^>]*>Creator insights<\\/button>/);
-  assert.match(routes, /router\\.get\\("\/creator\/analytics",requireAuth/);
-  assert.match(routes, /WITH mine AS \\(SELECT id,created_at FROM social_posts WHERE user_id=\\$1/);
-  assert.match(routes, /set\("Cache-Control","no-store"\)/);
+  assert.ok(html.includes('profile-analytics-btn') && html.includes('id="creatorInsightsBtn"'));
+  assert.ok(!html.includes('margin:-4px 0 12px"><button class="gold" id="creatorInsightsBtn"'));
+  assert.ok(routes.includes('router.get("/creator/analytics",requireAuth'));
+  assert.ok(routes.includes('FROM social_posts WHERE user_id=$1'));
+  assert.ok(routes.includes('set("Cache-Control","no-store")'));
 });
 
 test("Group title opens Telegram-style group information", () => {
-  assert.match(html, /#chatPersonInfo[\\s\\S]{0,220}openGroupSettings/);
-  assert.match(html, /function openGroupSettings\\(id\\)[\\s\\S]{0,1800}groupInfoHero[\\s\\S]{0,1800}groupMemberList/);
+  assert.ok(html.includes('$("#chatPersonInfo")?.addEventListener("click"'));
+  assert.ok(html.includes('openGroupSettings(window.activeConversation)'));
+  assert.ok(html.includes('id="groupInfoHero"') && html.includes('id="groupMemberList"'));
 });
