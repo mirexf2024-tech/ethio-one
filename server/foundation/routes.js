@@ -157,7 +157,7 @@ router.get("/media", async (req,res) => {
 router.post("/media/sign", rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:"draft-7",legacyHeaders:false,handler:(_req,res)=>res.status(429).json({error:"Too many upload attempts. Please try again later."})}), async (req,res) => {
   const env=req.app.locals.authEnv||process.env;
   if(!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) return res.status(503).json({error:"Media upload is not configured yet."});
-  const resourceType=req.body?.resourceType==="video"?"video":"image";
+  const resourceType=["image","video","raw"].includes(req.body?.resourceType)?req.body.resourceType:"image";
   const timestamp=Math.floor(Date.now()/1000);
   const folder="ethio-one/"+req.account.id;
   const params={folder,timestamp};
@@ -175,7 +175,7 @@ router.post("/media", rateLimit({windowMs:60*60*1000,limit:30,standardHeaders:"d
      typeof b.secureUrl!=="string" || b.secureUrl.length>1000 || !mediaUrl || mediaUrl.protocol!=="https:" ||
      mediaUrl.hostname!=="res.cloudinary.com" || !mediaUrl.pathname.includes("/"+b.resourceType+"/upload/") ||
      !mediaUrl.pathname.includes("/"+ownFolder) ||
-     !["image","video"].includes(b.resourceType) || !Number.isSafeInteger(b.bytes) || b.bytes<1 || b.bytes>100*1024*1024) {
+     !["image","video","raw"].includes(b.resourceType) || !Number.isSafeInteger(b.bytes) || b.bytes<1 || b.bytes>100*1024*1024) {
     return res.status(400).json({error:"Invalid media details or media ownership."});
   }
   try {
