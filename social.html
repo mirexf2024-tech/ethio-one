@@ -390,7 +390,7 @@ $("#messageInput").addEventListener("input",()=>{$("#sendMessageBtn").disabled=!
 $("#messageInput").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!$("#sendMessageBtn").disabled)$("#sendMessageBtn").click()}});
 
 /* Messenger call client: WebRTC media is peer-to-peer; API carries authenticated signaling only. */
-let activeCall=null,peerConnection=null,localCallStream=null,callPollTimer=null,incomingPollTimer=null,lastCallSignalId=0,incomingCallId=null,callMuted=false,cameraOff=false,pendingCallCandidates=[],remoteCandidateQueue=[];
+let activeCall=null,peerConnection=null,localCallStream=null,callPollTimer=null,incomingPollTimer=null,lastCallSignalId=0,incomingCallId=null,callMuted=false,cameraOff=false,pendingCallCandidates=[],remoteCandidateQueue=[],callPollBusy=false;
 const callApi=(path,opts={})=>api(path,opts);
 function showCall(status){$("#callStatus").textContent=status;$("#callModal").classList.add("open")}
 function stopCallMedia(){
@@ -398,7 +398,7 @@ function stopCallMedia(){
  if(peerConnection){peerConnection.onicecandidate=null;peerConnection.ontrack=null;peerConnection.close();peerConnection=null}
  if(localCallStream){localCallStream.getTracks().forEach(t=>t.stop());localCallStream=null}
  $("#localCallVideo").srcObject=null;$("#remoteCallVideo").srcObject=null;
- $("#callModal").classList.remove("open");activeCall=null;incomingCallId=null;lastCallSignalId=0;pendingCallCandidates=[];remoteCandidateQueue=[];callMuted=false;cameraOff=false;
+ $("#callModal").classList.remove("open");activeCall=null;incomingCallId=null;lastCallSignalId=0;pendingCallCandidates=[];remoteCandidateQueue=[];callMuted=false;cameraOff=false;callPollBusy=false;
  $("#muteCallBtn").textContent="🎙 Mute";$("#cameraCallBtn").textContent="▣ Camera";
 }
 async function sendCallSignal(type,payload){
@@ -413,7 +413,7 @@ async function preparePeer(type,iceServers){
  stream.getTracks().forEach(track=>peerConnection.addTrack(track,stream));
  peerConnection.ontrack=e=>{const remote=e.streams[0];if(remote){if(type==="video")$("#remoteCallVideo").srcObject=remote;else{const a=document.createElement("audio");a.autoplay=true;a.srcObject=remote;$("#remoteCallAudio").replaceChildren(a)}}};
  peerConnection.onicecandidate=e=>{if(!e.candidate)return;const candidate=e.candidate.toJSON();if(activeCall)sendCallSignal("ice",candidate).catch(()=>{});else pendingCallCandidates.push(candidate)};
- peerConnection.onconnectionstatechange=()=>{if(!peerConnection)return;const state=peerConnection.connectionState;$("#callStatus").textContent=state==="connected"?"Connected":state==="connecting"?"Connecting…":state==="failed"?"Connection failed":state==="disconnected"?"Reconnecting…":state};
+ peerConnection.onconnectionstatechange=()=>{if(!peerConnection)return;const state=peerConnection.connectionState;$("#callStatus").textContent=state==="connected"?"Connected":state==="connecting"?"Connecting…":state==="failed"?"Connection failed — check network/TURN":state==="disconnected"?"Reconnecting…":"Waiting for connection…";if(state==="failed")toast("Call network connection failed. A TURN relay may be required.")};
 }
 async function startSocialCall(type){
  if(!window.activeConversation){toast("Choose a conversation first.");return}
@@ -441,18 +441,19 @@ async function acceptSocialCall(callId){
 function startCallPolling(){
  if(callPollTimer)clearInterval(callPollTimer);
  callPollTimer=setInterval(async()=>{
-  if(!activeCall)return;
+  if(!activeCall||callPollBusy)return;
+  callPollBusy=true;
   try{
    const d=await callApi("/calls/"+activeCall.id+"?after="+lastCallSignalId);
    if(["rejected","ended","missed"].includes(d.call.status)){toast(d.call.status==="rejected"?"Call declined.":"Call ended.");stopCallMedia();return}
    for(const signal of d.signals||[]){
     lastCallSignalId=Math.max(lastCallSignalId,Number(signal.id)||0);
-    if(signal.signal_type==="answer"&&activeCall.role==="caller"&&peerConnection?.signalingState==="have-local-offer")await peerConnection.setRemoteDescription(signal.payload);await flushRemoteCandidates();
+    if(signal.signal_type==="answer"&&activeCall.role==="caller"&&peerConnection?.signalingState==="have-local-offer"){await peerConnection.setRemoteDescription(signal.payload);await flushRemoteCandidates()}
     if(signal.signal_type==="ice"){if(peerConnection?.remoteDescription)await peerConnection.addIceCandidate(signal.payload).catch(()=>{});else remoteCandidateQueue.push(signal.payload)}
    }
-   if(d.call.status==="accepted")$("#callStatus").textContent="Connected";
-  }catch{}
- },1600);
+   if(d.call.status==="accepted"&&peerConnection?.connectionState!=="connected")$("#callStatus").textContent="Connecting…";
+  }catch{}finally{callPollBusy=false}
+ },2000);
 }
 async function rejectIncomingCall(){
  const id=incomingCallId;if(id){await callApi("/calls/"+id,{method:"PATCH",body:JSON.stringify({status:"rejected"})}).catch(()=>{})}
