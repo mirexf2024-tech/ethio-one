@@ -131,7 +131,7 @@ router.get("/posts/:id/comments",async(req,res)=>{
   if(!uuid(req.params.id)) return res.status(400).json({error:"Invalid post."});
   try{
     const r=await req.app.locals.db.query("SELECT c.id,c.body,c.created_at,u.username,u.full_name,up.avatar_url FROM social_comments c JOIN social_posts p ON p.id=c.post_id JOIN users u ON u.id=c.user_id LEFT JOIN user_profiles up ON up.user_id=u.id WHERE c.post_id=$1 AND c.status='published' AND p.status='published' AND (p.visibility='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id)) AND (COALESCE((SELECT profile_visibility FROM user_profiles WHERE user_id=p.user_id),'public')='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows pv WHERE pv.follower_id=$2 AND pv.following_id=p.user_id)) AND ($2::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2))) AND ($2::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=c.user_id) OR (b.blocker_id=c.user_id AND b.blocked_id=$2))) ORDER BY c.created_at ASC LIMIT 100",[req.params.id,req.socialUserId]);
-    return res.json({comments:r.rows});
+    return res.set("Cache-Control","no-store").json({comments:r.rows});
   }catch{return res.status(503).json({error:"Comments are temporarily unavailable."});}
 });
 router.post("/posts/:id/comments",commentCreateLimit,requireAuth,async(req,res)=>{
