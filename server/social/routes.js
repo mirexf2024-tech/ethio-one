@@ -181,6 +181,20 @@ router.get("/moderation/reports",requireAuth,async(req,res)=>{
     return res.json({reports:r.rows});
   }catch{return res.status(503).json({error:"Moderation queue is unavailable."});}
 });
+router.patch("/moderation/reports/:id",requireAuth,async(req,res)=>{
+  if(!uuid(req.params.id))return res.status(400).json({error:"Invalid report."});
+  const status=req.body?.status;
+  if(!["reviewing","actioned","dismissed"].includes(status))return res.status(400).json({error:"Choose a valid moderation status."});
+  try{
+    const role=await req.app.locals.db.query("SELECT 1 FROM user_roles WHERE user_id=$1 AND role_key IN ('moderator','admin','super_admin') LIMIT 1",[req.socialUserId]);
+    if(!role.rowCount)return res.status(403).json({error:"Moderator access required."});
+    const r=await req.app.locals.db.query(
+      "UPDATE social_reports SET status=$2,reviewed_at=NOW(),reviewed_by=$3 WHERE id=$1 AND status IN ('open','reviewing') RETURNING id,status,reviewed_at",
+      [req.params.id,status,req.socialUserId]
+    );
+    return r.rowCount?res.json({report:r.rows[0]}):res.status(404).json({error:"Open report not found."});
+  }catch{return res.status(503).json({error:"Report status could not be updated."});}
+});
 
 /* 24-hour stories */
 router.get("/stories",async(req,res)=>{
