@@ -194,16 +194,30 @@ router.get("/moderation/reports",requireAuth,async(req,res)=>{
 });
 router.patch("/moderation/reports/:id",requireAuth,async(req,res)=>{
   if(!uuid(req.params.id))return res.status(400).json({error:"Invalid report."});
-  const status=req.body?.status;
-  if(!["reviewing","actioned","dismissed"].includes(status))return res.status(400).json({error:"Choose a valid moderation status."});
+  const status=req.body?.status, action=req.body?.action;
+  if(!["reviewing","actioned","dismissed"].includes(status) || (action!==undefined && action!=="remove_target") || (action==="remove_target" && status!=="actioned"))
+    return res.status(400).json({error:"Choose a valid moderation action."});
   try{
     const role=await req.app.locals.db.query("SELECT 1 FROM user_roles WHERE user_id=$1 AND role_key IN ('moderator','admin','super_admin') LIMIT 1",[req.socialUserId]);
     if(!role.rowCount)return res.status(403).json({error:"Moderator access required."});
-    const r=await req.app.locals.db.query(
-      "UPDATE social_reports SET status=$2,reviewed_at=NOW(),reviewed_by=$3 WHERE id=$1 AND status IN ('open','reviewing') RETURNING id,status,reviewed_at",
-      [req.params.id,status,req.socialUserId]
-    );
-    return r.rowCount?res.json({report:r.rows[0]}):res.status(404).json({error:"Open report not found."});
+    const client=await req.app.locals.db.connect();
+    try{
+      await client.query("BEGIN");
+      const report=await client.query("SELECT target_type,target_id FROM social_reports WHERE id=$1 AND status IN ('open','reviewing') FOR UPDATE",[req.params.id]);
+      if(!report.rowCount){await client.query("ROLLBACK");return res.status(404).json({error:"Open report not found."});}
+      if(action==="remove_target"){
+        const target=report.rows[0];
+        if(target.target_type==="user"){await client.query("ROLLBACK");return res.status(400).json({error:"User reports require a separate account review."});}
+        const removed=target.target_type==="post"
+          ? await client.query("UPDATE social_posts SET status='removed',updated_at=NOW() WHERE id=$1 AND status='published' RETURNING id",[target.target_id])
+          : await client.query("UPDATE social_comments SET status='removed' WHERE id=$1 AND status='published' RETURNING id",[target.target_id]);
+        if(!removed.rowCount){await client.query("ROLLBACK");return res.status(404).json({error:"Reported content was already removed or not found."});}
+      }
+      const updated=await client.query("UPDATE social_reports SET status=$2,reviewed_at=NOW(),reviewed_by=$3 WHERE id=$1 RETURNING id,status,reviewed_at",[req.params.id,status,req.socialUserId]);
+      await client.query("COMMIT");
+      return res.json({report:updated.rows[0],targetRemoved:action==="remove_target"});
+    }catch(error){await client.query("ROLLBACK").catch(()=>{});throw error;}
+    finally{client.release();}
   }catch{return res.status(503).json({error:"Report status could not be updated."});}
 });
 
