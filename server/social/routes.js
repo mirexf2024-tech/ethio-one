@@ -145,6 +145,7 @@ router.get("/feed",async(req,res)=>{
        (SELECT COUNT(*)::int FROM social_post_impressions i WHERE i.post_id=p.id) AS impression_count,
        (SELECT COUNT(DISTINCT i.user_id)::int FROM social_post_impressions i WHERE i.post_id=p.id) AS reach_count,
        (SELECT COUNT(*)::int FROM social_post_shares sh WHERE sh.post_id=p.id) AS share_count,
+       (SELECT COUNT(*)::int FROM social_bookmarks bm WHERE bm.post_id=p.id) AS bookmark_count,
        COALESCE((SELECT show_video_views FROM user_profiles WHERE user_id=p.user_id),TRUE) AS show_video_views,
        CASE WHEN $1::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_likes l WHERE l.post_id=p.id AND l.user_id=$1) END AS liked,
        CASE WHEN $1::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_bookmarks b WHERE b.post_id=p.id AND b.user_id=$1) END AS bookmarked
@@ -658,15 +659,15 @@ router.get("/creator/analytics",requireAuth,async(req,res)=>{
  const days=Math.min(90,Math.max(7,Number.parseInt(req.query.days,10)||30));
  try{
   const q=await req.app.locals.db.query(
-   \`SELECT COUNT(DISTINCT p.id)::int AS posts,
-    COALESCE(SUM((SELECT COUNT(*) FROM social_post_impressions i WHERE i.post_id=p.id AND i.impression_day>=CURRENT_DATE-($2::int-1))),0)::int AS impressions,
-    COALESCE(SUM((SELECT COUNT(DISTINCT i.user_id) FROM social_post_impressions i WHERE i.post_id=p.id AND i.impression_day>=CURRENT_DATE-($2::int-1))),0)::int AS reach,
-    COALESCE(SUM((SELECT COUNT(*) FROM social_post_views v WHERE v.post_id=p.id AND v.viewed_at>=NOW()-($2::int||' days')::interval)),0)::int AS video_views,
-    COALESCE(SUM((SELECT COUNT(*) FROM social_likes l WHERE l.post_id=p.id AND l.created_at>=NOW()-($2::int||' days')::interval)),0)::int AS likes,
-    COALESCE(SUM((SELECT COUNT(*) FROM social_comments c WHERE c.post_id=p.id AND c.status='published' AND c.created_at>=NOW()-($2::int||' days')::interval)),0)::int AS comments,
-    COALESCE(SUM((SELECT COUNT(*) FROM social_post_shares sh WHERE sh.post_id=p.id AND sh.shared_at>=NOW()-($2::int||' days')::interval)),0)::int AS shares,
-    COALESCE(SUM((SELECT COUNT(*) FROM social_bookmarks b WHERE b.post_id=p.id AND b.created_at>=NOW()-($2::int||' days')::interval)),0)::int AS saves
-    FROM social_posts p WHERE p.user_id=$1 AND p.status='published' AND p.created_at>=NOW()-($2::int||' days')::interval\`,
+   `WITH mine AS (SELECT id FROM social_posts WHERE user_id=$1 AND status='published' AND created_at>=NOW()-($2::int||' days')::interval)
+    SELECT (SELECT COUNT(*)::int FROM mine) AS posts,
+     (SELECT COUNT(*)::int FROM social_post_impressions i JOIN mine p ON p.id=i.post_id WHERE i.impression_day>=CURRENT_DATE-($2::int-1)) AS impressions,
+     (SELECT COUNT(DISTINCT i.user_id)::int FROM social_post_impressions i JOIN mine p ON p.id=i.post_id WHERE i.impression_day>=CURRENT_DATE-($2::int-1)) AS reach,
+     (SELECT COUNT(*)::int FROM social_post_views v JOIN mine p ON p.id=v.post_id WHERE v.viewed_at>=NOW()-($2::int||' days')::interval) AS video_views,
+     (SELECT COUNT(*)::int FROM social_likes l JOIN mine p ON p.id=l.post_id WHERE l.created_at>=NOW()-($2::int||' days')::interval) AS likes,
+     (SELECT COUNT(*)::int FROM social_comments c JOIN mine p ON p.id=c.post_id WHERE c.status='published' AND c.created_at>=NOW()-($2::int||' days')::interval) AS comments,
+     (SELECT COUNT(*)::int FROM social_post_shares sh JOIN mine p ON p.id=sh.post_id WHERE sh.shared_at>=NOW()-($2::int||' days')::interval) AS shares,
+     (SELECT COUNT(*)::int FROM social_bookmarks b JOIN mine p ON p.id=b.post_id WHERE b.created_at>=NOW()-($2::int||' days')::interval) AS saves`,
    [req.socialUserId,days]);
   const a=q.rows[0],engagement=Number(a.likes)+Number(a.comments)+Number(a.shares)+Number(a.saves);
   return res.set("Cache-Control","no-store").json({periodDays:days,...a,engagement,engagementRate:Number(a.reach)>0?Number((engagement/Number(a.reach)*100).toFixed(2)):0});
