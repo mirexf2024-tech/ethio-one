@@ -36,6 +36,30 @@ router.use(async(req,res,next)=>{
 });
 router.use(optionalAuth);
 
+
+router.get("/profile/me",requireAuth,async(req,res)=>{
+ try{
+  const r=await req.app.locals.db.query("SELECT u.id,u.username,u.full_name,u.ethio_id,p.bio,p.avatar_url,p.city,p.region,p.country,(SELECT COUNT(*)::int FROM social_follows WHERE following_id=u.id) AS followers,(SELECT COUNT(*)::int FROM social_follows WHERE follower_id=u.id) AS following,(SELECT COUNT(*)::int FROM social_posts WHERE user_id=u.id AND status='published') AS posts FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id WHERE u.id=$1",[req.socialUserId]);
+  return res.json({profile:r.rows[0]||null});
+ }catch{return res.status(503).json({error:"Profile unavailable."});}
+});
+router.get("/users/search",async(req,res)=>{
+ const q=String(req.query.q||"").trim().slice(0,50);
+ if(q.length<2)return res.json({users:[]});
+ try{
+  const r=await req.app.locals.db.query("SELECT u.id,u.username,u.full_name,p.avatar_url,(SELECT COUNT(*)::int FROM social_follows f WHERE f.following_id=u.id) AS followers,CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=u.id) END AS following FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id WHERE u.status='active' AND (u.username ILIKE $1 OR u.full_name ILIKE $1) AND ($2::uuid IS NULL OR u.id<>$2) ORDER BY u.full_name LIMIT 20",["%"+q+"%",req.socialUserId]);
+  return res.json({users:r.rows});
+ }catch{return res.status(503).json({error:"Search unavailable."});}
+});
+router.get("/users/:id/profile",async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid account."});
+ try{
+  const r=await req.app.locals.db.query("SELECT u.id,u.username,u.full_name,p.bio,p.avatar_url,p.city,p.region,p.country,(SELECT COUNT(*)::int FROM social_follows WHERE following_id=u.id) AS followers,(SELECT COUNT(*)::int FROM social_follows WHERE follower_id=u.id) AS following,(SELECT COUNT(*)::int FROM social_posts WHERE user_id=u.id AND status='published') AS posts,CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_follows WHERE follower_id=$2 AND following_id=u.id) END AS is_following FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id WHERE u.id=$1 AND u.status='active' AND ($2::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks WHERE (blocker_id=$2 AND blocked_id=u.id) OR (blocker_id=u.id AND blocked_id=$2)))",[req.params.id,req.socialUserId]);
+  if(!r.rowCount)return res.status(404).json({error:"Profile not found."});
+  return res.json({profile:r.rows[0]});
+ }catch{return res.status(503).json({error:"Profile unavailable."});}
+});
+
 router.get("/feed",async(req,res)=>{
   const limit=Math.min(30,Math.max(1,Number.parseInt(req.query.limit,10)||15));
   const cursor=typeof req.query.before==="string" && uuid(req.query.before)?req.query.before:null;
