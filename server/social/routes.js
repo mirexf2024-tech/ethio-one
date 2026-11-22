@@ -1,5 +1,6 @@
 const express = require("express");
 const crypto = require("node:crypto");
+const rateLimit = require("express-rate-limit");
 const router = express.Router();
 
 function payload(req) {
@@ -28,7 +29,13 @@ async function requireAuth(req,res,next) {
   if(!req.socialUserId) return res.status(401).json({error:"Sign in to use this feature."});
   next();
 }
-const uuid=v=>typeof v==="string" && /^[0-9a-f-]{36}$/i.test(v);
+const uuid=v=>typeof v==="string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+const actionLimiter=(limit,windowMs,message)=>rateLimit({windowMs,limit,standardHeaders:"draft-7",legacyHeaders:false,handler:(_req,res)=>res.status(429).json({error:message})});
+const postCreateLimit=actionLimiter(5,60*60*1000,"You have reached the post limit. Please try again later.");
+const commentCreateLimit=actionLimiter(15,60*1000,"You are commenting too quickly. Please wait a moment.");
+const reportCreateLimit=actionLimiter(5,15*60*1000,"You have reached the report limit. Please try again later.");
+const storyCreateLimit=actionLimiter(4,60*60*1000,"You have reached the story limit. Please try again later.");
+const messageCreateLimit=actionLimiter(20,60*1000,"You are sending messages too quickly. Please wait a moment.");
 const safeMedia = media => Array.isArray(media) && media.length<=4 && media.every(x=>x && typeof x.publicId==="string" && x.publicId.length<=255 && typeof x.url==="string" && x.url.startsWith("https://res.cloudinary.com/") && x.url.includes("/upload/") && ["image","video"].includes(x.type));
 router.use(async(req,res,next)=>{
   if(!req.app.locals.db) return res.status(503).json({error:"Social service is temporarily unavailable."});
@@ -82,7 +89,7 @@ router.get("/feed",async(req,res)=>{
   }catch{return res.status(503).json({error:"The feed is temporarily unavailable."});}
 });
 
-router.post("/posts",requireAuth,async(req,res)=>{
+router.post("/posts",postCreateLimit,requireAuth,async(req,res)=>{
   const b=req.body||{}, body=typeof b.body==="string"?b.body.trim():"", media=b.media===undefined?[]:b.media;
   if(body.length>2000 || (!body && !media.length) || !safeMedia(media) || !["public","followers"].includes(b.visibility||"public"))
     return res.status(400).json({error:"Check your post text and attachments."});
@@ -127,7 +134,7 @@ router.get("/posts/:id/comments",async(req,res)=>{
     return res.json({comments:r.rows});
   }catch{return res.status(503).json({error:"Comments are temporarily unavailable."});}
 });
-router.post("/posts/:id/comments",requireAuth,async(req,res)=>{
+router.post("/posts/:id/comments",commentCreateLimit,requireAuth,async(req,res)=>{
   const body=typeof req.body?.body==="string"?req.body.body.trim():"";
   if(!uuid(req.params.id)||!body||body.length>1000) return res.status(400).json({error:"Write a comment of up to 1,000 characters."});
   try{
@@ -164,7 +171,7 @@ router.post("/users/:id/block",requireAuth,async(req,res)=>{
     return res.json({blocked:true});
   }catch{return res.status(503).json({error:"Account could not be blocked."});}
 });
-router.post("/reports",requireAuth,async(req,res)=>{
+router.post("/reports",reportCreateLimit,requireAuth,async(req,res)=>{
   const b=req.body||{};
   if(!["post","comment","user"].includes(b.targetType)||!uuid(b.targetId)||!["spam","harassment","hate","violence","nudity","misinformation","impersonation","other"].includes(b.reason)|| (b.details!==undefined && (typeof b.details!=="string"||b.details.length>500)))
     return res.status(400).json({error:"Check the report details."});
@@ -211,7 +218,7 @@ router.get("/stories",async(req,res)=>{
   return res.set("Cache-Control","no-store").json({stories:r.rows});
  }catch{return res.status(503).json({error:"Stories are temporarily unavailable."});}
 });
-router.post("/stories",requireAuth,async(req,res)=>{
+router.post("/stories",storyCreateLimit,requireAuth,async(req,res)=>{
  const b=req.body||{},caption=typeof b.caption==="string"?b.caption.trim():"";
  if(typeof b.publicId!=="string"||b.publicId.length>255||typeof b.url!=="string"||!b.url.startsWith("https://res.cloudinary.com/")||!b.url.includes("/upload/")||!["image","video"].includes(b.type)||caption.length>240||!["public","followers"].includes(b.visibility||"public"))
   return res.status(400).json({error:"Check your story media and caption."});
@@ -286,7 +293,7 @@ router.get("/conversations/:id/messages",requireAuth,async(req,res)=>{
   return res.set("Cache-Control","no-store").json({messages:r.rows.reverse()});
  }catch{return res.status(503).json({error:"Messages could not be loaded."});}
 });
-router.post("/conversations/:id/messages",requireAuth,async(req,res)=>{
+router.post("/conversations/:id/messages",messageCreateLimit,requireAuth,async(req,res)=>{
  const body=typeof req.body?.body==="string"?req.body.body.trim():"";
  if(!uuid(req.params.id)||!body||body.length>2000)return res.status(400).json({error:"Write a message of up to 2,000 characters."});
  const client=await req.app.locals.db.connect();
