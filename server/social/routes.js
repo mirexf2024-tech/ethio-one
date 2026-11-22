@@ -40,7 +40,7 @@ const interactionLimit=actionLimiter(60,60*1000,"You are doing that too quickly.
 async function notifyMentions(db,body,actorId,postId,commentId=null){
   const handles=[...new Set([...String(body||"").matchAll(/(?:^|[^A-Za-z0-9_])@([A-Za-z0-9_]{3,30})/g)].map(x=>x[1].toLowerCase()))].slice(0,10);
   if(!handles.length)return;
-  await db.query(
+  try { await db.query(
     `INSERT INTO notifications(user_id,title,body,kind,data)
      SELECT DISTINCT recipient.id,'You were mentioned',actor.full_name||actor.username||'A member',
        'social_mention',
@@ -55,7 +55,7 @@ async function notifyMentions(db,body,actorId,postId,commentId=null){
        AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=recipient.id AND b.blocked_id=actor.id) OR (b.blocker_id=actor.id AND b.blocked_id=recipient.id))
        AND ($5::uuid IS NULL OR EXISTS(SELECT 1 FROM social_comments c WHERE c.id=$5 AND c.post_id=p.id AND c.status='published'))`,
     [handles,actorId,postId,commentId]
-  );
+  ); } catch { /* Do not fail a published post/comment if a notification cannot be queued. */ }
 }
 const safeMedia = media => Array.isArray(media) && media.length<=4 && media.every(x=>x && typeof x.publicId==="string" && x.publicId.length<=255 && typeof x.url==="string" && x.url.startsWith("https://res.cloudinary.com/") && x.url.includes("/upload/") && ["image","video"].includes(x.type));
 router.use(async(req,res,next)=>{
