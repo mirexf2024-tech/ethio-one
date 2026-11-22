@@ -1,6 +1,8 @@
 -- Ethio Social messenger attachments and post reactions.
 ALTER TABLE social_messages
  ADD COLUMN IF NOT EXISTS media JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE social_messages DROP CONSTRAINT IF EXISTS social_messages_body_check;
+ALTER TABLE social_messages ADD CONSTRAINT social_messages_body_check CHECK ((char_length(body) BETWEEN 1 AND 2000) OR (char_length(body)=0 AND jsonb_array_length(media)>0));
 DO $$ BEGIN
  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='social_messages_media_check') THEN
   ALTER TABLE social_messages ADD CONSTRAINT social_messages_media_check CHECK (jsonb_typeof(media)='array');
