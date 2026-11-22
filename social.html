@@ -331,7 +331,7 @@ async function loadConversations(){
  const el=$("#conversationList");el.innerHTML='<p class="hint">'+tr("loadingConversations")+'</p>';
  try{const d=await api("/conversations");const items=d.conversations||[];
   el.innerHTML=items.map(c=>'<button type="button" class="messenger-person" data-conversation="'+esc(c.id)+'" data-name="'+esc(c.full_name||c.username||"Member")+'"><span class="avatar">'+(c.avatar_url?'<img src="'+esc(c.avatar_url)+'" alt="">':esc(initials(c.full_name||c.username)))+'</span><span style="min-width:0;flex:1"><b>'+esc(c.full_name||c.username||"Member")+'</b><small>'+esc(c.last_message||tr("startChat"))+'</small></span>'+(Number(c.unread_count)>0?'<span class="messenger-unread">'+Number(c.unread_count)+'</span>':'')+'</button>').join("")||'<p class="hint">'+tr("noConversations")+'</p>';
-  if(window.activeConversation){const current=items.find(x=>x.id===window.activeConversation);if(current)activeConversationName=current.full_name||current.username||activeConversationName}
+  if(window.activeConversation){const current=items.find(x=>x.id===window.activeConversation);if(current){activeConversationName=current.full_name||current.username||activeConversationName;$("#chatHeader").textContent=activeConversationName;$("#chatAvatar").innerHTML=current.avatar_url?'<img src="'+esc(current.avatar_url)+'" alt="">':esc(initials(activeConversationName));}}
  }catch(e){el.textContent=e.message}
 }
 async function openInbox(){
@@ -353,7 +353,7 @@ async function loadMessages(id){
  }catch(e){$("#messageList").textContent=e.message}
 }
 $("#messagesBtn").onclick=openInbox;
-$("#conversationList").addEventListener("click",async e=>{const b=e.target.closest("[data-conversation]");if(!b)return;window.activeConversation=b.dataset.conversation;activeConversationName=b.dataset.name||"Member";await loadMessages(window.activeConversation)});
+$("#conversationList").addEventListener("click",async e=>{const b=e.target.closest("[data-conversation]");if(!b)return;window.activeConversation=b.dataset.conversation;activeConversationName=b.dataset.name||"Member";document.querySelectorAll(".messenger-person").forEach(x=>x.classList.toggle("active",x===b));const avatar=b.querySelector(".avatar");$("#chatAvatar").innerHTML=avatar?avatar.innerHTML:esc(initials(activeConversationName));await loadMessages(window.activeConversation)});
 $("#sendMessageBtn").onclick=async()=>{const input=$("#messageInput"),body=input.value.trim();if(!window.activeConversation||!body)return;const btn=$("#sendMessageBtn");btn.disabled=true;try{await api("/conversations/"+window.activeConversation+"/messages",{method:"POST",body:JSON.stringify({body})});input.value="";await loadMessages(window.activeConversation)}catch(e){toast(e.message)}finally{btn.disabled=!window.activeConversation}};
 $("#messageInput").addEventListener("input",()=>{$("#sendMessageBtn").disabled=!window.activeConversation||!$("#messageInput").value.trim()});
 
