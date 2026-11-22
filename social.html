@@ -7,6 +7,55 @@
 .stories{display:flex;gap:12px;overflow-x:auto;padding:13px;margin-bottom:14px}.story-chip{flex:0 0 68px;border:0;background:transparent;padding:0;text-align:center;color:#4b5f78;font-size:10px}.story-ring{width:58px;height:58px;margin:0 auto 5px;border-radius:50%;padding:3px;background:linear-gradient(135deg,#d9a928,#0d5b9c)}.story-ring img,.story-initial{width:100%;height:100%;border:2px solid white;border-radius:50%;object-fit:cover;background:#eaf0f7;display:grid;place-items:center;color:#082b59;font-weight:850}.story-add .story-ring{background:#e9eef5}.story-add .story-initial{font-size:24px}.story-view{width:min(420px,100%);height:min(720px,88vh);padding:0;overflow:hidden;position:relative;background:#061a35;color:#fff;border-radius:18px}.story-view img,.story-view video{width:100%;height:100%;object-fit:contain;background:#061a35}.story-caption{position:absolute;bottom:0;left:0;right:0;padding:28px 18px 22px;background:linear-gradient(transparent,#061a35d9);font-size:13px}.story-top{position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:center;z-index:2}.story-top button{background:#ffffff22;color:#fff;border:0;border-radius:8px;padding:7px 10px}.notice-item{padding:12px;border-bottom:1px solid #edf1f6;font-size:12px}.notice-item.unread{background:#f3f7fc}.notice-item small{display:block;color:#8491a3;margin-top:4px;font-size:10px}
 @media(max-width:620px){.stories{margin-left:-2px;margin-right:-2px}.story-view{height:82vh}}
 @media(max-width:900px){.wrap{grid-template-columns:190px minmax(0,1fr)}.right{display:none}}@media(max-width:620px){.top{height:56px}.topin{padding:0 13px}.topnav{gap:1px}.topnav a,.topnav button{padding:8px;font-size:10px}.wrap{display:block;margin:14px auto;padding:0 10px}.left{display:none}.post{padding:13px}.composer{padding:12px}.post-body{font-size:12px}.intro{padding:16px}.intro h2{font-size:18px}}
+/* Ethio Social visual refinement */
+:root{--shadow-soft:0 12px 34px rgba(8,43,89,.07);--gold-soft:#fff8df}
+html{scroll-behavior:smooth;scroll-padding-top:78px}
+body{background:radial-gradient(ellipse at 50% -12%,#e7eef8 0,transparent 38%),var(--bg)}
+.top{backdrop-filter:blur(14px);background:rgba(8,43,89,.97)}
+.topin{max-width:1160px}
+.wrap{max-width:1160px;gap:20px}
+.panel,.post,.composer,.sidebox{box-shadow:var(--shadow-soft);border-color:#e8edf4;transition:box-shadow .2s ease,transform .2s ease}
+.post{border-radius:18px;padding:18px}
+.post:hover{box-shadow:0 14px 36px rgba(8,43,89,.10)}
+.composer{border-radius:18px;padding:16px}
+.compose-trigger{transition:border-color .2s,background .2s}
+.compose-trigger:hover{background:#fff;border-color:#b7c8dc}
+.gold{transition:transform .18s ease,box-shadow .18s ease,filter .18s ease}
+.gold:hover{filter:brightness(1.03);transform:translateY(-1px);box-shadow:0 5px 14px #d9a92838}
+.gold:disabled{opacity:.55;cursor:wait;transform:none;box-shadow:none}
+.tabs{border:1px solid #e3eaf3}
+.post-actions button{transition:background .18s,color .18s}
+.post-actions button:hover{background:#edf3fa}
+.stories{border-radius:18px;scrollbar-width:thin}
+.story-chip{transition:transform .18s ease}
+.story-chip:hover{transform:translateY(-2px)}
+.story-ring{box-shadow:0 3px 10px #082b5918}
+.dialog{max-height:min(88vh,760px);overflow:auto;border:1px solid #ffffffb0}
+.modal{backdrop-filter:blur(5px)}
+.avatar{border-radius:50%;background:linear-gradient(145deg,#edf3fa,#dce6f2)}
+.post-media{display:block;margin-top:8px;max-height:460px}
+#profileBox{border-radius:18px}
+#memberSearch:focus,.commentbox input:focus,.dialog input:focus{outline:none;border-color:#9bb1cb;box-shadow:0 0 0 3px #082b5910}
+#memberSearch{background:#fbfcfe}
+.notice-item{border-radius:10px;margin:4px 0}
+@media(max-width:620px){
+ body{background:#f1f4f8}
+ .top{height:58px}
+ .topin{gap:8px}
+ .brand{font-size:17px}
+ .topnav{gap:0}
+ .topnav a,.topnav button{padding:8px 7px;font-size:10px}
+ .wrap{margin:10px auto;padding:0 9px}
+ .main>.sidebox,.composer,.post{border-radius:15px}
+ .stories{padding:12px 9px;gap:10px}
+ .story-chip{flex-basis:64px}
+ .story-ring{width:54px;height:54px}
+ .post{padding:13px;margin-bottom:10px}
+ .post-actions button{font-size:10px;padding:9px 1px}
+ .dialog{padding:15px;border-radius:16px}
+ .dialog-bottom{flex-wrap:wrap}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 </style></head><body>
 <header class="top"><div class="topin"><a class="brand" href="/">Ethio <b>One</b></a><nav class="topnav"><a class="active" href="/social.html">Social</a><button id="notificationsBtn" type="button">Notifications</button><a href="/">Services</a><a id="accountLink" href="/auth.html">Sign in</a></nav></div></header>
 <main class="wrap">
