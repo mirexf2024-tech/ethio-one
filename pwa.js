@@ -3,7 +3,9 @@
  const installed=()=>window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
  if(installed())return;
  let deferred=null;
- const ua=navigator.userAgent;\n const isIOS=/iphone|ipad|ipod/i.test(ua)&&!window.MSStream;\n const isAndroid=/android/i.test(ua);
+ const ua=navigator.userAgent;
+ const isIOS=/iphone|ipad|ipod/i.test(ua)&&!window.MSStream;
+ const isAndroid=/android/i.test(ua);
  const key="ethio-one-install-dismissed";
  try{if(Number(localStorage.getItem(key)||0)>Date.now())return}catch{}
  const style=document.createElement("style");
@@ -13,14 +15,17 @@
  box.innerHTML='<img class="ei-icon" src="/icons/ethio-one-app.svg" alt=""><div class="ei-copy"><b>Install Ethio One</b><small id="ethioInstallHelp">Add the app to your home screen for quick access.</small></div><button type="button" id="ethioInstallAction">Install</button><button type="button" class="ei-close" aria-label="Close">×</button>';
  document.addEventListener("DOMContentLoaded",()=>document.body.appendChild(box));
  const show=()=>{if(document.body&&!installed())box.hidden=false;else if(!document.body)setTimeout(show,100)};
- window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferred=e;document.getElementById("ethioInstallHelp").textContent="Install Ethio One on your device for quick access.";document.getElementById("ethioInstallAction").textContent="Install";show()});
+ const helpText=()=>isIOS?"Safari: tap Share, then Add to Home Screen.":isAndroid?"Open browser menu ⋮ and choose Install app or Add to Home screen.":"Open your browser menu and choose Install Ethio One or Add to Home Screen.";
+ window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferred=e;document.getElementById("ethioInstallHelp").textContent="Install Ethio One on your device for quick access.";document.getElementById("ethioInstallAction").textContent="Install";document.getElementById("ethioInstallAction").dataset.instructions="";show()});
  window.addEventListener("appinstalled",()=>{box.hidden=true;deferred=null});
  box.addEventListener("click",async e=>{
   if(e.target.closest(".ei-close")){box.hidden=true;try{localStorage.setItem(key,String(Date.now()+7*864e5))}catch{}return}
   if(e.target.id!=="ethioInstallAction")return;
-  if(deferred){deferred.prompt();const choice=await deferred.userChoice;if(choice?.outcome==="accepted")box.hidden=true;deferred=null;return}
-  const help=document.getElementById("ethioInstallHelp");\n  if(isIOS)help.textContent="Safari: tap Share, then Add to Home Screen.";\n  else if(isAndroid)help.textContent="Open your browser menu ⋮ and choose Install app or Add to Home screen.";\n  else help.textContent="Open your browser menu and choose Install Ethio One or Add to Home Screen.";\n  document.getElementById("ethioInstallAction").textContent="Got it";\n  e.target.textContent="Got it";\n  if(e.target.textContent==="Got it"&&e.target.id==="ethioInstallAction")e.target.onclick=()=>{box.hidden=true};
+  if(e.target.dataset.instructions==="shown"){box.hidden=true;return}
+  if(deferred){const promptEvent=deferred;deferred=null;await promptEvent.prompt();const choice=await promptEvent.userChoice;if(choice?.outcome==="accepted")box.hidden=true;return}
+  document.getElementById("ethioInstallHelp").textContent=helpText();
+  e.target.textContent="Got it";e.target.dataset.instructions="shown";
  });
- setTimeout(()=>{if(!deferred){\n  const help=document.getElementById("ethioInstallHelp");\n  if(help){help.textContent=isIOS?"Safari: tap Share, then Add to Home Screen.":isAndroid?"Open browser menu ⋮ and choose Install app or Add to Home screen.":"Open your browser menu and choose Install Ethio One.";document.getElementById("ethioInstallAction").textContent="How to install";}\n  show();\n }},4500);
+ setTimeout(()=>{if(!deferred&&!installed()){document.getElementById("ethioInstallHelp").textContent=helpText();document.getElementById("ethioInstallAction").textContent="How to install";document.getElementById("ethioInstallAction").dataset.instructions="";show()}},4500);
  if("serviceWorker" in navigator&&location.protocol==="https:"){window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))}
 })();
