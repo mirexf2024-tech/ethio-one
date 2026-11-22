@@ -545,8 +545,9 @@ router.post("/calls/:id/signals",interactionLimit,requireAuth,async(req,res)=>{
  if(!uuid(req.params.id)||!["answer","ice"].includes(type)||!payload||typeof payload!=="object"||JSON.stringify(payload).length>30000)
   return res.status(400).json({error:"Invalid call signal."});
  try{
-  const call=await req.app.locals.db.query("SELECT id FROM social_calls WHERE id=$1 AND (caller_id=$2 OR callee_id=$2) AND status IN ('ringing','accepted') AND created_at>NOW()-INTERVAL '30 minutes'",[req.params.id,req.socialUserId]);
+  const call=await req.app.locals.db.query("SELECT id,callee_id FROM social_calls WHERE id=$1 AND (caller_id=$2 OR callee_id=$2) AND status IN ('ringing','accepted') AND created_at>NOW()-INTERVAL '30 minutes'",[req.params.id,req.socialUserId]);
   if(!call.rowCount)return res.status(404).json({error:"Active call not found."});
+  if(type==="answer"&&call.rows[0].callee_id!==req.socialUserId)return res.status(403).json({error:"Only the receiving member can answer this call."});
   const r=await req.app.locals.db.query("INSERT INTO social_call_signals(call_id,sender_id,signal_type,payload) VALUES($1,$2,$3,$4::jsonb) RETURNING id",[req.params.id,req.socialUserId,type,JSON.stringify(payload)]);
   return res.status(201).json({ok:true,signalId:r.rows[0].id});
  }catch{return res.status(503).json({error:"Call signal could not be sent."});}
