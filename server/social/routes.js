@@ -788,6 +788,19 @@ router.patch("/groups/:id/members/:userId",requireAuth,async(req,res)=>{
   return res.json({ok:true});
  }catch{return res.status(503).json({error:"Group role could not be changed."});}
 });
+router.delete("/groups/:id/members/me",requireAuth,async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid group."});
+ const client=await req.app.locals.db.connect();
+ try{
+  await client.query("BEGIN");
+  const member=await client.query("SELECT role FROM social_group_members WHERE group_id=$1 AND user_id=$2 FOR UPDATE",[req.params.id,req.socialUserId]);
+  if(!member.rowCount){await client.query("ROLLBACK");return res.status(404).json({error:"Group membership not found."});}
+  if(member.rows[0].role==="admin"){await client.query("ROLLBACK");return res.status(409).json({error:"Transfer the admin role before leaving this group."});}
+  await client.query("DELETE FROM social_group_members WHERE group_id=$1 AND user_id=$2",[req.params.id,req.socialUserId]);
+  await client.query("COMMIT");return res.json({ok:true});
+ }catch{await client.query("ROLLBACK").catch(()=>{});return res.status(503).json({error:"Could not leave this group."});}
+ finally{client.release()}
+});
 router.delete("/groups/:id/messages/:messageId",requireAuth,async(req,res)=>{
  if(!uuid(req.params.id)||!uuid(req.params.messageId))return res.status(400).json({error:"Invalid group message."});
  try{
