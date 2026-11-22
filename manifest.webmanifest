@@ -1,0 +1,24 @@
+{
+  "id": "/",
+  "name": "Ethio One",
+  "short_name": "Ethio One",
+  "description": "One Identity. Many Possibilities. Ethio One social and digital services.",
+  "lang": "om",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#f3f6fa",
+  "theme_color": "#082b59",
+  "categories": ["social", "communication"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icons/ethio-one-app.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
