@@ -159,11 +159,11 @@ router.post("/login", async (req,res) => {
     if(value.includes("@")) {
       result=await db.query("SELECT * FROM users WHERE lower(email)=lower($1) LIMIT 1",[security.normalizeEmail(value)]);
     } else {
-      // Numeric usernames can resemble phone numbers; match both identifiers.
+      // Resolve exact Ethio ID / username before phone fallback to avoid numeric collisions.
       let phone=null;
-      if(/^[+0-9()\\s-]+$/.test(value)) { try { phone=security.normalizePhone(value); } catch {} }
+      if(/^[+0-9()\s-]+$/.test(value)) { try { phone=security.normalizePhone(value); } catch {} }
       result=await db.query(
-        "SELECT * FROM users WHERE lower(ethio_id)=lower($1) OR lower(username)=lower($1) OR ($2::text IS NOT NULL AND phone=$2) LIMIT 1",
+        "SELECT * FROM users WHERE lower(ethio_id)=lower($1) OR lower(username)=lower($1) OR ($2::text IS NOT NULL AND phone=$2) ORDER BY CASE WHEN lower(ethio_id)=lower($1) THEN 0 WHEN lower(username)=lower($1) THEN 1 ELSE 2 END LIMIT 1",
         [value,phone]
       );
     }
