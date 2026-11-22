@@ -392,7 +392,7 @@
         <p class="service-count" id="serviceCount" aria-live="polite">19 service previews</p>
       </div>
       <div class="grid">
-        <article class="tile"><div class="ico" style="--accent:#2878D0;--tint:#EAF3FF"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c.5-3.2 2.5-5 6-5s5.5 1.8 6 5M15 15c3.5-.3 5.5 1.3 6 4"/></svg></div><h3>Ethio Social</h3><p data-i18n="serviceSocial">Hawaasa fi walqunnamtii</p></article>
+        <a class="tile" href="/social.html" aria-label="Open Ethio Social"><div class="ico" style="--accent:#2878D0;--tint:#EAF3FF"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c.5-3.2 2.5-5 6-5s5.5 1.8 6 5M15 15c3.5-.3 5.5 1.3 6 4"/></svg></div><h3>Ethio Social</h3><p data-i18n="serviceSocial">Hawaasa fi walqunnamtii</p></a>
         <article class="tile"><div class="ico" style="--accent:#E34F58;--tint:#FFF0F1"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m10 9 5 3-5 3z"/></svg></div><h3>Ethio Tube</h3><p data-i18n="serviceTube">Viidiyoo argachuu</p></article>
         <article class="tile"><div class="ico" style="--accent:#D94B78;--tint:#FFF0F6"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.5 5.5a9 9 0 0 0 0 13M18.5 5.5a9 9 0 0 1 0 13"/></svg></div><h3>Ethio Live</h3><p data-i18n="serviceLive">Tamsaasa kallattii</p></article>
         <article class="tile"><div class="ico" style="--accent:#16A085;--tint:#E9F9F4"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8 8 0 0 1-3.5-.8L4 20l1.4-3.8A7.2 7.2 0 0 1 4 11.5 7.5 7.5 0 0 1 12 4a7.5 7.5 0 0 1 8 7.5Z"/></svg></div><h3>Ethio Chat</h3><p data-i18n="serviceChat">Ergaa fi bilbila</p></article>
@@ -622,6 +622,9 @@
   })();
 </script>
 <script>
+/* Mobile layout guard: prevent the social sidebar from covering the feed on narrow screens. */
+@media(max-width:620px){.left{display:none!important}.wrap{display:block!important;grid-template-columns:minmax(0,1fr)!important;max-width:100%!important;overflow-x:clip}.main{min-width:0;width:100%}.sidebox{min-width:0;max-width:100%}}
+
 /* Authenticated header: keep the signed-in identity visible on the home dashboard. */
 (() => {
   const AUTH = "https://ethio-one-api.onrender.com/api/v1/auth";
@@ -654,6 +657,8 @@
   const renderSignedIn = user => {
     currentUser = user;
     if (signIn) signIn.hidden = true;
+    document.querySelectorAll(".hero-actions .secondary,.hero .guest-note").forEach(el => { el.hidden = true; });
+    const welcomeTitle=document.querySelector("#heroTitle"); if(welcomeTitle) welcomeTitle.innerHTML="Welcome back, <span>"+String(user.fullName||"Ethio One member").replace(/[&<>"\']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "\'":"&#39;"}[c]))+"</span>";
     if (avatar) {
       avatar.href = "#accountMenu";
       avatar.textContent = initials(user.fullName);
