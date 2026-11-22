@@ -10,15 +10,15 @@
 <main class="wrap">
 <aside class="left"><div class="intro"><small>ETHIO ONE COMMUNITY</small><h2>Connect. Share. Grow.</h2><p>A community for people, ideas and everyday stories across Ethiopia.</p></div><div class="sidebox"><h3>Your space</h3><a href="#feed">⌂ &nbsp; Home feed</a><a href="#composer">＋ &nbsp; Create a post</a><a href="#saved">▣ &nbsp; Saved posts</a><a href="/">◈ &nbsp; Ethio One services</a></div><div class="sidebox"><h3>Community promise</h3><p class="footnote">Be respectful. Protect personal information. Report harmful content. You control who can interact with you.</p></div></aside>
 <section class="main"><div class="composer" id="composer"><div class="compose-row"><div class="avatar" id="myAvatar">E1</div><button class="compose-trigger" id="openComposer">Share something with the community…</button></div><div class="compose-tools"><span class="hint">Text posts · Public or followers</span><button class="gold" id="createBtn">Create post</button></div></div>
-<div class="tabs"><button class="active" data-feed="all">For you</button><button data-feed="following">Following</button></div><div id="feed" aria-live="polite"><div class="empty"><b>Loading your community…</b>Finding the latest posts.</div></div></section>
+<div class="sidebox" id="profileBox" style="display:none;margin-bottom:14px"></div><div class="sidebox" style="margin-bottom:14px"><input id="memberSearch" placeholder="Search people by name or username…" style="width:100%;border:1px solid #e6ebf2;border-radius:9px;padding:10px;font-size:12px"><div id="searchResults"></div></div><div class="tabs"><button class="active" data-feed="all">For you</button><button data-feed="following">Following</button></div><div id="feed" aria-live="polite"><div class="empty"><b>Loading your community…</b>Finding the latest posts.</div></div></section>
 <aside class="right"><div class="sidebox"><h3>Ethio Social</h3><div class="right-stat"><span>Community</span><b>Growing together</b></div><div class="right-stat"><span>Language</span><b>OM · AM · EN</b></div><div class="right-stat"><span>Safety</span><b>Report & block</b></div></div><div class="sidebox"><h3>Stay in control</h3><p class="footnote">Use the post menu to report content. Block accounts that make you uncomfortable. Only share information you want public.</p></div><p class="footnote">Ethio Social is part of Ethio One. Follow the community rules and respect others.</p></aside>
 </main>
-<div class="modal" id="postModal"><div class="dialog"><div class="dialog-head"><h3>Create a post</h3><button class="close" id="closeModal">×</button></div><textarea id="postText" maxlength="2000" placeholder="What would you like to share?"></textarea><div class="dialog-bottom"><select id="visibility"><option value="public">Public</option><option value="followers">Followers only</option></select><span class="hint" id="charCount">0 / 2000</span><button class="gold" id="publishBtn">Publish post</button></div></div></div>
+<div class="modal" id="postModal"><div class="dialog"><div class="dialog-head"><h3>Create a post</h3><button class="close" id="closeModal">×</button></div><textarea id="postText" maxlength="2000" placeholder="What would you like to share?"></textarea><div style="display:flex;gap:10px;align-items:center;margin-top:10px"><label class="gold" for="mediaFiles">＋ Photo / video</label><input id="mediaFiles" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" multiple hidden><span class="hint" id="mediaHint">Up to 4 files · Images 8MB · Video 50MB</span></div><div id="mediaPreview" class="hint" style="margin-top:8px"></div><div class="dialog-bottom"><select id="visibility"><option value="public">Public</option><option value="followers">Followers only</option></select><span class="hint" id="charCount">0 / 2000</span><button class="gold" id="publishBtn">Publish post</button></div></div></div>
 <div class="modal" id="reportModal"><div class="dialog"><div class="dialog-head"><h3>Report this content</h3><button class="close" id="closeReport">×</button></div><p class="hint">Choose the reason that best describes the issue.</p><select id="reportReason" style="width:100%;padding:10px"><option value="spam">Spam</option><option value="harassment">Harassment or bullying</option><option value="hate">Hateful content</option><option value="violence">Violence or threats</option><option value="nudity">Nudity or sexual content</option><option value="misinformation">False information</option><option value="impersonation">Impersonation</option><option value="other">Something else</option></select><textarea id="reportDetails" maxlength="500" placeholder="Additional details (optional)" style="margin-top:10px;min-height:80px"></textarea><div class="dialog-bottom"><span class="hint">Reports are reviewed by moderators.</span><button class="gold" id="sendReport">Submit report</button></div></div></div><div class="toast" id="toast"></div>
 <script>
 const API="https://ethio-one-api.onrender.com/api/v1/social";
 const $=s=>document.querySelector(s);
-let feedMode="all",reportTarget=null,me=null;
+let feedMode="all",reportTarget=null,me=null,uploadedMedia=[];
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const token=()=>sessionStorage.getItem("ethioOneAccessToken");
 const toast=m=>{const t=$("#toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2600)};
@@ -33,7 +33,7 @@ function openPost(){if(!token()){location.href="/auth.html?next=%2Fsocial.html";
 function close(id){$(id).classList.remove("open")}
 $("#openComposer").onclick=openPost;$("#createBtn").onclick=openPost;$("#closeModal").onclick=()=>close("#postModal");$("#closeReport").onclick=()=>close("#reportModal");
 $("#postText").addEventListener("input",()=>$("#charCount").textContent=$("#postText").value.length+" / 2000");
-$("#publishBtn").onclick=async()=>{const body=$("#postText").value.trim();if(!body){toast("Write something before publishing.");return}try{await api("/posts",{method:"POST",body:JSON.stringify({body,visibility:$("#visibility").value})});$("#postText").value="";$("#charCount").textContent="0 / 2000";close("#postModal");toast("Your post is live.");await loadFeed()}catch(e){toast(e.message)}};
+$("#publishBtn").onclick=async()=>{const body=$("#postText").value.trim();if(!body&&!uploadedMedia.length){toast("Add text or media first.");return}try{await api("/posts",{method:"POST",body:JSON.stringify({body,media:uploadedMedia,visibility:$("#visibility").value})});$("#postText").value="";uploadedMedia=[];$("#mediaPreview").textContent="";$("#mediaFiles").value="";$("#charCount").textContent="0 / 2000";close("#postModal");toast("Your post is live.");await loadFeed()}catch(e){toast(e.message)}};
 document.querySelectorAll("[data-feed]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-feed]").forEach(x=>x.classList.toggle("active",x===b));feedMode=b.dataset.feed;loadFeed()});
 $("#feed").addEventListener("click",async e=>{const b=e.target.closest("[data-action]");if(!b)return;const post=b.closest(".post"),id=post?.dataset.id,action=b.dataset.action;if(!id)return;
 try{if(action==="like"){const d=await api("/posts/"+id+"/like",{method:"POST",body:"{}"});b.classList.toggle("on",d.liked);b.textContent=d.liked?"♥ Liked":"♡ Like";await loadFeed()}
@@ -44,6 +44,41 @@ else if(action==="menu"){const choice=prompt("Type: report, block, or delete (yo
 else if(action==="share"){await navigator.clipboard?.writeText(location.origin+"/social.html#"+id);toast("Ethio Social link copied.")}}
 catch(err){toast(err.message)}});
 $("#sendReport").onclick=async()=>{if(!reportTarget)return;try{await api("/reports",{method:"POST",body:JSON.stringify({targetType:reportTarget.type,targetId:reportTarget.id,reason:$("#reportReason").value,details:$("#reportDetails").value})});close("#reportModal");$("#reportDetails").value="";reportTarget=null;toast("Thank you. Your report was submitted.")}catch(e){toast(e.message)}};
-async function init(){if(token()){try{const r=await fetch("https://ethio-one-api.onrender.com/api/v1/auth/me",{headers:{Authorization:"Bearer "+token()}});if(r.ok){const d=await r.json();me=d.user;$("#accountLink").textContent=me.fullName||"My account";$("#accountLink").href="/";$("#myAvatar").textContent=initials(me.fullName)}}catch{}}await loadFeed()}
+
+async function uploadOne(file){
+ const isVideo=file.type.startsWith("video/");
+ if(!(file.type.startsWith("image/")||isVideo))throw new Error("Unsupported file type.");
+ if(file.size>(isVideo?50:8)*1024*1024)throw new Error(isVideo?"Video must be under 50MB.":"Image must be under 8MB.");
+ const sign=await fetch("https://ethio-one-api.onrender.com/api/v1/account/media/sign",{method:"POST",headers:{Authorization:"Bearer "+token(),"Content-Type":"application/json"},body:JSON.stringify({resourceType:isVideo?"video":"image"})});
+ const cfg=await sign.json();if(!sign.ok)throw new Error(cfg.error||"Upload is not configured.");
+ const fd=new FormData();fd.append("file",file);fd.append("api_key",cfg.apiKey);fd.append("timestamp",cfg.timestamp);fd.append("folder",cfg.folder);fd.append("signature",cfg.signature);
+ const up=await fetch("https://api.cloudinary.com/v1_1/"+cfg.cloudName+"/"+cfg.resourceType+"/upload",{method:"POST",body:fd});
+ const asset=await up.json();if(!up.ok)throw new Error(asset.error?.message||"Upload failed.");
+ const saved=await apiAccount("/media",{method:"POST",body:JSON.stringify({publicId:asset.public_id,secureUrl:asset.secure_url,resourceType:isVideo?"video":"image",bytes:asset.bytes})});
+ return {url:saved.media.secure_url,type:isVideo?"video":"image"};
+}
+async function apiAccount(path,opts={}){const headers={"Content-Type":"application/json",Authorization:"Bearer "+token()};const r=await fetch("https://ethio-one-api.onrender.com/api/v1/account"+path,{...opts,headers});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"Account service unavailable.");return d}
+$("#mediaFiles").addEventListener("change",async e=>{
+ const files=Array.from(e.target.files||[]);if(uploadedMedia.length+files.length>4){toast("Choose up to 4 files.");return}
+ $("#mediaHint").textContent="Uploading…";
+ try{for(const file of files){const item=await uploadOne(file);uploadedMedia.push(item)}
+ $("#mediaPreview").textContent=uploadedMedia.length+" attachment(s) ready";$("#mediaHint").textContent="Upload complete";
+ }catch(err){toast(err.message);$("#mediaHint").textContent="Upload failed";}
+});
+async function loadMyProfile(){
+ if(!token())return;
+ try{const d=await api("/profile/me");const p=d.profile;if(!p)return;
+ $("#profileBox").style.display="block";
+ $("#profileBox").innerHTML='<div style="display:flex;gap:12px;align-items:center"><div class="avatar" style="width:54px;height:54px">'+(p.avatar_url?'<img src="'+esc(p.avatar_url)+'" alt="">':esc(initials(p.full_name)))+'</div><div><b style="color:#082b59">'+esc(p.full_name)+'</b><div class="hint">@'+esc(p.username||"member")+'</div></div></div><p class="hint">'+esc(p.bio||"Add a short bio in your Ethio One profile settings.")+'</p><div class="right-stat"><span>Posts</span><b>'+p.posts+'</b><span>Followers</span><b>'+p.followers+'</b><span>Following</span><b>'+p.following+'</b></div>';
+ }catch{}
+}
+let searchTimer;
+$("#memberSearch").addEventListener("input",()=>{clearTimeout(searchTimer);searchTimer=setTimeout(async()=>{
+ const q=$("#memberSearch").value.trim(),el=$("#searchResults");if(q.length<2){el.innerHTML="";return}
+ try{const d=await api("/users/search?q="+encodeURIComponent(q));el.innerHTML=(d.users||[]).map(u=>'<div style="display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid #edf1f6"><div class="avatar">'+esc(initials(u.full_name))+'</div><div style="flex:1"><b style="font-size:11px;color:#082b59">'+esc(u.full_name||u.username)+'</b><div class="hint">@'+esc(u.username||"member")+' · '+u.followers+' followers</div></div><button class="gold" data-follow="'+esc(u.id)+'">'+(u.following?"Following":"Follow")+'</button></div>').join("")||'<p class="hint">No accounts found.</p>'}catch(err){el.textContent=err.message}
+},300)});
+$("#searchResults").addEventListener("click",async e=>{const b=e.target.closest("[data-follow]");if(!b)return;if(!token()){location.href="/auth.html?next=%2Fsocial.html";return}try{const d=await api("/users/"+b.dataset.follow+"/follow",{method:"POST",body:"{}"});b.textContent=d.following?"Following":"Follow";toast(d.following?"You are now following this member.":"You unfollowed this member.");loadFeed()}catch(err){toast(err.message)}});
+
+async function init(){if(token()){try{const r=await fetch("https://ethio-one-api.onrender.com/api/v1/auth/me",{headers:{Authorization:"Bearer "+token()}});if(r.ok){const d=await r.json();me=d.user;$("#accountLink").textContent=me.fullName||"My account";$("#accountLink").href="/";$("#myAvatar").textContent=initials(me.fullName);await loadMyProfile()}}catch{}}await loadFeed()}
 init();
 </script></body></html>
