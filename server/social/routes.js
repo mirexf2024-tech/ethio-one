@@ -287,7 +287,7 @@ router.get("/conversations/:id/messages",requireAuth,async(req,res)=>{
  const limit=Math.min(50,Math.max(1,Number.parseInt(req.query.limit,10)||40));
  const before=typeof req.query.before==="string"&&uuid(req.query.before)?req.query.before:null;
  try{
-  const member=await req.app.locals.db.query("SELECT id FROM social_conversations WHERE id=$1 AND (participant_one_id=$2 OR participant_two_id=$2)",[req.params.id,req.socialUserId]);
+  const member=await req.app.locals.db.query("SELECT c.id FROM social_conversations c WHERE c.id=$1 AND (c.participant_one_id=$2 OR c.participant_two_id=$2) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=CASE WHEN c.participant_one_id=$2 THEN c.participant_two_id ELSE c.participant_one_id END) OR (b.blocker_id=CASE WHEN c.participant_one_id=$2 THEN c.participant_two_id ELSE c.participant_one_id END AND b.blocked_id=$2))",[req.params.id,req.socialUserId]);
   if(!member.rowCount)return res.status(404).json({error:"Conversation not found."});
   const values=[req.params.id,limit];let cursorSql="";
   if(before){values.push(before);cursorSql=" AND m.created_at < (SELECT created_at FROM social_messages WHERE id=$3 AND conversation_id=$1)";}
@@ -322,7 +322,7 @@ router.post("/conversations/:id/read",requireAuth,async(req,res)=>{
  if(!uuid(req.params.id))return res.status(400).json({error:"Invalid conversation."});
  try{
   const r=await req.app.locals.db.query(
-   "UPDATE social_messages SET read_at=NOW() WHERE conversation_id=$1 AND sender_id<>$2 AND read_at IS NULL AND EXISTS(SELECT 1 FROM social_conversations c WHERE c.id=$1 AND (c.participant_one_id=$2 OR c.participant_two_id=$2)) RETURNING id",
+   "UPDATE social_messages SET read_at=NOW() WHERE conversation_id=$1 AND sender_id<>$2 AND read_at IS NULL AND EXISTS(SELECT 1 FROM social_conversations c WHERE c.id=$1 AND (c.participant_one_id=$2 OR c.participant_two_id=$2) AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=CASE WHEN c.participant_one_id=$2 THEN c.participant_two_id ELSE c.participant_one_id END) OR (b.blocker_id=CASE WHEN c.participant_one_id=$2 THEN c.participant_two_id ELSE c.participant_one_id END AND b.blocked_id=$2))) RETURNING id",
    [req.params.id,req.socialUserId]);
   await req.app.locals.db.query("UPDATE notifications SET read_at=COALESCE(read_at,NOW()) WHERE user_id=$1 AND kind='social_message' AND data->>'conversationId'=$2 AND read_at IS NULL",[req.socialUserId,req.params.id]);
   return res.json({ok:true,markedRead:r.rowCount});
