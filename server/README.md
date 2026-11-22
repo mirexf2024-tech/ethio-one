@@ -28,6 +28,12 @@ Node.js API foundation for the Ethio One platform.
 - `GET /api/v1/social/conversations/:id/messages` — read conversation messages.
 - `POST /api/v1/social/conversations/:id/messages` — send a private text message.
 - `POST /api/v1/social/conversations/:id/read` — mark incoming messages and their inbox notifications as read.
+- `GET /api/v1/social/calls/incoming` — authenticated incoming-call inbox.
+- `POST /api/v1/social/conversations/:id/calls` — create an audio/video call and submit its WebRTC offer.
+- `GET /api/v1/social/calls/:id` — read call state and new peer signaling events.
+- `POST /api/v1/social/calls/:id/signals` — submit an answer or ICE candidate.
+- `PATCH /api/v1/social/calls/:id` — accept, reject, end, or mark a call missed.
+- `016_ethio_social_calls.sql` — stores call state and authenticated WebRTC signaling. Media streams are peer-to-peer; only signaling passes through the API. The current browser client uses public STUN servers. A TURN relay provider is still required for reliable calling across restrictive mobile-carrier and NAT networks.
 
 ## Environment
 - `DATABASE_URL` — Neon PostgreSQL connection string
