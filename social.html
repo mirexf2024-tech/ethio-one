@@ -222,7 +222,7 @@ body.dark .messenger-search input,body.dark .messenger-compose textarea{backgrou
 <script>
 const API="https://ethio-one-api.onrender.com/api/v1/social";
 const $=s=>document.querySelector(s);
-let feedMode="all",feedType="all",reportTarget=null,actionTarget=null,me=null,myUserId=null,activeConversationName="",activeConversationKind="private",groupCurrentRole="member",uploadedMedia=[],stories=[],editingPostId=null,feedCursor=null,feedHasMore=false,feedSearchActive=false,privateMessagesSignature="",groupMessagesSignature="",privateMessageBusy=false,groupMessageBusy=false;window.activeConversation=null;
+let feedMode="all",feedType="all",reportTarget=null,actionTarget=null,me=null,myUserId=null,activeConversationName="",activeConversationKind="private",groupCurrentRole="member",uploadedMedia=[],stories=[],editingPostId=null,feedCursor=null,feedHasMore=false,feedSearchActive=false,privateMessagesSignature="",groupMessagesSignature="",privateMessageBusy=false,groupMessageBusy=false,privateMessageQueued=false,groupMessageQueued=false;window.activeConversation=null;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const token=()=>sessionStorage.getItem("ethioOneAccessToken");
 const toast=m=>{const t=$("#toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2600)};
@@ -428,7 +428,7 @@ async function openGroup(id,name){
  }catch(e){if(window.activeConversation===id)$("#messageList").textContent=e.message;toast(e.message)}
 }
 async function loadGroupMessages(id,quiet=false){
- if(groupMessageBusy)return;groupMessageBusy=true;
+ if(groupMessageBusy){groupMessageQueued=true;return}groupMessageBusy=true;
  const list=$("#messageList");
  try{
   const d=await api("/groups/"+id+"/messages?limit=60");
@@ -441,7 +441,7 @@ async function loadGroupMessages(id,quiet=false){
   }).join("")||'<p class="hint">No messages yet. Say hello to your group.</p>';
   if(firstRender||wasNearBottom)list.scrollTop=list.scrollHeight;
  }catch(e){if(activeConversationKind==="group"&&window.activeConversation===id&&!quiet)list.textContent=e.message}
- finally{groupMessageBusy=false}
+ finally{groupMessageBusy=false;if(groupMessageQueued){groupMessageQueued=false;if(activeConversationKind==="group"&&window.activeConversation)setTimeout(()=>loadGroupMessages(window.activeConversation,true),160)}}
 }
 $("#newGroupBtn").onclick=()=>{$("#createGroupModal").classList.add("open");$("#newGroupName").focus()};
 $("#createGroupSubmit").onclick=async()=>{
@@ -522,7 +522,7 @@ async function startConversation(userId,displayName){
 }
 async function loadMessages(id,quiet=false){
  activeConversationKind="private";$("#groupSettingsBtn").hidden=true;
- if(!id||privateMessageBusy)return;privateMessageBusy=true;
+ if(!id)return;if(privateMessageBusy){privateMessageQueued=true;return}privateMessageBusy=true;
  try{
   const d=await api("/conversations/"+id+"/messages?limit=50"),list=$("#messageList");
   if(activeConversationKind!=="private"||window.activeConversation!==id)return;
@@ -535,7 +535,7 @@ async function loadMessages(id,quiet=false){
   $("#chatHeader").textContent=activeConversationName;$("#audioCallBtn").disabled=false;$("#videoCallBtn").disabled=false;$("#messageInput").disabled=false;$("#emojiToggle").disabled=false;$("#chatPresence").textContent="Private conversation";if(firstRender||wasNearBottom)list.scrollTop=list.scrollHeight;
   await api("/conversations/"+id+"/read",{method:"POST",body:"{}"}).catch(()=>{});if(!quiet){await loadConversations();await refreshNoticeBadge()}
  }catch(e){if(activeConversationKind==="private"&&window.activeConversation===id&&!quiet)$("#messageList").textContent=e.message}
- finally{privateMessageBusy=false}
+ finally{privateMessageBusy=false;if(privateMessageQueued){privateMessageQueued=false;if(activeConversationKind==="private"&&window.activeConversation)setTimeout(()=>loadMessages(window.activeConversation,true),160)}}
 }
 $("#messagesBtn").onclick=openInbox;
 $("#conversationSearch").addEventListener("input",()=>{const q=$("#conversationSearch").value.trim().toLocaleLowerCase();document.querySelectorAll("#conversationList .messenger-person").forEach(row=>row.hidden=!row.textContent.toLocaleLowerCase().includes(q))});
