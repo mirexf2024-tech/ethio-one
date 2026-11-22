@@ -93,6 +93,8 @@ router.get("/users/:id/profile",async(req,res)=>{
     FROM social_posts p JOIN users u ON u.id=p.user_id LEFT JOIN user_profiles up ON up.user_id=u.id
     WHERE p.user_id=$1 AND p.status='published'
     AND (p.visibility='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id))
+    AND (COALESCE(up.profile_visibility,'public')='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows pf WHERE pf.follower_id=$2 AND pf.following_id=p.user_id))
+    AND NOT EXISTS(SELECT 1 FROM social_blocks bl WHERE (bl.blocker_id=$2 AND bl.blocked_id=p.user_id) OR (bl.blocker_id=p.user_id AND bl.blocked_id=$2))
     ORDER BY p.created_at DESC LIMIT 30`,
    [req.params.id,req.socialUserId]
   );
