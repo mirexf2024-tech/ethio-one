@@ -709,13 +709,27 @@ router.patch("/groups/:id/members/:userId",requireAuth,async(req,res)=>{
   const actor=await req.app.locals.db.query("SELECT role FROM social_group_members WHERE group_id=$1 AND user_id=$2",[req.params.id,req.socialUserId]);
   const target=await req.app.locals.db.query("SELECT role FROM social_group_members WHERE group_id=$1 AND user_id=$2",[req.params.id,req.params.userId]);
   if(!actor.rowCount||!target.rowCount)return res.status(404).json({error:"Group member not found."});
-  if(actor.rows[0].role!=="admin")return res.status(403).json({error:"Only group admins can change roles or remove members."});
+  const actorRole=actor.rows[0].role,targetRole=target.rows[0].role;
+  if(actorRole!=="admin"&&!(role==="remove"&&actorRole==="moderator"&&targetRole==="member"))return res.status(403).json({error:"Only admins can change roles; moderators can remove regular members."});
   if(req.params.userId===req.socialUserId&&role!=="remove")return res.status(400).json({error:"You cannot change your own group role."});
-  if(target.rows[0].role==="admin"&&role==="remove")return res.status(400).json({error:"Transfer admin role before removing an admin."});
+  if(role==="remove"&&targetRole!=="member"&&actorRole!=="admin")return res.status(403).json({error:"Moderators can only remove regular members."});
+  if(targetRole==="admin"&&role==="remove")return res.status(400).json({error:"Transfer admin role before removing an admin."});
   if(role==="remove")await req.app.locals.db.query("DELETE FROM social_group_members WHERE group_id=$1 AND user_id=$2",[req.params.id,req.params.userId]);
   else await req.app.locals.db.query("UPDATE social_group_members SET role=$3 WHERE group_id=$1 AND user_id=$2",[req.params.id,req.params.userId,role]);
   return res.json({ok:true});
  }catch{return res.status(503).json({error:"Group role could not be changed."});}
+});
+router.delete("/groups/:id/messages/:messageId",requireAuth,async(req,res)=>{
+ if(!uuid(req.params.id)||!uuid(req.params.messageId))return res.status(400).json({error:"Invalid group message."});
+ try{
+  const m=await req.app.locals.db.query(
+   `SELECT m.sender_id,gm.role FROM social_group_messages m JOIN social_group_members gm ON gm.group_id=m.group_id AND gm.user_id=$2 WHERE m.id=$1 AND m.group_id=$3`,
+   [req.params.messageId,req.socialUserId,req.params.id]);
+  if(!m.rowCount)return res.status(404).json({error:"Message not found."});
+  if(m.rows[0].sender_id!==req.socialUserId&&!["admin","moderator"].includes(m.rows[0].role))return res.status(403).json({error:"Only admins or moderators can remove another member's message."});
+  await req.app.locals.db.query("DELETE FROM social_group_messages WHERE id=$1 AND group_id=$2",[req.params.messageId,req.params.id]);
+  return res.json({ok:true});
+ }catch{return res.status(503).json({error:"Group message could not be removed."});}
 });
 router.get("/groups/:id/messages",requireAuth,async(req,res)=>{
  if(!uuid(req.params.id))return res.status(400).json({error:"Invalid group."});
