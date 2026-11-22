@@ -789,5 +789,21 @@
 })();
 </script>
 
+
+<script>
+(() => {
+  document.querySelectorAll("#ecosystem .tile").forEach(tile => {
+    if (tile.querySelector("h3")?.textContent.trim() === "Ethio Social") {
+      tile.tabIndex = 0;
+      tile.setAttribute("role","link");
+      tile.setAttribute("aria-label","Open Ethio Social");
+      tile.style.cursor = "pointer";
+      tile.addEventListener("click", () => location.href="/social.html");
+      tile.addEventListener("keydown", e => { if(e.key==="Enter"||e.key===" "){e.preventDefault();location.href="/social.html";} });
+    }
+  });
+})();
+</script>
+
 </body>
 </html>
