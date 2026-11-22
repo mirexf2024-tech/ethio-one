@@ -40,8 +40,9 @@ router.get("/feed",async(req,res)=>{
   const limit=Math.min(30,Math.max(1,Number.parseInt(req.query.limit,10)||15));
   const cursor=typeof req.query.before==="string" && uuid(req.query.before)?req.query.before:null;
   try{
-    const values=[req.socialUserId,limit]; let cursorSql="";
-    if(cursor){values.push(cursor);cursorSql=" AND p.created_at < (SELECT created_at FROM social_posts WHERE id=$3)";}
+    const feed=req.query.feed==="following"?"following":"all";
+    const values=[req.socialUserId,limit,feed]; let cursorSql="";
+    if(cursor){values.push(cursor);cursorSql=" AND p.created_at < (SELECT created_at FROM social_posts WHERE id=$4)";}
     const q=await req.app.locals.db.query(
       `SELECT p.id,p.body,p.media,p.visibility,p.created_at,u.id AS author_id,u.username,u.full_name,up.avatar_url,
        (SELECT COUNT(*)::int FROM social_likes l WHERE l.post_id=p.id) AS like_count,
@@ -50,6 +51,7 @@ router.get("/feed",async(req,res)=>{
        CASE WHEN $1::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_bookmarks b WHERE b.post_id=p.id AND b.user_id=$1) END AS bookmarked
        FROM social_posts p JOIN users u ON u.id=p.user_id LEFT JOIN user_profiles up ON up.user_id=u.id
        WHERE p.status='published' AND (p.visibility='public' OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$1 AND f.following_id=p.user_id))
+       AND ($3::text <> 'following' OR EXISTS(SELECT 1 FROM social_follows ff WHERE ff.follower_id=$1 AND ff.following_id=p.user_id))
        AND ($1::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$1)))
        ${cursorSql} ORDER BY p.created_at DESC LIMIT $2`,values);
     return res.set("Cache-Control","no-store").json({posts:q.rows});
