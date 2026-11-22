@@ -84,7 +84,19 @@ router.get("/users/:id/profile",async(req,res)=>{
  try{
   const r=await req.app.locals.db.query("SELECT u.id,u.username,u.full_name,p.bio,p.avatar_url,p.city,p.region,p.country,COALESCE(p.profile_visibility,'public') AS profile_visibility,(SELECT COUNT(*)::int FROM social_follows WHERE following_id=u.id) AS followers,(SELECT COUNT(*)::int FROM social_follows WHERE follower_id=u.id) AS following,(SELECT COUNT(*)::int FROM social_posts WHERE user_id=u.id AND status='published') AS posts,CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_follows WHERE follower_id=$2 AND following_id=u.id) END AS is_following FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id WHERE u.id=$1 AND u.status='active' AND ($2::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM social_blocks WHERE (blocker_id=$2 AND blocked_id=u.id) OR (blocker_id=u.id AND blocked_id=$2))) AND (COALESCE(p.profile_visibility,'public')='public' OR u.id=$2 OR EXISTS(SELECT 1 FROM social_follows pf WHERE pf.follower_id=$2 AND pf.following_id=u.id))",[req.params.id,req.socialUserId]);
   if(!r.rowCount)return res.status(404).json({error:"Profile not found."});
-  return res.set("Cache-Control","no-store").json({profile:r.rows[0]});
+  const posts=await req.app.locals.db.query(
+   `SELECT p.id,p.body,p.media,p.visibility,p.created_at,u.id AS author_id,u.username,u.full_name,up.avatar_url,
+    (SELECT COUNT(*)::int FROM social_likes l WHERE l.post_id=p.id) AS like_count,
+    (SELECT COUNT(*)::int FROM social_comments c WHERE c.post_id=p.id AND c.status='published') AS comment_count,
+    CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_likes l WHERE l.post_id=p.id AND l.user_id=$2) END AS liked,
+    CASE WHEN $2::uuid IS NULL THEN false ELSE EXISTS(SELECT 1 FROM social_bookmarks b WHERE b.post_id=p.id AND b.user_id=$2) END AS bookmarked
+    FROM social_posts p JOIN users u ON u.id=p.user_id LEFT JOIN user_profiles up ON up.user_id=u.id
+    WHERE p.user_id=$1 AND p.status='published'
+    AND (p.visibility='public' OR p.user_id=$2 OR EXISTS(SELECT 1 FROM social_follows f WHERE f.follower_id=$2 AND f.following_id=p.user_id))
+    ORDER BY p.created_at DESC LIMIT 30`,
+   [req.params.id,req.socialUserId]
+  );
+  return res.set("Cache-Control","no-store").json({profile:r.rows[0],posts:posts.rows});
  }catch{return res.status(503).json({error:"Profile unavailable."});}
 });
 
