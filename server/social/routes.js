@@ -584,19 +584,25 @@ router.post("/calls/:id/signals",interactionLimit,requireAuth,async(req,res)=>{
 router.patch("/calls/:id",requireAuth,async(req,res)=>{
  const status=req.body?.status;
  if(!uuid(req.params.id)||!["accepted","rejected","ended","missed"].includes(status))return res.status(400).json({error:"Invalid call status."});
+ const db=req.app.locals.db;let client,committed=false;
  try{
-  const call=await req.app.locals.db.query("SELECT caller_id,callee_id,status FROM social_calls WHERE id=$1 AND (caller_id=$2 OR callee_id=$2) FOR UPDATE",[req.params.id,req.socialUserId]);
-  if(!call.rowCount)return res.status(404).json({error:"Call not found."});
+  client=await db.connect();await client.query("BEGIN");
+  const call=await client.query("SELECT caller_id,callee_id,status FROM social_calls WHERE id=$1 AND (caller_id=$2 OR callee_id=$2) FOR UPDATE",[req.params.id,req.socialUserId]);
+  if(!call.rowCount){await client.query("ROLLBACK");return res.status(404).json({error:"Call not found."});}
   const row=call.rows[0];
-  if(status==="accepted"&&row.callee_id!==req.socialUserId)return res.status(403).json({error:"Only the receiving member can accept this call."});
-  if(status==="rejected"&&row.callee_id!==req.socialUserId)return res.status(403).json({error:"Only the receiving member can reject this call."});
-  if(status==="missed"&&row.callee_id!==req.socialUserId)return res.status(403).json({error:"Invalid call action."});
-  const updated=await req.app.locals.db.query(
+  if(status==="accepted"&&row.callee_id!==req.socialUserId){await client.query("ROLLBACK");return res.status(403).json({error:"Only the receiving member can accept this call."});}
+  if(status==="rejected"&&row.callee_id!==req.socialUserId){await client.query("ROLLBACK");return res.status(403).json({error:"Only the receiving member can reject this call."});}
+  if(status==="missed"&&row.callee_id!==req.socialUserId){await client.query("ROLLBACK");return res.status(403).json({error:"Invalid call action."});}
+  const updated=await client.query(
    "UPDATE social_calls SET status=$2,answered_at=CASE WHEN $2='accepted' THEN NOW() ELSE answered_at END,ended_at=CASE WHEN $2 IN ('rejected','ended','missed') THEN NOW() ELSE ended_at END WHERE id=$1 AND status IN ('ringing','accepted') RETURNING id,status,answered_at,ended_at",
    [req.params.id,status]);
-  if(!updated.rowCount)return res.status(409).json({error:"This call has already finished."});
+  if(!updated.rowCount){await client.query("ROLLBACK");return res.status(409).json({error:"This call has already finished."});}
+  await client.query("COMMIT");committed=true;
   return res.json({call:updated.rows[0]});
- }catch{return res.status(503).json({error:"Call status could not be updated."});}
+ }catch{
+  if(client&&!committed)await client.query("ROLLBACK").catch(()=>{});
+  return res.status(503).json({error:"Call status could not be updated."});
+ }finally{client?.release();}
 });
 
 module.exports=router;
