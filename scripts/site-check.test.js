@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+const wallet = fs.readFileSync(path.join(__dirname, "..", "wallet.html"), "utf8");
 
 test("landing page exposes all 20 service cards", () => {
   assert.equal((html.match(/class="tile"/g) || []).length, 20);
@@ -48,4 +49,12 @@ test("runtime telemetry reports only fixed event types and no error payloads", (
 
 test("Ethio Wallet service tile opens the wallet page", () => {
   assert.ok(html.includes('<a class="tile" href="/wallet.html" aria-label="Open Ethio Wallet">'));
+});
+
+test("wallet uses the shared authenticated session and stays read-only", () => {
+  assert.match(wallet, /sessionStorage\.getItem\(k\)/);
+  assert.match(wallet, /sessionStorage\.setItem\(k,v\)/);
+  assert.match(wallet, /\/api\/v1\/wallet/);
+  assert.match(wallet, /withdrawals are not enabled/i);
+  assert.match(wallet, /disabled data-i="withdraw"/);
 });
