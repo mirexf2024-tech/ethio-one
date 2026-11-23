@@ -354,7 +354,7 @@ router.post("/reports",reportCreateLimit,requireAuth,async(req,res)=>{
 });
 router.get("/moderation/reports",requireAuth,async(req,res)=>{
   try{
-    const role=await req.app.locals.db.query("SELECT 1 FROM user_roles WHERE user_id=$1 AND role_key IN ('moderator','admin','super_admin') LIMIT 1",[req.socialUserId]);
+    const role=await req.app.locals.db.query("SELECT 1 FROM user_roles WHERE user_id=$1 AND role_key IN ('moderator','content_manager','admin','super_admin') LIMIT 1",[req.socialUserId]);
     if(!role.rowCount) return res.status(403).json({error:"Moderator access required."});
     const r=await req.app.locals.db.query("SELECT id,target_type,target_id,reason,details,status,created_at FROM social_reports WHERE status IN ('open','reviewing') ORDER BY created_at ASC LIMIT 100");
     return res.json({reports:r.rows});
@@ -366,7 +366,7 @@ router.patch("/moderation/reports/:id",requireAuth,async(req,res)=>{
   if(!["reviewing","actioned","dismissed"].includes(status) || (action!==undefined && action!=="remove_target") || (action==="remove_target" && status!=="actioned"))
     return res.status(400).json({error:"Choose a valid moderation action."});
   try{
-    const role=await req.app.locals.db.query("SELECT 1 FROM user_roles WHERE user_id=$1 AND role_key IN ('moderator','admin','super_admin') LIMIT 1",[req.socialUserId]);
+    const role=await req.app.locals.db.query("SELECT 1 FROM user_roles WHERE user_id=$1 AND role_key IN ('moderator','content_manager','admin','super_admin') LIMIT 1",[req.socialUserId]);
     if(!role.rowCount)return res.status(403).json({error:"Moderator access required."});
     const client=await req.app.locals.db.connect();
     try{
