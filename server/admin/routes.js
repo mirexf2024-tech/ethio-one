@@ -93,6 +93,45 @@ router.get("/events", async (req, res) => {
   }
 });
 
+router.patch("/modules/:moduleKey", async (req, res) => {
+  const moduleKey = String(req.params.moduleKey || "");
+  const status = req.body?.status;
+  const allowedStatuses = ["planned", "building", "beta", "active", "paused"];
+  if (!/^[a-z0-9_-]{2,60}$/.test(moduleKey) || !allowedStatuses.includes(status)) {
+    return res.status(400).json({ error: "Choose a valid service and status." });
+  }
+  const db = req.app.locals.db;
+  const client = await db.connect();
+  try {
+    await client.query("BEGIN");
+    const updated = await client.query(
+      "UPDATE platform_modules SET status=$2,updated_at=NOW() WHERE module_key=$1 RETURNING module_key,display_name,status,updated_at",
+      [moduleKey, status]
+    );
+    if (!updated.rows[0]) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Service module not found." });
+    }
+    await client.query("COMMIT");
+    const { recordSecurityEvent } = require("./audit");
+    const logged = await recordSecurityEvent(req, {
+      type: "platform_module_status_updated",
+      severity: status === "paused" ? "warning" : "info",
+      userId: req.superAdmin.id,
+      metadata: { module_key: moduleKey, status }
+    });
+    if (!logged) {
+      return res.status(503).json({ error: "Status saved, but its audit record could not be confirmed. Contact support." });
+    }
+    return res.set("Cache-Control", "no-store").json({ ok: true, module: updated.rows[0] });
+  } catch {
+    await client.query("ROLLBACK").catch(() => {});
+    return res.status(503).json({ error: "Service status could not be updated." });
+  } finally {
+    client.release();
+  }
+});
+
 router.get("/modules", async (req, res) => {
   try {
     const result = await req.app.locals.db.query(
