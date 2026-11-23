@@ -28,7 +28,7 @@ router.use(async(req,res,next)=>{
   }catch{return res.status(503).json({error:"Ethio Earn is temporarily unavailable."});}
 });
 async function isReviewer(db,userId){
-  const r=await db.query("SELECT 1 FROM user_roles WHERE user_id=$1 AND role_key IN ('super_admin','admin') LIMIT 1",[userId]);
+  const r=await db.query("SELECT 1 FROM user_roles WHERE user_id=$1 AND role_key IN ('super_admin','admin','finance_manager') LIMIT 1",[userId]);
   return !!r.rowCount;
 }
 router.use("/admin",async(req,res,next)=>{
@@ -80,6 +80,12 @@ router.post("/campaigns/:id/submit",rateLimit({windowMs:60*60*1000,limit:12,stan
     return res.status(503).json({error:"Your submission could not be saved."});
   }finally{client.release();}
 });
+router.get("/admin/access",async(req,res)=>{
+  try{
+    const r=await req.app.locals.db.query("SELECT 1 FROM user_roles WHERE user_id=$1 AND role_key='super_admin' LIMIT 1",[req.earnUser.id]);
+    return res.set("Cache-Control","no-store").json({canOpenCentralAdmin:!!r.rowCount});
+  }catch{return res.status(503).json({error:"Permission details are temporarily unavailable."});}
+});
 router.get("/admin/campaigns",async(req,res)=>{
   try{
     const r=await req.app.locals.db.query("SELECT id,title,description,category,reward_minor,budget_minor,max_completions,reserved_completions,status,created_at FROM earn_campaigns ORDER BY created_at DESC LIMIT 100");
@@ -101,14 +107,19 @@ router.post("/admin/campaigns",async(req,res)=>{
   if(title.length<5||title.length>140||description.length<10||description.length>1200||instructions.length<10||instructions.length>10000||!amount(b.rewardMinor)||!amount(b.budgetMinor)||b.budgetMinor<b.rewardMinor||!Number.isInteger(b.maxCompletions)||b.maxCompletions<1||b.maxCompletions>100000||b.budgetMinor<b.rewardMinor*b.maxCompletions||!/^[a-z0-9_-]{2,40}$/.test(category))return res.status(400).json({error:"Please check the task details and budget."});
   try{
     const r=await db.query("INSERT INTO earn_campaigns(title,description,instructions,category,reward_minor,budget_minor,max_completions,evidence_required,evidence_hint,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id,title,status,reward_minor,budget_minor,max_completions,created_at",[title,description,instructions,category,b.rewardMinor,b.budgetMinor,b.maxCompletions,b.evidenceRequired!==false,typeof b.evidenceHint==="string"?b.evidenceHint.slice(0,300):"",req.earnUser.id]);
-    return res.status(201).json({campaign:r.rows[0]});
+    const { recordSecurityEvent } = require("../admin/audit");
+    const auditRecorded = await recordSecurityEvent(req,{type:"earn_campaign_created",severity:"info",userId:req.earnUser.id,metadata:{campaign_id:r.rows[0].id,status:r.rows[0].status}});
+    return res.status(201).json({campaign:r.rows[0],auditRecorded});
   }catch{return res.status(503).json({error:"The task could not be created."});}
 });
 router.patch("/admin/campaigns/:id/status",async(req,res)=>{
   if(!validId(req.params.id)||!["published","paused","archived"].includes(req.body?.status))return res.status(400).json({error:"Invalid task status."});
   try{
     const r=await req.app.locals.db.query("UPDATE earn_campaigns SET status=$2,updated_at=NOW() WHERE id=$1 AND status IN ('draft','published','paused') RETURNING id,status",[req.params.id,req.body.status]);
-    return r.rowCount?res.json({campaign:r.rows[0]}):res.status(404).json({error:"Task not found or cannot be changed."});
+    if(!r.rowCount)return res.status(404).json({error:"Task not found or cannot be changed."});
+    const { recordSecurityEvent } = require("../admin/audit");
+    const auditRecorded = await recordSecurityEvent(req,{type:"earn_campaign_status_updated",severity:req.body.status==="archived"||req.body.status==="paused"?"warning":"info",userId:req.earnUser.id,metadata:{campaign_id:r.rows[0].id,status:r.rows[0].status}});
+    return res.set("Cache-Control","no-store").json({campaign:r.rows[0],auditRecorded});
   }catch{return res.status(503).json({error:"Task status could not be updated."});}
 });
 router.post("/admin/submissions/:id/review",async(req,res)=>{
@@ -129,7 +140,9 @@ router.post("/admin/submissions/:id/review",async(req,res)=>{
       await client.query("UPDATE earn_campaigns SET reserved_completions=GREATEST(0,reserved_completions-1),reserved_minor=GREATEST(0,reserved_minor-$2),updated_at=NOW() WHERE id=$1",[s.cid,s.reward_minor]);
     }
     await client.query("COMMIT");
-    return res.json({ok:true,status:req.body.decision});
+    const { recordSecurityEvent } = require("../admin/audit");
+    const auditRecorded = await recordSecurityEvent(req,{type:"earn_submission_reviewed",severity:req.body.decision==="rejected"?"warning":"info",userId:req.earnUser.id,metadata:{submission_id:s.id,status:req.body.decision}});
+    return res.set("Cache-Control","no-store").json({ok:true,status:req.body.decision,auditRecorded});
   }catch{await client.query("ROLLBACK").catch(()=>{});return res.status(503).json({error:"The review could not be saved."});}
   finally{client.release();}
 });
