@@ -17,7 +17,7 @@ test("only published, moderated and funded campaigns appear in the member market
 test("partner task intake requires a verified provider URL, budget coverage and quality criteria", () => {
   assert.match(routes, /router\.post\("\/requests"/);
   assert.match(routes, /safeHttpsUrl/);
-  assert.match(routes, /budgetMinor<rewardMinor\*slots/);
+  assert.match(routes, /rewardPoolMinor=Number\.isSafeInteger\(rewardMinor\)&&Number\.isInteger\(slots\)\?rewardMinor\*slots:0/);\n  assert.match(routes, /platformFeeMinor=Math\.ceil\(rewardPoolMinor\*platformFeeBps\/10000\)/);\n  assert.match(routes, /budgetMinor!==rewardPoolMinor\+platformFeeMinor/);
   assert.match(routes, /!quality/);
   assert.match(routes, /blockedTaskText/);
 });
@@ -30,7 +30,7 @@ test("partner requests need both moderator approval and finance funding verifica
 });
 
 test("moderators can review member submissions and rejection reasons are mandatory", () => {
-  assert.match(routes, /requireRoles\(req,res,\["moderator","admin","super_admin","finance_manager"\]\)/);
+  assert.match(routes, /requireRoles\(req,res,\["moderator","admin","super_admin"\]\)/);
   assert.match(routes, /req\.body\.decision==="rejected"&&note\.length<3/);
   assert.match(routes, /earn_submission_reviewed/);
 });
