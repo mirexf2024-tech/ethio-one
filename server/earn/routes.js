@@ -273,7 +273,7 @@ router.patch("/admin/requests/:id/funding",async(req,res)=>{
     await client.query("BEGIN");
     const found=await client.query("SELECT * FROM earn_task_requests WHERE id=$1 FOR UPDATE",[req.params.id]);
     const row=found.rows[0];
-    if(!row||row.status==="published"||row.status==="rejected"){await client.query("ROLLBACK");return res.status(409).json({error:"This request cannot accept a funding update."});}
+    if(!row||row.status!=="moderator_approved"||row.funding_status!=="unverified"){await client.query("ROLLBACK");return res.status(409).json({error:"Content must be approved by a moderator before funding can be verified."});}
     const status=decision==="rejected"?"rejected":row.status;
     const updated=await client.query("UPDATE earn_task_requests SET funding_status=$2,funding_reference=$3,funding_verified_by=$4,funding_verified_at=CASE WHEN $2='verified' THEN NOW() ELSE NULL END,status=$5,updated_at=NOW() WHERE id=$1 RETURNING *",[row.id,decision,reference,req.earnUser.id,status]);
     const campaign=await publishReadyRequest(client,updated.rows[0]);
@@ -333,7 +333,7 @@ router.patch("/admin/campaigns/:id/funding",async(req,res)=>{
   try{
     await client.query("BEGIN");
     const r=await client.query(
-      "UPDATE earn_campaigns SET funding_status=$2,funding_reference=$3,funding_verified_by=$4,funding_verified_at=CASE WHEN $2='verified' THEN NOW() ELSE NULL END,status=CASE WHEN $2='verified' AND moderation_status='approved' THEN 'published' ELSE CASE WHEN $2='rejected' THEN 'archived' ELSE status END END,updated_at=NOW() WHERE id=$1 AND status IN ('draft','paused') AND funding_status='unverified' RETURNING id,title,status,funding_status,moderation_status,budget_minor,reward_pool_minor,platform_fee_minor,platform_fee_bps",
+      "UPDATE earn_campaigns SET funding_status=$2,funding_reference=$3,funding_verified_by=$4,funding_verified_at=CASE WHEN $2='verified' THEN NOW() ELSE NULL END,status=CASE WHEN $2='verified' AND moderation_status='approved' THEN 'published' ELSE CASE WHEN $2='rejected' THEN 'archived' ELSE status END END,updated_at=NOW() WHERE id=$1 AND status IN ('draft','paused') AND moderation_status='approved' AND funding_status='unverified' RETURNING id,title,status,funding_status,moderation_status,budget_minor,reward_pool_minor,platform_fee_minor,platform_fee_bps",
       [req.params.id,decision,reference,req.earnUser.id]
     );
     if(!r.rowCount){await client.query("ROLLBACK");return res.status(404).json({error:"Task not found or funding was already verified."});}
