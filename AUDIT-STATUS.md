@@ -58,3 +58,14 @@ Scope: Ethio One only. Legacy Ethio Call repositories and databases are out of s
 ## Release rule
 
 Do not publish a production APK or claim the platform is production-ready until authentication, authorization, privacy/security controls, core workflows, and end-to-end tests are complete.
+
+
+## Ethio Lottery — own raffle planned-only branch
+
+- Implementation branch: feature/ethio-lottery-planned-raffle.
+- The public Ethio Lottery information tile remains unchanged.
+- Added a private Super Admin planning console, planning-only API, draft campaign records, approval tracker, sandbox simulations and OM/AM/EN mobile service-directory entry.
+- Prepared migration 019 adds the lottery module as planned and database-enforced OFF flags for sales, public visibility, live payments and live draws.
+- Migration 019 has NOT been applied to production. No ELS application has been submitted. No CBE, Telebirr or M-PESA integration has been activated.
+- No production ticket, payment, draw, winner or prize-payout workflow exists.
+- This branch is not merged to main and no Render deployment was requested or performed.
