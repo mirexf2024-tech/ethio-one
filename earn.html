@@ -103,15 +103,23 @@ const s=summaryData.summary||{};
 $("earned").textContent=money(s.earnedMinor);$("pending").textContent=money(s.pendingMinor);$("approved").textContent=String(s.approvedCount||0);
 renderTasks();renderHistory(summaryData.history||[]);
 try{
-const [q,a,access,requests]=await Promise.all([api("/admin/submissions?status=pending"),api("/admin/campaigns"),api("/admin/access"),api("/admin/requests")]);
+const access=await api("/admin/access");
+const [a,requests]=await Promise.all([api("/admin/campaigns"),api("/admin/requests")]);
+const roles=access.roles||[];
 $("adminPanel").classList.remove("hidden");
 $("adminDashboardLink").classList.toggle("hidden",!access.canOpenCentralAdmin);
-$("newTaskBtn").classList.toggle("hidden",!access.roles.some(x=>["super_admin","admin","finance_manager"].includes(x)));
-renderReviews(q.submissions||[]);
-renderAdminCampaigns(a.campaigns||[],access.roles||[]);
-if(access.roles.some(x=>["moderator","admin","super_admin"].includes(x))){try{const ap=await api("/admin/appeals?status=pending");renderAppeals(ap.appeals||[]);}catch{$("appealQueue").textContent="Appeal queue unavailable.";}}else{$("appealQueue").textContent="Moderator access required."; }
-renderPartnerQueue(requests.requests||[],access.roles||[]);
-if(access.roles.some(x=>["finance_manager","admin","super_admin"].includes(x))){try{const fs=await api("/admin/finance/summary");renderFinanceSummary(fs.summary);}catch{$("earnFinanceSummary").textContent="Finance summary unavailable.";}}else{$("earnFinanceSummary").textContent="Finance Manager access required.";}
+$("newTaskBtn").classList.toggle("hidden",!roles.some(x=>["super_admin","admin","finance_manager"].includes(x)));
+if(roles.some(x=>["moderator","admin","super_admin"].includes(x))){
+  try{const q=await api("/admin/submissions?status=pending");renderReviews(q.submissions||[]);}catch{$("reviewQueue").textContent="Task review queue unavailable.";}
+  try{const ap=await api("/admin/appeals?status=pending");renderAppeals(ap.appeals||[]);}catch{$("appealQueue").textContent="Appeal queue unavailable.";}
+}else{
+  $("reviewQueue").textContent="Moderator access required.";
+  $("appealQueue").textContent="Moderator access required.";
+}
+renderAdminCampaigns(a.campaigns||[],roles);
+renderPartnerQueue(requests.requests||[],roles);
+if(roles.some(x=>["finance_manager","admin","super_admin"].includes(x))){try{const fs=await api("/admin/finance/summary");renderFinanceSummary(fs.summary);}catch{$("earnFinanceSummary").textContent="Finance summary unavailable.";}}
+else{$("earnFinanceSummary").textContent="Finance Manager access required.";}
 }catch(e){$("adminPanel").classList.add("hidden");$("adminDashboardLink").classList.add("hidden");}
 try{const mine=await api("/my-requests");renderMyRequests(mine.requests||[]);}catch{}
 }catch(e){$("tasks").innerHTML='<div class="empty">'+esc(e.message||t("err"))+' · <a href="/auth.html" style="font-weight:800;color:#082b59">Sign in</a></div>';}
