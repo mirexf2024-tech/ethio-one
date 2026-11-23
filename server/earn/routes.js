@@ -106,6 +106,42 @@ router.post("/campaigns/:id/submit",rateLimit({windowMs:60*60*1000,limit:12,stan
     return res.status(503).json({error:"Your submission could not be saved."});
   }finally{client.release();}
 });
+router.get("/my-requests",async(req,res)=>{
+  try{
+    const r=await req.app.locals.db.query("SELECT id,organization_name,task_title,task_type,status,funding_status,review_note,campaign_id,created_at,updated_at FROM earn_task_requests WHERE requester_id=$1 ORDER BY created_at DESC LIMIT 30",[req.earnUser.id]);
+    return res.set("Cache-Control","no-store").json({requests:r.rows});
+  }catch{return res.status(503).json({error:"Your task requests are temporarily unavailable."});}
+});
+router.post("/requests",rateLimit({windowMs:24*60*60*1000,limit:3,standardHeaders:"draft-7",legacyHeaders:false}),async(req,res)=>{
+  const b=req.body||{};
+  const organizationName=typeof b.organizationName==="string"?b.organizationName.trim():"";
+  const organizationWebsite=safeHttpsUrl(typeof b.organizationWebsite==="string"?b.organizationWebsite.trim():"");
+  const title=typeof b.title==="string"?b.title.trim():"";
+  const description=typeof b.description==="string"?b.description.trim():"";
+  const instructions=typeof b.instructions==="string"?b.instructions.trim():"";
+  const taskType=String(b.taskType||"");
+  const providerName=typeof b.providerName==="string"?b.providerName.trim():"";
+  const providerUrl=safeHttpsUrl(typeof b.providerUrl==="string"?b.providerUrl.trim():"");
+  const rewardMinor=b.rewardMinor,budgetMinor=b.budgetMinor,slots=b.maxCompletions,minutes=b.estimatedMinutes;
+  const skill=["beginner","intermediate","advanced"].includes(b.skillLevel)?b.skillLevel:"beginner";
+  const languages=Array.isArray(b.languages)?b.languages.filter(x=>["om","am","en"].includes(x)).slice(0,3):["om","am","en"];
+  const evidenceHint=typeof b.evidenceHint==="string"?b.evidenceHint.trim().slice(0,300):"";
+  const quality=typeof b.qualityCriteria==="string"?b.qualityCriteria.trim().slice(0,1500):"";
+  if(organizationName.length<2||organizationName.length>160||!organizationWebsite||title.length<5||title.length>140||description.length<10||description.length>1200||instructions.length<10||instructions.length>10000||!TASK_TYPES.has(taskType)||providerName.length<2||providerName.length>160||!providerUrl||!amount(rewardMinor)||!amount(budgetMinor)||!Number.isInteger(slots)||slots<1||slots>100000||budgetMinor<rewardMinor*slots||!Number.isInteger(minutes)||minutes<1||minutes>1440||!quality||blockedTaskText([title,description,instructions].join(" "))){
+    return res.status(400).json({error:"Check task details. Paid reviews, fake engagement, deposits and pay-to-unlock tasks are not allowed."});
+  }
+  try{
+    const user=await req.app.locals.db.query("SELECT email,email_verified_at FROM users WHERE id=$1",[req.earnUser.id]);
+    if(!user.rows[0]?.email||!user.rows[0]?.email_verified_at)return res.status(403).json({error:"Verify your email before submitting a partner task."});
+    const r=await req.app.locals.db.query(
+      "INSERT INTO earn_task_requests(requester_id,organization_name,organization_website,contact_email,task_title,task_description,task_instructions,task_type,provider_name,provider_url,reward_minor,budget_minor,max_completions,estimated_minutes,skill_level,language_codes,evidence_hint,quality_criteria) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id,status,funding_status,created_at",
+      [req.earnUser.id,organizationName,organizationWebsite,user.rows[0].email,title,description,instructions,taskType,providerName,providerUrl,rewardMinor,budgetMinor,slots,minutes,skill,languages.length?languages:["om","am","en"],evidenceHint,quality]
+    );
+    const {recordSecurityEvent}=require("../admin/audit");
+    await recordSecurityEvent(req,{type:"earn_task_request_submitted",severity:"info",userId:req.earnUser.id,metadata:{request_id:r.rows[0].id,task_type:taskType,status:"submitted"}});
+    return res.status(201).json({request:r.rows[0],message:"Request submitted. It will appear only after content review and verified funding."});
+  }catch{return res.status(503).json({error:"Your partner task request could not be saved."});}
+});
 router.get("/admin/access",async(req,res)=>{
   try{
     const r=await req.app.locals.db.query("SELECT 1 FROM user_roles WHERE user_id=$1 AND role_key='super_admin' LIMIT 1",[req.earnUser.id]);
