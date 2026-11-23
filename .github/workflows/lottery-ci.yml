@@ -1,0 +1,39 @@
+name: Ethio Lottery Planned-Only CI
+
+on:
+  push:
+    paths:
+      - "server/index.js"
+      - "server/lottery/**"
+      - "server/schema/019_ethio_lottery_planned_raffle.sql"
+      - "server/test/lottery-planned-only.test.js"
+      - "lottery-admin.html"
+      - "scripts/admin-check.test.js"
+      - ".github/workflows/lottery-ci.yml"
+  pull_request:
+    paths:
+      - "server/index.js"
+      - "server/lottery/**"
+      - "server/schema/019_ethio_lottery_planned_raffle.sql"
+      - "server/test/lottery-planned-only.test.js"
+      - "lottery-admin.html"
+      - "scripts/admin-check.test.js"
+      - ".github/workflows/lottery-ci.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check API JavaScript syntax
+        run: |
+          node --check server/index.js
+          node --check server/lottery/routes.js
+          node --check server/lottery/providers.js
+      - name: Verify planned-only safeguards
+        run: node --test server/test/lottery-planned-only.test.js
+      - name: Verify private admin console
+        run: node --test scripts/admin-check.test.js
