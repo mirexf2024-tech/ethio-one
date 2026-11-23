@@ -150,6 +150,9 @@ router.patch("/admin/appeals/:id/review",async(req,res)=>{
   const decision=req.body?.decision,note=typeof req.body?.note==="string"?req.body.note.trim().slice(0,500):"";
   if(!validId(req.params.id)||!["accepted","rejected"].includes(decision)||note.length<3)return res.status(400).json({error:"Choose a decision and add a review note."});
   try{
+    const original=await req.app.locals.db.query("SELECT s.reviewer_id FROM earn_submission_appeals a JOIN earn_submissions s ON s.id=a.submission_id WHERE a.id=$1 AND a.status='pending'",[req.params.id]);
+    if(!original.rowCount)return res.status(409).json({error:"This appeal has already been reviewed."});
+    if(original.rows[0].reviewer_id===req.earnUser.id)return res.status(403).json({error:"A different moderator must review an appeal."});
     const r=await req.app.locals.db.query("UPDATE earn_submission_appeals SET status=$2,reviewer_id=$3,review_note=$4,reviewed_at=NOW() WHERE id=$1 AND status='pending' RETURNING id,status,submission_id",[req.params.id,decision,req.earnUser.id,note]);
     if(!r.rowCount)return res.status(409).json({error:"This appeal has already been reviewed."});
     const {recordSecurityEvent}=require("../admin/audit");
