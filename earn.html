@@ -26,7 +26,7 @@ dialog{border:0;border-radius:20px;padding:0;width:min(520px,calc(100% - 28px));
 </section>
 <section class="panel"><div class="section-head" style="margin:0"><div><h2 data-t="partnerTitle">Dhaabbata ykn nama hojii qabu?</h2><p data-t="partnerHint">Hojii dhugaa dhiyeessi; erga moderator mirkaneessee fi maallaqni isaa mirkanaa'ee booda member'ootaaf ni mul'ata.</p></div><button class="btn gold" id="requestTaskBtn" data-t="submitPartner">Hojii dhiyeessi</button></div><div id="myRequests" class="muted"></div></section>
 <div class="section-head"><div><h2 data-t="available">Hojiiwwan jiran</h2><p data-t="availableHint">Hojii tokko filachuun dura qajeelfama fi badhaasa isaa dubbisi.</p></div><button class="btn ghost" id="refreshBtn" data-t="refresh">Haaromsi</button></div>
-<section class="task-grid" id="tasks"><div class="empty" data-t="loading">Hojiiwwan fe'amaa jiru…</div></section>
+<div style="display:flex;gap:9px;flex-wrap:wrap;margin:0 0 13px"><input id="taskSearch" type="search" placeholder="Search tasks..." style="flex:1;min-width:180px;border:1px solid var(--line);border-radius:11px;padding:11px"><select id="taskFilter" style="border:1px solid var(--line);border-radius:11px;padding:11px"><option value="">All task types</option><option value="data_labeling">Data / AI</option><option value="transcription">Transcription</option><option value="translation">Translation</option><option value="survey">Surveys</option><option value="research">Research</option><option value="data_entry">Data entry</option><option value="content_review">Content review</option><option value="qa_testing">QA testing</option><option value="design">Design</option><option value="video_audio">Audio / video</option><option value="local_data">Local tasks</option></select></div><section class="task-grid" id="tasks"><div class="empty" data-t="loading">Hojiiwwan fe'amaa jiru…</div></section>
 <section class="panel"><div class="section-head" style="margin:0"><div><h2 data-t="history">Seenaa hojii koo</h2><p data-t="historyHint">Ragaan kee fi murtiin ilaaltootaa.</p></div></div><div id="history"><p class="muted" data-t="loading">Fe'amaa jira…</p></div></section>
 <section class="panel hidden" id="adminPanel"><div class="section-head" style="margin:0"><div><h2 data-t="admin">Bulchiinsa Ethio Earn</h2><p data-t="adminHint">Hojii haaraa qopheessi; ragaa ergame ilaali.</p></div><button class="btn gold" id="newTaskBtn" data-t="newTask">+ Hojii haaraa</button></div><div class="section-head" style="margin-top:20px"><div><h2>Partner task approval</h2><p>Moderator checks the task and Finance Manager confirms the received budget.</p></div></div><div id="partnerQueue"></div><div class="section-head" style="margin-top:22px"><div><h2>Task submissions</h2><p>Review proof submitted by members.</p></div></div><div id="reviewQueue"><p class="muted">Loading…</p></div><div class="section-head" style="margin-top:22px"><div><h2>Campaigns</h2><p>Tasks require both moderation approval and verified funding.</p></div></div><div id="adminCampaigns"></div></section>
 </main>
@@ -114,8 +114,10 @@ try{const mine=await api("/my-requests");renderMyRequests(mine.requests||[]);}ca
 }catch(e){$("tasks").innerHTML='<div class="empty">'+esc(e.message||t("err"))+' · <a href="/auth.html" style="font-weight:800;color:#082b59">Sign in</a></div>';}
 }
 function renderTasks(){
-if(!campaigns.length){$("tasks").innerHTML='<div class="empty">'+esc(t("noTasks"))+'</div>';return;}
-$("tasks").innerHTML=campaigns.map(c=>'<article class="task"><div class="task-top"><span class="category">'+esc(c.task_type||c.category)+'</span><span class="reward">'+money(c.reward_minor)+'</span></div><h3>'+esc(c.title)+'</h3><p>'+esc(c.description)+'</p><div class="task-meta"><span>'+esc(c.provider_name||"Ethio One")+'</span><span>'+Number(c.estimated_minutes||10)+' min · '+esc(c.skill_level||"beginner")+'</span></div><div class="task-meta"><span>'+esc(t("slotsLeft"))+': '+Number(c.remaining_slots||0)+'</span><span>'+(c.ends_at?'Ends '+new Date(c.ends_at).toLocaleDateString():'No end date')+'</span></div><button class="btn" data-task="'+esc(c.id)+'">'+esc(t("start"))+'</button></article>').join("");
+const query=($("taskSearch")?.value||"").trim().toLowerCase(),type=$("taskFilter")?.value||"";
+const visible=campaigns.filter(c=>(!type||c.task_type===type)&&(!query||[c.title,c.description,c.provider_name,c.task_type].join(" ").toLowerCase().includes(query)));
+if(!visible.length){$("tasks").innerHTML='<div class="empty">'+esc(t("noTasks"))+'</div>';return;}
+$("tasks").innerHTML=visible.map(c=>'<article class="task"><div class="task-top"><span class="category">'+esc(c.task_type||c.category)+'</span><span class="reward">'+money(c.reward_minor)+'</span></div><h3>'+esc(c.title)+'</h3><p>'+esc(c.description)+'</p><div class="task-meta"><span>'+esc(c.provider_name||"Ethio One")+'</span><span>'+Number(c.estimated_minutes||10)+' min · '+esc(c.skill_level||"beginner")+'</span></div><div class="task-meta"><span>'+esc(t("slotsLeft"))+': '+Number(c.remaining_slots||0)+'</span><span>'+(c.ends_at?'Ends '+new Date(c.ends_at).toLocaleDateString():'No end date')+'</span></div><button class="btn" data-task="'+esc(c.id)+'">'+esc(t("start"))+'</button></article>').join("");
 $("tasks").querySelectorAll("[data-task]").forEach(b=>b.onclick=()=>openTask(b.dataset.task));
 }
 function renderHistory(rows){
@@ -186,7 +188,7 @@ $("createDialog").close();alert(t("created"));$("createForm").reset();$("taskCat
 finally{$("createBtn").disabled=false;}
 };
 document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>$(b.dataset.close).close());
-$("refreshBtn").onclick=load;
+$("refreshBtn").onclick=load;$("taskSearch").addEventListener("input",renderTasks);$("taskFilter").addEventListener("change",renderTasks);
 translate();load();
 })();
 </script>
