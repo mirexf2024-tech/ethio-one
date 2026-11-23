@@ -368,10 +368,13 @@ router.post("/admin/submissions/:id/review",async(req,res)=>{
   const client=await db.connect();
   try{
     await client.query("BEGIN");
-    const r=await client.query("SELECT s.*,c.reward_minor,c.id AS cid FROM earn_submissions s JOIN earn_campaigns c ON c.id=s.campaign_id WHERE s.id=$1 FOR UPDATE OF s", [req.params.id]);
+    const r=await client.query("SELECT s.*,c.reward_minor,c.id AS cid,c.status AS campaign_status,c.funding_status,c.moderation_status FROM earn_submissions s JOIN earn_campaigns c ON c.id=s.campaign_id WHERE s.id=$1 FOR UPDATE OF s", [req.params.id]);
     const s=r.rows[0];
     if(!s||s.status!=="pending"){await client.query("ROLLBACK");return res.status(409).json({error:"This submission has already been reviewed."});}
     if(req.body.decision==="approved"){
+      if(s.campaign_status!=="published"||s.funding_status!=="verified"||s.moderation_status!=="approved"){await client.query("ROLLBACK");return res.status(409).json({error:"This task is not funded and approved for reward credit."});}
+      const finance=await client.query("UPDATE earn_platform_revenue SET rewards_credited_minor=rewards_credited_minor+$2 WHERE campaign_id=$1 AND rewards_credited_minor+$2<=reward_pool_minor RETURNING campaign_id",[s.cid,s.reward_minor]);
+      if(!finance.rowCount){await client.query("ROLLBACK");return res.status(409).json({error:"The funded reward pool is unavailable or fully allocated."});}
       await client.query("UPDATE earn_submissions SET status='approved',reviewer_id=$2,review_note=$3,reviewed_at=NOW(),updated_at=NOW() WHERE id=$1",[s.id,req.earnUser.id,note]);
       await client.query("INSERT INTO earn_ledger(user_id,submission_id,amount_minor) VALUES($1,$2,$3)",[s.user_id,s.id,s.reward_minor]);
     }else{
