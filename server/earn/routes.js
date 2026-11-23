@@ -69,7 +69,7 @@ async function publishReadyRequest(client,row){
 router.get("/campaigns",async(req,res)=>{
   try{
     const r=await req.app.locals.db.query(
-      "SELECT id,title,description,instructions,category,task_type,delivery_mode,provider_name,provider_url,estimated_minutes,skill_level,language_codes,quality_criteria,reward_minor,budget_minor-reserved_minor AS remaining_budget_minor,max_completions-reserved_completions AS remaining_slots,evidence_required,evidence_hint,ends_at FROM earn_campaigns WHERE status='published' AND funding_status='verified' AND moderation_status='approved' AND (starts_at IS NULL OR starts_at<=NOW()) AND (ends_at IS NULL OR ends_at>NOW()) AND reserved_completions<max_completions AND reserved_minor<budget_minor ORDER BY created_at DESC LIMIT 100");
+      "SELECT id,title,description,instructions,category,task_type,delivery_mode,provider_name,provider_url,estimated_minutes,skill_level,language_codes,quality_criteria,reward_minor,reward_pool_minor-reserved_minor AS remaining_budget_minor,max_completions-reserved_completions AS remaining_slots,evidence_required,evidence_hint,ends_at FROM earn_campaigns WHERE status='published' AND funding_status='verified' AND moderation_status='approved' AND (starts_at IS NULL OR starts_at<=NOW()) AND (ends_at IS NULL OR ends_at>NOW()) AND reserved_completions<max_completions AND reserved_minor<budget_minor ORDER BY created_at DESC LIMIT 100");
     return res.set("Cache-Control","no-store").json({campaigns:r.rows,currency:"ETB"});
   }catch{return res.status(503).json({error:"Tasks are temporarily unavailable."});}
 });
@@ -96,7 +96,7 @@ router.post("/campaigns/:id/submit",rateLimit({windowMs:60*60*1000,limit:12,stan
     const campaign=c.rows[0];
     if(!campaign||(campaign.starts_at&&new Date(campaign.starts_at)>new Date())||(campaign.ends_at&&new Date(campaign.ends_at)<=new Date())){await client.query("ROLLBACK");return res.status(404).json({error:"This task is no longer available."});}
     if(campaign.evidence_required&&!evidenceText&&!evidenceUrl){await client.query("ROLLBACK");return res.status(400).json({error:"Please provide the required task proof."});}
-    if(Number(campaign.reserved_completions)>=campaign.max_completions||Number(campaign.reserved_minor)+Number(campaign.reward_minor)>Number(campaign.budget_minor)){await client.query("ROLLBACK");return res.status(409).json({error:"This task has reached its limit."});}
+    if(Number(campaign.reserved_completions)>=campaign.max_completions||Number(campaign.reserved_minor)+Number(campaign.reward_minor)>Number(campaign.reward_pool_minor)){await client.query("ROLLBACK");return res.status(409).json({error:"This task has reached its limit."});}
     const s=await client.query("INSERT INTO earn_submissions(campaign_id,user_id,evidence_text,evidence_url) VALUES($1,$2,$3,$4) RETURNING id,status,created_at",[campaign.id,req.earnUser.id,evidenceText,evidenceUrl||null]);
     await client.query("UPDATE earn_campaigns SET reserved_completions=reserved_completions+1,reserved_minor=reserved_minor+reward_minor,updated_at=NOW() WHERE id=$1",[campaign.id]);
     await client.query("COMMIT");
@@ -225,7 +225,7 @@ router.get("/admin/access",async(req,res)=>{
 });
 router.get("/admin/campaigns",async(req,res)=>{
   try{
-    const r=await req.app.locals.db.query("SELECT id,title,description,category,task_type,delivery_mode,provider_name,provider_url,estimated_minutes,skill_level,reward_minor,budget_minor,max_completions,reserved_completions,status,funding_status,funding_reference,moderation_status,created_at FROM earn_campaigns ORDER BY created_at DESC LIMIT 100");
+    const r=await req.app.locals.db.query("SELECT id,title,description,category,task_type,delivery_mode,provider_name,provider_url,estimated_minutes,skill_level,reward_minor,budget_minor,reward_pool_minor,platform_fee_minor,platform_fee_bps,max_completions,reserved_completions,status,funding_status,funding_reference,moderation_status,created_at FROM earn_campaigns ORDER BY created_at DESC LIMIT 100");
     return res.set("Cache-Control","no-store").json({campaigns:r.rows});
   }catch{return res.status(503).json({error:"Task management is temporarily unavailable."});}
 });
@@ -239,7 +239,7 @@ router.get("/admin/submissions",async(req,res)=>{
 router.get("/admin/requests",async(req,res)=>{
   try{
     const r=await req.app.locals.db.query(
-      "SELECT r.id,r.requester_id,u.full_name,u.username,r.organization_name,r.organization_website,r.contact_email,r.task_title,r.task_description,r.task_instructions,r.task_type,r.provider_name,r.provider_url,r.reward_minor,r.budget_minor,r.max_completions,r.estimated_minutes,r.skill_level,r.language_codes,r.evidence_hint,r.quality_criteria,r.status,r.funding_status,r.funding_reference,r.review_note,r.campaign_id,r.created_at FROM earn_task_requests r JOIN users u ON u.id=r.requester_id WHERE r.status<>'published' ORDER BY r.created_at ASC LIMIT 100");
+      "SELECT r.id,r.requester_id,u.full_name,u.username,r.organization_name,r.organization_website,r.contact_email,r.task_title,r.task_description,r.task_instructions,r.task_type,r.provider_name,r.provider_url,r.reward_minor,r.budget_minor,r.reward_pool_minor,r.platform_fee_minor,r.platform_fee_bps,r.max_completions,r.estimated_minutes,r.skill_level,r.language_codes,r.evidence_hint,r.quality_criteria,r.status,r.funding_status,r.funding_reference,r.review_note,r.campaign_id,r.created_at FROM earn_task_requests r JOIN users u ON u.id=r.requester_id WHERE r.status<>'published' ORDER BY r.created_at ASC LIMIT 100");
     return res.set("Cache-Control","no-store").json({requests:r.rows});
   }catch{return res.status(503).json({error:"Partner task review queue is unavailable."});}
 });
