@@ -238,6 +238,7 @@ router.get("/admin/campaigns",async(req,res)=>{
   }catch{return res.status(503).json({error:"Task management is temporarily unavailable."});}
 });
 router.get("/admin/submissions",async(req,res)=>{
+  if(!await requireRoles(req,res,["moderator","admin","super_admin"]))return;
   try{
     const status=["pending","approved","rejected"].includes(req.query.status)?req.query.status:"pending";
     const r=await req.app.locals.db.query("SELECT s.id,s.user_id,u.username,u.full_name,s.campaign_id,c.title,c.reward_minor,s.evidence_text,s.evidence_url,s.status,s.created_at FROM earn_submissions s JOIN users u ON u.id=s.user_id JOIN earn_campaigns c ON c.id=s.campaign_id WHERE s.status=$1 ORDER BY s.created_at ASC LIMIT 100",[status]);
@@ -261,6 +262,7 @@ router.patch("/admin/requests/:id/moderation",async(req,res)=>{
     const found=await client.query("SELECT * FROM earn_task_requests WHERE id=$1 FOR UPDATE",[req.params.id]);
     const row=found.rows[0];
     if(!row||row.status==="published"||row.status==="rejected"){await client.query("ROLLBACK");return res.status(409).json({error:"This request can no longer be reviewed."});}
+    if(row.requester_id===req.earnUser.id){await client.query("ROLLBACK");return res.status(403).json({error:"You cannot moderate your own partner task request."});}
     const status=decision==="approved"?"moderator_approved":decision;
     const updated=await client.query("UPDATE earn_task_requests SET status=$2,moderator_id=$3,moderated_at=NOW(),review_note=$4,updated_at=NOW() WHERE id=$1 RETURNING *",[row.id,status,req.earnUser.id,note]);
     const campaign=await publishReadyRequest(client,updated.rows[0]);
@@ -282,6 +284,7 @@ router.patch("/admin/requests/:id/funding",async(req,res)=>{
     const found=await client.query("SELECT * FROM earn_task_requests WHERE id=$1 FOR UPDATE",[req.params.id]);
     const row=found.rows[0];
     if(!row||row.status!=="moderator_approved"||row.funding_status!=="unverified"){await client.query("ROLLBACK");return res.status(409).json({error:"Content must be approved by a moderator before funding can be verified."});}
+    if(row.requester_id===req.earnUser.id){await client.query("ROLLBACK");return res.status(403).json({error:"The task requester cannot verify their own funding."});}
     const status=decision==="rejected"?"rejected":row.status;
     const updated=await client.query("UPDATE earn_task_requests SET funding_status=$2,funding_reference=$3,funding_verified_by=$4,funding_verified_at=CASE WHEN $2='verified' THEN NOW() ELSE NULL END,status=$5,updated_at=NOW() WHERE id=$1 RETURNING *",[row.id,decision,reference,req.earnUser.id,status]);
     const campaign=await publishReadyRequest(client,updated.rows[0]);
@@ -369,16 +372,17 @@ router.patch("/admin/campaigns/:id/status",async(req,res)=>{
 });
 router.post("/admin/submissions/:id/review",async(req,res)=>{
   const db=req.app.locals.db;
-  if(!await requireRoles(req,res,["moderator","admin","super_admin","finance_manager"]))return;
+  if(!await requireRoles(req,res,["moderator","admin","super_admin"]))return;
   if(!validId(req.params.id)||!["approved","rejected"].includes(req.body?.decision))return res.status(400).json({error:"Invalid review decision."});
   const note=typeof req.body.note==="string"?req.body.note.trim().slice(0,500):"";
   if(req.body.decision==="rejected"&&note.length<3)return res.status(400).json({error:"A clear rejection reason is required."});
   const client=await db.connect();
   try{
     await client.query("BEGIN");
-    const r=await client.query("SELECT s.*,c.reward_minor,c.id AS cid,c.status AS campaign_status,c.funding_status,c.moderation_status FROM earn_submissions s JOIN earn_campaigns c ON c.id=s.campaign_id WHERE s.id=$1 FOR UPDATE OF s", [req.params.id]);
+    const r=await client.query("SELECT s.*,c.reward_minor,c.id AS cid,c.created_by AS campaign_creator_id,c.status AS campaign_status,c.funding_status,c.moderation_status FROM earn_submissions s JOIN earn_campaigns c ON c.id=s.campaign_id WHERE s.id=$1 FOR UPDATE OF s", [req.params.id]);
     const s=r.rows[0];
     if(!s||s.status!=="pending"){await client.query("ROLLBACK");return res.status(409).json({error:"This submission has already been reviewed."});}
+    if(s.user_id===req.earnUser.id||s.campaign_creator_id===req.earnUser.id){await client.query("ROLLBACK");return res.status(403).json({error:"You cannot review your own task submission or a task you created."});}
     if(req.body.decision==="approved"){
       if(s.campaign_status!=="published"||s.funding_status!=="verified"||s.moderation_status!=="approved"){await client.query("ROLLBACK");return res.status(409).json({error:"This task is not funded and approved for reward credit."});}
       const finance=await client.query("UPDATE earn_platform_revenue SET rewards_credited_minor=rewards_credited_minor+$2 WHERE campaign_id=$1 AND rewards_credited_minor+$2<=reward_pool_minor RETURNING campaign_id",[s.cid,s.reward_minor]);
