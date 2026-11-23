@@ -9,6 +9,7 @@ const marketplace = fs.readFileSync(path.join(__dirname, "../schema/011_ethio_ea
 const appeals = fs.readFileSync(path.join(__dirname, "../schema/012_ethio_earn_worker_appeals.sql"), "utf8");
 const finance = fs.readFileSync(path.join(__dirname, "../schema/013_ethio_earn_platform_fee_ledger.sql"), "utf8");
 const payouts = fs.readFileSync(path.join(__dirname, "../schema/019_ethio_earn_sponsors_payouts.sql"), "utf8");
+const earnPage = fs.readFileSync(path.join(__dirname, "../../earn.html"), "utf8");
 
 test("only published, moderated and funded campaigns appear in the member marketplace", () => {
   assert.match(routes, /status='published' AND funding_status='verified' AND moderation_status='approved'/);
@@ -105,4 +106,16 @@ test("payout audit events are allowlisted without account details", () => {
   assert.match(audit, /earn_payout_requested/);
   assert.match(audit, /earn_payout_reviewed/);
   assert.match(audit, /payout_request_id/);
+});
+
+test("Ethio Earn payout controls are present, localized and disabled by default", () => {
+  for (const id of ["payoutPanel","payoutForm","payoutMethod","payoutHolder","payoutAccount","payoutAmount","payoutSubmit","payoutHistory","payoutQueue"]) {
+    assert.ok(earnPage.includes('id="' + id + '"'), id + " must exist");
+  }
+  for (const lang of ["OM","AM","EN"]) {
+    assert.match(earnPage, new RegExp(lang + ":\\\\{[\\\\s\\\\S]*?payoutTitle"));
+    assert.match(earnPage, new RegExp(lang + ":\\\\{[\\\\s\\\\S]*?payoutDisabled"));
+  }
+  assert.doesNotMatch(earnPage, /[\\u4e00-\\u9fff]/);
+  assert.match(earnPage, /id="payoutSubmit" type="submit" disabled/);
 });
