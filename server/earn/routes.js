@@ -31,6 +31,12 @@ async function isReviewer(db,userId){
   const r=await db.query("SELECT 1 FROM user_roles WHERE user_id=$1 AND role_key IN ('super_admin','admin') LIMIT 1",[userId]);
   return !!r.rowCount;
 }
+router.use("/admin",async(req,res,next)=>{
+  try{
+    if(!await isReviewer(req.app.locals.db,req.earnUser.id))return res.status(403).json({error:"You do not have permission to manage Ethio Earn."});
+    return next();
+  }catch{return res.status(503).json({error:"Admin permissions are temporarily unavailable."});}
+});
 function validId(v){return typeof v==="string"&&/^[0-9a-f-]{36}$/i.test(v);}
 function amount(v){return Number.isSafeInteger(v)&&v>0&&v<=100000000;}
 router.get("/campaigns",async(req,res)=>{
@@ -75,7 +81,6 @@ router.post("/campaigns/:id/submit",rateLimit({windowMs:60*60*1000,limit:12,stan
   }finally{client.release();}
 });
 router.get("/admin/submissions",async(req,res)=>{
-  if(!await isReviewer(req.app.locals.db,req.earnUser.id))return res.status(403).json({error:"You do not have permission to review task submissions."});
   try{
     const status=["pending","approved","rejected"].includes(req.query.status)?req.query.status:"pending";
     const r=await req.app.locals.db.query("SELECT s.id,s.user_id,u.username,u.full_name,s.campaign_id,c.title,c.reward_minor,s.evidence_text,s.evidence_url,s.status,s.created_at FROM earn_submissions s JOIN users u ON u.id=s.user_id JOIN earn_campaigns c ON c.id=s.campaign_id WHERE s.status=$1 ORDER BY s.created_at ASC LIMIT 100",[status]);
@@ -84,7 +89,6 @@ router.get("/admin/submissions",async(req,res)=>{
 });
 router.post("/admin/campaigns",async(req,res)=>{
   const db=req.app.locals.db;
-  if(!await isReviewer(db,req.earnUser.id))return res.status(403).json({error:"You do not have permission to create tasks."});
   const b=req.body||{};
   const title=typeof b.title==="string"?b.title.trim():"",description=typeof b.description==="string"?b.description.trim():"",instructions=typeof b.instructions==="string"?b.instructions.trim():"";
   const category=typeof b.category==="string"?b.category.trim().toLowerCase():"general";
@@ -95,7 +99,6 @@ router.post("/admin/campaigns",async(req,res)=>{
   }catch{return res.status(503).json({error:"The task could not be created."});}
 });
 router.patch("/admin/campaigns/:id/status",async(req,res)=>{
-  if(!await isReviewer(req.app.locals.db,req.earnUser.id))return res.status(403).json({error:"You do not have permission to manage tasks."});
   if(!validId(req.params.id)||!["published","paused","archived"].includes(req.body?.status))return res.status(400).json({error:"Invalid task status."});
   try{
     const r=await req.app.locals.db.query("UPDATE earn_campaigns SET status=$2,updated_at=NOW() WHERE id=$1 AND status IN ('draft','published','paused') RETURNING id,status",[req.params.id,req.body.status]);
@@ -104,7 +107,6 @@ router.patch("/admin/campaigns/:id/status",async(req,res)=>{
 });
 router.post("/admin/submissions/:id/review",async(req,res)=>{
   const db=req.app.locals.db;
-  if(!await isReviewer(db,req.earnUser.id))return res.status(403).json({error:"You do not have permission to review tasks."});
   if(!validId(req.params.id)||!["approved","rejected"].includes(req.body?.decision))return res.status(400).json({error:"Invalid review decision."});
   const note=typeof req.body.note==="string"?req.body.note.trim().slice(0,500):"";
   const client=await db.connect();
