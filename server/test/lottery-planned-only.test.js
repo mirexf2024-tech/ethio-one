@@ -12,7 +12,7 @@ const server = read("index.js");
 test("Ethio Lottery is registered as planned and every live release switch is database-locked off", () => {
   assert.match(schema, /\('lottery',\s*'Ethio Lottery',\s*'planned'\)/);
   for (const flag of ["sales_enabled","public_enabled","live_payments_enabled","live_draws_enabled"]) {
-    assert.match(schema, new RegExp(flag + "\\s+BOOLEAN NOT NULL DEFAULT FALSE CHECK \\(" + flag + "=FALSE\\)", "i"));
+    assert.match(schema, new RegExp(flag + "\\s+BOOLEAN NOT NULL DEFAULT FALSE CHECK \\(" + flag + "\\s*=\\s*FALSE\\)", "i"));
   }
 });
 
