@@ -124,7 +124,9 @@ $("tasks").querySelectorAll("[data-task]").forEach(b=>b.onclick=()=>openTask(b.d
 function renderHistory(rows){
 if(!rows.length){$("history").innerHTML='<p class="muted">'+esc(t("noHistory"))+'</p>';return;}
 const statusLabel={pending:t("pendingStatus"),approved:t("approvedStatus"),rejected:t("rejectedStatus")};
-$("history").innerHTML=rows.map(r=>'<div class="history-row"><div><b>'+esc(r.title)+'</b><div class="muted">'+new Date(r.created_at).toLocaleString()+'</div>'+(r.review_note?'<div class="muted">'+esc(r.review_note)+'</div>':'')+'</div><div style="text-align:right"><b>'+money(r.reward_minor)+'</b><div><span class="status '+esc(r.status)+'">'+esc(statusLabel[r.status]||r.status)+'</span></div></div></div>').join("");
+$("history").innerHTML=rows.map(r=>'<div class="history-row"><div><b>'+esc(r.title)+'</b><div class="muted">'+new Date(r.created_at).toLocaleString()+'</div>'+(r.review_note?'<div class="muted">'+esc(r.review_note)+'</div>':'')+(r.status==="rejected"&&!r.appeal_status?'<button class="btn ghost" data-appeal="'+esc(r.id)+'">Appeal decision</button>':'')+(r.appeal_status==="accepted"?'<button class="btn gold" data-resubmit="'+esc(r.id)+'">Resubmit corrected proof</button>':r.appeal_status?'<div class="muted">Appeal: '+esc(r.appeal_status)+'</div>':'')+'</div><div style="text-align:right"><b>'+money(r.reward_minor)+'</b><div><span class="status '+esc(r.status)+'">'+esc(statusLabel[r.status]||r.status)+'</span></div></div></div>').join("");
+$("history").querySelectorAll("[data-appeal]").forEach(b=>b.onclick=async()=>{const reason=prompt("Explain why the decision should be reviewed (at least 20 characters):");if(!reason||reason.trim().length<20)return;b.disabled=true;try{await api("/submissions/"+b.dataset.appeal+"/appeal",{method:"POST",body:JSON.stringify({reason:reason.trim()})});await load();}catch(e){alert(e.message);}finally{b.disabled=false;}});
+$("history").querySelectorAll("[data-resubmit]").forEach(b=>b.onclick=async()=>{const evidenceText=prompt("Enter your corrected task proof:");if(!evidenceText||!evidenceText.trim())return;b.disabled=true;try{await api("/submissions/"+b.dataset.resubmit+"/resubmit",{method:"POST",body:JSON.stringify({evidenceText:evidenceText.trim()})});await load();}catch(e){alert(e.message);}finally{b.disabled=false;}});
 }
 function openTask(id){
 selectedTask=campaigns.find(c=>c.id===id);if(!selectedTask)return;
@@ -143,6 +145,11 @@ finally{$("submitBtn").disabled=false;}
 function renderMyRequests(rows){
  if(!rows.length){$("myRequests").textContent="";return;}
  $("myRequests").innerHTML='<div style="margin-top:10px">'+rows.map(r=>'<div class="history-row"><div><b>'+esc(r.task_title)+'</b><div class="muted">'+esc(r.organization_name)+' · '+new Date(r.created_at).toLocaleDateString()+'</div>'+(r.review_note?'<div class="muted">'+esc(r.review_note)+'</div>':'')+'</div><span class="status">'+esc(r.status)+' / '+esc(r.funding_status)+'</span></div>').join("")+'</div>';
+}
+function renderAppeals(rows){
+ if(!rows.length){$("appealQueue").innerHTML='<p class="muted">No appeals awaiting review.</p>';return;}
+ $("appealQueue").innerHTML=rows.map(a=>'<div class="review-row" style="display:block;border:1px solid var(--line);border-radius:12px;padding:13px;margin:9px 0"><b>'+esc(a.title)+'</b><div class="muted">@'+esc(a.username||a.user_id)+' · '+new Date(a.created_at).toLocaleString()+'</div><p>'+esc(a.reason)+'</p><p class="muted">Original decision: '+esc(a.rejection_reason||"")+'</p><div class="actions"><button class="btn" data-appeal-review="'+esc(a.id)+'" data-decision="accepted">Allow resubmission</button><button class="btn ghost" data-appeal-review="'+esc(a.id)+'" data-decision="rejected">Uphold rejection</button></div></div>').join("");
+ $("appealQueue").querySelectorAll("[data-appeal-review]").forEach(b=>b.onclick=async()=>{const note=prompt("Add an independent review note:");if(!note||note.trim().length<3)return;b.disabled=true;try{await api("/admin/appeals/"+b.dataset.appealReview+"/review",{method:"PATCH",body:JSON.stringify({decision:b.dataset.decision,note:note.trim()})});await load();}catch(e){alert(e.message);}finally{b.disabled=false;}});
 }
 function renderPartnerQueue(rows,roles){
  const canModerate=roles.some(x=>["moderator","admin","super_admin"].includes(x));
