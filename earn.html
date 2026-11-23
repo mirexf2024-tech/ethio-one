@@ -83,7 +83,7 @@ campaigns=taskData.campaigns||[];
 const s=summaryData.summary||{};
 $("earned").textContent=money(s.earnedMinor);$("pending").textContent=money(s.pendingMinor);$("approved").textContent=String(s.approvedCount||0);
 renderTasks();renderHistory(summaryData.history||[]);
-try{const q=await api("/admin/submissions?status=pending");const a=await api("/admin/campaigns");$("adminPanel").classList.remove("hidden");$("adminDashboardLink").classList.remove("hidden");renderReviews(q.submissions||[]);renderAdminCampaigns(a.campaigns||[]);}catch(e){$("adminPanel").classList.add("hidden");$("adminDashboardLink").classList.add("hidden");}
+try{const q=await api("/admin/submissions?status=pending");const a=await api("/admin/campaigns");const access=await api("/admin/access");$("adminPanel").classList.remove("hidden");$("adminDashboardLink").classList.toggle("hidden",!access.canOpenCentralAdmin);renderReviews(q.submissions||[]);renderAdminCampaigns(a.campaigns||[]);}catch(e){$("adminPanel").classList.add("hidden");$("adminDashboardLink").classList.add("hidden");}
 }catch(e){$("tasks").innerHTML='<div class="empty">'+esc(e.message||t("err"))+' · <a href="/auth.html" style="font-weight:800;color:#082b59">Sign in</a></div>';}
 }
 function renderTasks(){
