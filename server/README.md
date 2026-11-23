@@ -30,13 +30,13 @@ Node.js API foundation for the Ethio One platform.
 - `POST /api/v1/social/conversations/:id/read` — mark incoming messages and their inbox notifications as read.
 - `GET /api/v1/social/calls/incoming` — authenticated incoming-call inbox.
 - `POST /api/v1/social/conversations/:id/calls` — create an audio/video call and submit its WebRTC offer.
-- `GET /api/v1/earn/campaigns` — list published task campaigns for an authenticated member.
+- `GET /api/v1/earn/campaigns` — list published task campaigns for an authenticated member.\n- `GET /api/v1/lottery/overview` — private Super Admin-only raffle planning status, approval tracker and locked release flags.\n- `GET/POST /api/v1/lottery/campaigns` and `PATCH /api/v1/lottery/campaigns/:id` — create/update private raffle drafts only.\n- `GET /api/v1/lottery/sandbox/runs` and `POST /api/v1/lottery/sandbox/run` — synthetic sandbox simulations only; no external provider calls, real tickets, winners or money.
 - `GET /api/v1/earn/me/summary` — private approved rewards, pending submissions and task history.
 - `POST /api/v1/earn/campaigns/:id/submit` — submit task evidence for review; one submission per member per task.
 - `GET /api/v1/earn/admin/campaigns` and `POST /api/v1/earn/admin/campaigns` — admin campaign management.
 - `PATCH /api/v1/earn/admin/campaigns/:id/status` — publish, pause or archive a campaign.
 - `GET /api/v1/earn/admin/submissions` and `POST /api/v1/earn/admin/submissions/:id/review` — review task evidence and approve or reject submissions.
-- `010_ethio_earn_task_marketplace.sql` — additive task, submission and reward-ledger schema. Apply only after reviewing the live migration ledger and confirming the production schema; it is not automatically applied by deploying the API.
+- `010_ethio_earn_task_marketplace.sql` — additive task, submission and reward-ledger schema. Apply only after reviewing the live migration ledger and confirming the production schema; it is not automatically applied by deploying the API.\n- `019_ethio_lottery_planned_raffle.sql` — private planning, approval tracking, draft campaigns, sandbox and audit schema only. All live lottery flags are database-locked FALSE. Do not apply to production until separately approved.
 
 - `GET /api/v1/social/calls/:id` — read call state and new peer signaling events.
 - `POST /api/v1/social/calls/:id/signals` — submit an answer or ICE candidate.
