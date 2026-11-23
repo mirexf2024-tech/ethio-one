@@ -329,17 +329,25 @@ router.patch("/admin/campaigns/:id/funding",async(req,res)=>{
   if(!await requireRoles(req,res,["finance_manager","admin","super_admin"]))return;
   const decision=req.body?.decision,reference=typeof req.body?.reference==="string"?req.body.reference.trim():"";
   if(!validId(req.params.id)||!["verified","rejected"].includes(decision)||reference.length<4||reference.length>160||/[\\r\\n]/.test(reference))return res.status(400).json({error:"Enter a verified funding reference."});
+  const client=await req.app.locals.db.connect();
   try{
-    const r=await req.app.locals.db.query(
-      "UPDATE earn_campaigns SET funding_status=$2,funding_reference=$3,funding_verified_by=$4,funding_verified_at=CASE WHEN $2='verified' THEN NOW() ELSE NULL END,status=CASE WHEN $2='verified' AND moderation_status='approved' THEN 'published' ELSE CASE WHEN $2='rejected' THEN 'archived' ELSE status END END,updated_at=NOW() WHERE id=$1 AND status IN ('draft','paused') RETURNING id,title,status,funding_status,moderation_status",
+    await client.query("BEGIN");
+    const r=await client.query(
+      "UPDATE earn_campaigns SET funding_status=$2,funding_reference=$3,funding_verified_by=$4,funding_verified_at=CASE WHEN $2='verified' THEN NOW() ELSE NULL END,status=CASE WHEN $2='verified' AND moderation_status='approved' THEN 'published' ELSE CASE WHEN $2='rejected' THEN 'archived' ELSE status END END,updated_at=NOW() WHERE id=$1 AND status IN ('draft','paused') AND funding_status='unverified' RETURNING id,title,status,funding_status,moderation_status,budget_minor,reward_pool_minor,platform_fee_minor,platform_fee_bps",
       [req.params.id,decision,reference,req.earnUser.id]
     );
-    if(!r.rowCount)return res.status(404).json({error:"Task not found or already published."});
+    if(!r.rowCount){await client.query("ROLLBACK");return res.status(404).json({error:"Task not found or funding was already verified."});}
+    if(decision==="verified"){
+      const campaign=r.rows[0];
+      await client.query("INSERT INTO earn_platform_revenue(campaign_id,gross_funding_minor,reward_pool_minor,platform_fee_minor,platform_fee_bps,funding_reference,verified_by) VALUES($1,$2,$3,$4,$5,$6,$7)",[campaign.id,campaign.budget_minor,campaign.reward_pool_minor,campaign.platform_fee_minor,campaign.platform_fee_bps,reference,req.earnUser.id]);
+    }
+    await client.query("COMMIT");
     const {recordSecurityEvent}=require("../admin/audit");
     const logged=await recordSecurityEvent(req,{type:"earn_campaign_funding_verified",severity:decision==="rejected"?"warning":"info",userId:req.earnUser.id,metadata:{campaign_id:r.rows[0].id,status:decision,funding_reference:reference}});
     if(!logged)return res.status(503).json({error:"Funding decision saved but audit confirmation failed."});
     return res.set("Cache-Control","no-store").json({campaign:r.rows[0]});
-  }catch{return res.status(503).json({error:"Campaign funding could not be verified."});}
+  }catch{await client.query("ROLLBACK").catch(()=>{});return res.status(503).json({error:"Campaign funding could not be verified."});}
+  finally{client.release();}
 });
 router.patch("/admin/campaigns/:id/status",async(req,res)=>{
   if(!validId(req.params.id)||!["published","paused","archived"].includes(req.body?.status))return res.status(400).json({error:"Invalid task status."});
