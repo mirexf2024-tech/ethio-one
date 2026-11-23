@@ -37,7 +37,8 @@ test("reduced-motion preferences are respected", () => {
 });
 
 test("brand artwork has an accessible image role and label", () => {
-  assert.match(html, /aria-label="Ethio One home"/);\n  assert.match(html, /alt="Ethio One logo"/);
+  assert.match(html, /aria-label="Ethio One home"/);
+  assert.match(html, /alt="Ethio One logo"/);
 });
 
 test("runtime telemetry reports only fixed event types and no error payloads", () => {
