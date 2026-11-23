@@ -150,7 +150,7 @@ router.get("/admin/access",async(req,res)=>{
 });
 router.get("/admin/campaigns",async(req,res)=>{
   try{
-    const r=await req.app.locals.db.query("SELECT id,title,description,category,reward_minor,budget_minor,max_completions,reserved_completions,status,created_at FROM earn_campaigns ORDER BY created_at DESC LIMIT 100");
+    const r=await req.app.locals.db.query("SELECT id,title,description,category,task_type,delivery_mode,provider_name,provider_url,estimated_minutes,skill_level,reward_minor,budget_minor,max_completions,reserved_completions,status,funding_status,funding_reference,moderation_status,created_at FROM earn_campaigns ORDER BY created_at DESC LIMIT 100");
     return res.set("Cache-Control","no-store").json({campaigns:r.rows});
   }catch{return res.status(503).json({error:"Task management is temporarily unavailable."});}
 });
