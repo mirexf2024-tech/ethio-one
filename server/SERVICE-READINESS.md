@@ -11,7 +11,7 @@ This checklist reflects the current repository and the production `platform_modu
 | Identity verification | Ethio ID is generated for accounts | Add a privacy-safe verification request/review workflow; do not treat OTP as identity verification or imply government recognition |
 | Subscription foundation | Free, Premium and Pro plan records and subscription/payment tables exist; read-only plans and current-account endpoints exist | Configure entitlements, payment-provider verification, subscription lifecycle and UI; Premium/Pro remain drafts |
 | Service access | Registry contains 20 modules; all are still `planned` | Define explicit module release status and server-side access checks before enabling a service |
-| Wallet and payments | Production payment and withdrawal flows are not enabled | Select a licensed/available provider, implement signed callbacks, reconciliation, refunds and audit trail |
+| Wallet and payments | Read-only `/api/v1/wallet/summary` bridge is implemented on the feature branch; production wallet and withdrawal flows remain disabled | Review and test the read-only bridge; then implement a dedicated immutable wallet ledger, safe withdrawal reservation, provider callbacks, reconciliation, refunds and finance audit controls |
 
 ## Service registry
 
@@ -69,3 +69,8 @@ External work-platform links are informational only. Their availability, eligibi
 ## Release rule
 
 Do not change a module from `planned` to `active` merely because its UI tile exists or its API router is mounted. Do not grant Premium/Pro access from a client-side flag. A paid entitlement must be backed by a provider-verified successful payment and an active subscription.
+
+
+## Ethio Wallet implementation note
+
+The feature branch currently adds a read-only summary endpoint that derives the display balance from existing Earn task and sponsor credit ledgers and subtracts paid and reserved payout amounts. It does not persist a duplicate wallet balance and does not enable withdrawal requests or Chapa transfers. The wallet module must remain `planned` until the complete security, provider, legal, operational and regression gates are passed.
