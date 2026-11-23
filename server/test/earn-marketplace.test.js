@@ -7,6 +7,7 @@ const routes = fs.readFileSync(path.join(__dirname, "../earn/routes.js"), "utf8"
 const audit = fs.readFileSync(path.join(__dirname, "../admin/audit.js"), "utf8");
 const marketplace = fs.readFileSync(path.join(__dirname, "../schema/011_ethio_earn_verified_partner_marketplace.sql"), "utf8");
 const appeals = fs.readFileSync(path.join(__dirname, "../schema/012_ethio_earn_worker_appeals.sql"), "utf8");
+const finance = fs.readFileSync(path.join(__dirname, "../schema/013_ethio_earn_platform_fee_ledger.sql"), "utf8");
 
 test("only published, moderated and funded campaigns appear in the member marketplace", () => {
   assert.match(routes, /status='published' AND funding_status='verified' AND moderation_status='approved'/);
@@ -52,4 +53,13 @@ test("campaign schema tracks provider, skills, quality, funding and moderation",
   for (const field of ["task_type","provider_url","estimated_minutes","skill_level","quality_criteria","funding_status","moderation_status"]) {
     assert.ok(marketplace.includes(field), field + " must exist");
   }
+});
+
+test("partner tasks include a transparent 10 percent service fee and funded reward ledger", () => {
+  assert.match(routes, /platformFeeBps=1000/);
+  assert.match(routes, /Math\.ceil\(rewardPoolMinor\*platformFeeBps\/10000\)/);
+  assert.match(routes, /earn_platform_revenue/);
+  assert.match(routes, /rewards_credited_minor=rewards_credited_minor\+\$2/);
+  assert.match(finance, /platform_fee_minor/);
+  assert.match(finance, /earn_platform_revenue/);
 });
