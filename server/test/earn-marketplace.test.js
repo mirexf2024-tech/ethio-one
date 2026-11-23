@@ -8,6 +8,7 @@ const audit = fs.readFileSync(path.join(__dirname, "../admin/audit.js"), "utf8")
 const marketplace = fs.readFileSync(path.join(__dirname, "../schema/011_ethio_earn_verified_partner_marketplace.sql"), "utf8");
 const appeals = fs.readFileSync(path.join(__dirname, "../schema/012_ethio_earn_worker_appeals.sql"), "utf8");
 const finance = fs.readFileSync(path.join(__dirname, "../schema/013_ethio_earn_platform_fee_ledger.sql"), "utf8");
+const payouts = fs.readFileSync(path.join(__dirname, "../schema/019_ethio_earn_sponsors_payouts.sql"), "utf8");
 
 test("only published, moderated and funded campaigns appear in the member marketplace", () => {
   assert.match(routes, /status='published' AND funding_status='verified' AND moderation_status='approved'/);
@@ -64,4 +65,44 @@ test("partner tasks include a transparent 10 percent service fee and funded rewa
   assert.match(routes, /rewards_credited_minor=rewards_credited_minor\+\$2/);
   assert.match(finance, /platform_fee_minor/);
   assert.match(finance, /earn_platform_revenue/);
+});
+
+test("payout requests remain disabled until the owner configures a high-entropy encryption key and release flag", () => {
+  assert.match(routes, /env\.EARN_PAYOUTS_ENABLED==="true"/);
+  assert.match(routes, /EARN_PAYOUT_ENCRYPTION_KEY/);
+  assert.match(routes, /secret\.length<32/);
+});
+
+test("payout account details are encrypted at rest with AES-256-GCM and never returned in the member history", () => {
+  assert.match(routes, /createCipheriv\("aes-256-gcm"/);
+  assert.match(routes, /createDecipheriv\("aes-256-gcm"/);
+  assert.match(routes, /account_ciphertext,account_iv,account_tag,account_hint/);
+  assert.match(routes, /SELECT id,amount_minor,payout_method,account_hint,account_holder_name,status/);
+});
+
+test("payout requests reserve only available rewards and enforce a 50 ETB minimum", () => {
+  assert.match(routes, /amountMinor<5000/);
+  assert.match(routes, /status IN \('pending','processing','paid'\)/);
+  assert.match(routes, /earn_ledger/);
+  assert.match(routes, /earn_sponsor_ad_credits/);
+  assert.match(routes, /FOR UPDATE/);
+});
+
+test("finance payout completion requires explicit confirmation and creates a unique payout ledger record", () => {
+  assert.match(routes, /req\.body\?\.confirmPaid!==true/);
+  assert.match(routes, /INSERT INTO earn_payout_ledger/);
+  assert.match(routes, /requireRoles\(req,res,\["finance_manager","admin","super_admin"\]\)/);
+});
+
+test("payout schema stores encrypted account data and prevents duplicate payout ledger entries", () => {
+  for (const field of ["account_ciphertext","account_iv","account_tag","account_hint","account_holder_name","earn_payout_ledger"]) {
+    assert.ok(payouts.includes(field), field + " must exist");
+  }
+  assert.match(payouts, /UNIQUE REFERENCES earn_payout_requests/);
+});
+
+test("payout audit events are allowlisted without account details", () => {
+  assert.match(audit, /earn_payout_requested/);
+  assert.match(audit, /earn_payout_reviewed/);
+  assert.match(audit, /payout_request_id/);
 });
