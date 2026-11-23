@@ -3,9 +3,11 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
-test("Ethio ID review queue is behind super-admin middleware and limits statuses", () => {
+test("Ethio ID review queue is behind role-scoped admin middleware and limits statuses", () => {
   const routes = fs.readFileSync(path.join(__dirname, "../admin/routes.js"), "utf8");
   assert.match(routes, /router\.use\(requireSuperAdmin\)/);
+  assert.match(routes, /delegatedIdentityReview/);
+  assert.match(routes, /roles\.includes\("support"\)/);
   assert.match(routes, /router\.get\("\/identity-verifications"/);
   assert.match(routes, /WHERE identity_verification_status=\$1/);
   assert.match(routes, /LIMIT \$2 OFFSET \$3/);
@@ -47,4 +49,15 @@ test("signed-in users can request review but cannot set their own verified statu
 test("identity verification request audit event is allowlisted", () => {
   const audit = fs.readFileSync(path.join(__dirname, "../admin/audit.js"), "utf8");
   assert.match(audit, /identity_verification_requested/);
+});
+
+
+test("community report review is available to moderator and content manager roles and audited", () => {
+  const routes = fs.readFileSync(path.join(__dirname, "../social/routes.js"), "utf8");
+  const audit = fs.readFileSync(path.join(__dirname, "../admin/audit.js"), "utf8");
+  assert.match(routes, /moderator','content_manager','admin','super_admin/);
+  assert.match(routes, /target_preview/);
+  assert.match(routes, /social_report_reviewed/);
+  assert.match(audit, /social_report_reviewed/);
+  assert.match(audit, /report_id/);
 });
