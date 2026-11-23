@@ -5,8 +5,8 @@ const path = require("node:path");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 
-test("landing page exposes all 19 service cards", () => {
-  assert.equal((html.match(/class="tile"/g) || []).length, 19);
+test("landing page exposes all 20 service cards", () => {
+  assert.equal((html.match(/class="tile"/g) || []).length, 20);
 });
 
 test("all visible translated labels exist in all three languages", () => {
@@ -37,7 +37,7 @@ test("reduced-motion preferences are respected", () => {
 });
 
 test("brand artwork has an accessible image role and label", () => {
-  assert.match(html, /role="img" aria-label="Ethio One E1 brand artwork"/);
+  assert.match(html, /aria-label="Ethio One home"/);\n  assert.match(html, /alt="Ethio One logo"/);
 });
 
 test("runtime telemetry reports only fixed event types and no error payloads", () => {
