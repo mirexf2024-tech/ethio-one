@@ -18,7 +18,7 @@ ALTER TABLE earn_campaigns
   ADD COLUMN IF NOT EXISTS moderated_at TIMESTAMPTZ;
 
 ALTER TABLE earn_campaigns ADD CONSTRAINT earn_campaign_task_type_chk
-  CHECK (task_type IN ('data_labeling','transcription','translation','survey','research','data_entry','content_review','qa_testing','design','video_audio','local_data','other'));
+  CHECK (task_type IN ('data_labeling','transcription','translation','survey','research','data_entry','content_review','qa_testing','design','video_audio','local_data','business_listing','map_verification','product_photography','product_description','social_media','document_digitization','voice_recording','customer_support','app_testing','other'));
 ALTER TABLE earn_campaigns ADD CONSTRAINT earn_campaign_delivery_mode_chk
   CHECK (delivery_mode IN ('ethio_one','partner_link'));
 ALTER TABLE earn_campaigns ADD CONSTRAINT earn_campaign_skill_level_chk
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS earn_task_requests (
   task_title VARCHAR(140) NOT NULL,
   task_description VARCHAR(1200) NOT NULL,
   task_instructions TEXT NOT NULL,
-  task_type VARCHAR(40) NOT NULL CHECK (task_type IN ('data_labeling','transcription','translation','survey','research','data_entry','content_review','qa_testing','design','video_audio','local_data','other')),
+  task_type VARCHAR(40) NOT NULL CHECK (task_type IN ('data_labeling','transcription','translation','survey','research','data_entry','content_review','qa_testing','design','video_audio','local_data','business_listing','map_verification','product_photography','product_description','social_media','document_digitization','voice_recording','customer_support','app_testing','other')),
   provider_name VARCHAR(160) NOT NULL,
   provider_url VARCHAR(1000) NOT NULL,
   reward_minor BIGINT NOT NULL CHECK (reward_minor > 0),

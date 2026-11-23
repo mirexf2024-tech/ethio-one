@@ -47,7 +47,7 @@ async function requireRoles(req,res,roles){
   try{if(await hasRole(req.app.locals.db,req.earnUser.id,roles))return true;res.status(403).json({error:"You do not have permission for this Ethio Earn action."});return false;}
   catch{res.status(503).json({error:"Role permissions are temporarily unavailable."});return false;}
 }
-const TASK_TYPES=new Set(["data_labeling","transcription","translation","survey","research","data_entry","content_review","qa_testing","design","video_audio","local_data","other"]);
+const TASK_TYPES=new Set(["data_labeling","transcription","translation","survey","research","data_entry","content_review","qa_testing","design","video_audio","local_data","business_listing","map_verification","product_photography","product_description","social_media","document_digitization","voice_recording","customer_support","app_testing","other"]);
 function safeHttpsUrl(value){
   try{const u=new URL(value);return u.protocol==="https:"&&u.hostname.includes(".")&&!["localhost","127.0.0.1"].includes(u.hostname)&&!u.hostname.endsWith(".local")?u.toString():null;}catch{return null;}
 }
