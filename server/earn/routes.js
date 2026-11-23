@@ -144,8 +144,9 @@ router.post("/requests",rateLimit({windowMs:24*60*60*1000,limit:3,standardHeader
 });
 router.get("/admin/access",async(req,res)=>{
   try{
-    const r=await req.app.locals.db.query("SELECT 1 FROM user_roles WHERE user_id=$1 AND role_key='super_admin' LIMIT 1",[req.earnUser.id]);
-    return res.set("Cache-Control","no-store").json({canOpenCentralAdmin:!!r.rowCount});
+    const r=await req.app.locals.db.query("SELECT role_key FROM user_roles WHERE user_id=$1 ORDER BY role_key",[req.earnUser.id]);
+    const roles=r.rows.map(x=>x.role_key);
+    return res.set("Cache-Control","no-store").json({canOpenCentralAdmin:roles.includes("super_admin"),roles});
   }catch{return res.status(503).json({error:"Permission details are temporarily unavailable."});}
 });
 router.get("/admin/campaigns",async(req,res)=>{
