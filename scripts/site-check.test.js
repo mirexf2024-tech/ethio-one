@@ -25,7 +25,6 @@ test("language switch and accessible label are present", () => {
   assert.match(html, /order = \["OM","AM","EN"\]/);
 });
 
-
 test("keyboard users can skip to the main content", () => {
   assert.match(html, /class="skip-link" href="#mainContent"/);
   assert.match(html, /<main id="mainContent">/);
@@ -36,7 +35,7 @@ test("reduced-motion preferences are respected", () => {
   assert.match(html, /prefers-reduced-motion:reduce/);
 });
 
-test("brand artwork has an accessible image role and label", () => {
+test("brand artwork has an accessible image label", () => {
   assert.match(html, /<img src="[^"]*ETHIO[^"]*" alt="Ethio One logo">/);
 });
 
@@ -48,5 +47,5 @@ test("runtime telemetry reports only fixed event types and no error payloads", (
 });
 
 test("Ethio Wallet service tile opens the wallet page", () => {
-  assert.match(html, /<a class="tile" href="\\/wallet\\.html" aria-label="Open Ethio Wallet">/);
+  assert.ok(html.includes('<a class="tile" href="/wallet.html" aria-label="Open Ethio Wallet">'));
 });
