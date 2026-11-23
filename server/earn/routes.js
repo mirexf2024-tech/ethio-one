@@ -400,4 +400,114 @@ router.post("/admin/submissions/:id/review",async(req,res)=>{
   }catch{await client.query("ROLLBACK").catch(()=>{});return res.status(503).json({error:"The review could not be saved."});}
   finally{client.release();}
 });
+
+function payoutEncryptionKey(env){
+  const secret=typeof env.EARN_PAYOUT_ENCRYPTION_KEY==="string"?env.EARN_PAYOUT_ENCRYPTION_KEY.trim():"";
+  if(secret.length<32)return null;
+  return crypto.createHash("sha256").update(secret,"utf8").digest();
+}
+function encryptPayoutAccount(value,key){
+  const iv=crypto.randomBytes(12),cipher=crypto.createCipheriv("aes-256-gcm",key,iv);
+  const ciphertext=Buffer.concat([cipher.update(value,"utf8"),cipher.final()]);
+  return {ciphertext:ciphertext.toString("base64"),iv:iv.toString("base64url"),tag:cipher.getAuthTag().toString("base64url")};
+}
+function decryptPayoutAccount(row,key){
+  const decipher=crypto.createDecipheriv("aes-256-gcm",key,Buffer.from(row.account_iv,"base64url"));
+  decipher.setAuthTag(Buffer.from(row.account_tag,"base64url"));
+  return Buffer.concat([decipher.update(Buffer.from(row.account_ciphertext,"base64")),decipher.final()]).toString("utf8");
+}
+function payoutHint(value){
+  const compact=value.replace(/\\s+/g,"");
+  return "•••• "+compact.slice(-4);
+}
+function payoutsEnabled(env){
+  return env.EARN_PAYOUTS_ENABLED==="true"&&!!payoutEncryptionKey(env);
+}
+
+router.get("/payouts",async(req,res)=>{
+  try{
+    const db=req.app.locals.db;
+    const [balance,requests]=await Promise.all([
+      db.query("SELECT (COALESCE((SELECT SUM(amount_minor) FROM earn_ledger WHERE user_id=$1),0)+COALESCE((SELECT SUM(amount_minor) FROM earn_sponsor_ad_credits WHERE user_id=$1),0))::bigint AS earned_minor,COALESCE((SELECT SUM(amount_minor) FROM earn_payout_requests WHERE user_id=$1 AND status IN ('pending','processing','paid')),0)::bigint AS reserved_minor",[req.earnUser.id]),
+      db.query("SELECT id,amount_minor,payout_method,account_hint,account_holder_name,status,provider_reference,review_note,created_at,paid_at FROM earn_payout_requests WHERE user_id=$1 ORDER BY created_at DESC LIMIT 30",[req.earnUser.id])
+    ]);
+    const earned=Number(balance.rows[0].earned_minor),reserved=Number(balance.rows[0].reserved_minor);
+    return res.set("Cache-Control","no-store").json({summary:{earnedMinor:earned,reservedMinor:reserved,availableMinor:Math.max(0,earned-reserved),minimumPayoutMinor:5000,payoutsEnabled:payoutsEnabled(req.app.locals.authEnv||process.env),currency:"ETB"},requests:requests.rows});
+  }catch{return res.status(503).json({error:"Payout information is temporarily unavailable."});}
+});
+
+router.post("/payouts",rateLimit({windowMs:24*60*60*1000,limit:3,standardHeaders:"draft-7",legacyHeaders:false}),async(req,res)=>{
+  const env=req.app.locals.authEnv||process.env,key=payoutEncryptionKey(env);
+  if(!payoutsEnabled(env)||!key)return res.status(503).json({error:"Withdrawals are not enabled yet. Your approved rewards remain safely recorded."});
+  const b=req.body||{},amountMinor=b.amountMinor,method=String(b.payoutMethod||"");
+  const holder=typeof b.accountHolderName==="string"?b.accountHolderName.trim():"";
+  const account=typeof b.accountNumber==="string"?b.accountNumber.trim():"";
+  if(!Number.isSafeInteger(amountMinor)||amountMinor<5000||amountMinor>100000000||!["telebirr","cbe","awash","other"].includes(method)||holder.length<2||holder.length>120||account.length<5||account.length>80||/[\\r\\n]/.test(account)||!/^[A-Za-z0-9 +().-]+$/.test(account)){
+    return res.status(400).json({error:"Check the payout amount and account details."});
+  }
+  const db=req.app.locals.db,client=await db.connect();
+  try{
+    await client.query("BEGIN");
+    const user=await client.query("SELECT id,email_verified_at,phone_verified_at FROM users WHERE id=$1 FOR UPDATE",[req.earnUser.id]);
+    if(!user.rows[0]||(!user.rows[0].email_verified_at&&!user.rows[0].phone_verified_at)){await client.query("ROLLBACK");return res.status(403).json({error:"Verify your email address or phone number before requesting a payout."});}
+    const balance=await client.query("SELECT (COALESCE((SELECT SUM(amount_minor) FROM earn_ledger WHERE user_id=$1),0)+COALESCE((SELECT SUM(amount_minor) FROM earn_sponsor_ad_credits WHERE user_id=$1),0))::bigint AS earned_minor,COALESCE((SELECT SUM(amount_minor) FROM earn_payout_requests WHERE user_id=$1 AND status IN ('pending','processing','paid')),0)::bigint AS reserved_minor",[req.earnUser.id]);
+    const available=Number(balance.rows[0].earned_minor)-Number(balance.rows[0].reserved_minor);
+    if(amountMinor>available){await client.query("ROLLBACK");return res.status(409).json({error:"Your available reward balance is not enough for this payout."});}
+    const encrypted=encryptPayoutAccount(account,key);
+    const inserted=await client.query("INSERT INTO earn_payout_requests(user_id,amount_minor,payout_method,account_ciphertext,account_iv,account_tag,account_hint,account_holder_name) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,amount_minor,payout_method,account_hint,account_holder_name,status,created_at",[req.earnUser.id,amountMinor,method,encrypted.ciphertext,encrypted.iv,encrypted.tag,payoutHint(account),holder]);
+    await client.query("COMMIT");
+    const {recordSecurityEvent}=require("../admin/audit");
+    await recordSecurityEvent(req,{type:"earn_payout_requested",severity:"info",userId:req.earnUser.id,metadata:{payout_request_id:inserted.rows[0].id,payout_method:method,status:"pending"}});
+    return res.status(201).json({ok:true,request:inserted.rows[0],message:"Your payout request has been submitted for finance review."});
+  }catch{await client.query("ROLLBACK").catch(()=>{});return res.status(503).json({error:"Your payout request could not be saved."});}
+  finally{client.release();}
+});
+
+router.get("/admin/payouts",async(req,res)=>{
+  if(!await requireRoles(req,res,["finance_manager","admin","super_admin"]))return;
+  const status=["pending","processing","paid","rejected"].includes(req.query.status)?req.query.status:"pending";
+  try{
+    const r=await req.app.locals.db.query("SELECT p.id,p.user_id,u.full_name,u.username,p.amount_minor,p.payout_method,p.account_hint,p.account_holder_name,p.status,p.provider_reference,p.review_note,p.created_at,p.reviewed_at,p.paid_at FROM earn_payout_requests p JOIN users u ON u.id=p.user_id WHERE p.status=$1 ORDER BY p.created_at ASC LIMIT 100",[status]);
+    return res.set("Cache-Control","no-store").json({requests:r.rows});
+  }catch{return res.status(503).json({error:"The payout review queue is unavailable."});}
+});
+
+router.get("/admin/payouts/:id/account",async(req,res)=>{
+  if(!await requireRoles(req,res,["finance_manager","admin","super_admin"]))return;
+  if(!validId(req.params.id))return res.status(400).json({error:"Invalid payout request."});
+  const key=payoutEncryptionKey(req.app.locals.authEnv||process.env);
+  if(!key)return res.status(503).json({error:"Payout account details are unavailable until encryption is configured."});
+  try{
+    const r=await req.app.locals.db.query("SELECT id,user_id,payout_method,account_ciphertext,account_iv,account_tag,account_hint,account_holder_name,status FROM earn_payout_requests WHERE id=$1",[req.params.id]);
+    const row=r.rows[0];
+    if(!row)return res.status(404).json({error:"Payout request not found."});
+    return res.set("Cache-Control","no-store").json({id:row.id,payoutMethod:row.payout_method,accountHolderName:row.account_holder_name,accountNumber:decryptPayoutAccount(row,key),accountHint:row.account_hint,status:row.status});
+  }catch{return res.status(503).json({error:"Payout account details could not be opened."});}
+});
+
+router.patch("/admin/payouts/:id",async(req,res)=>{
+  if(!await requireRoles(req,res,["finance_manager","admin","super_admin"]))return;
+  const decision=req.body?.decision,reference=typeof req.body?.reference==="string"?req.body.reference.trim():"",note=typeof req.body?.note==="string"?req.body.note.trim().slice(0,500):"";
+  if(!validId(req.params.id)||!["processing","paid","rejected"].includes(decision)||(decision==="paid"&&(reference.length<4||reference.length>160||/[\\r\\n]/.test(reference)))||(decision==="rejected"&&note.length<3))return res.status(400).json({error:"Choose a valid payout decision and provide the required note or payment reference."});
+  const client=await req.app.locals.db.connect();
+  try{
+    await client.query("BEGIN");
+    const found=await client.query("SELECT * FROM earn_payout_requests WHERE id=$1 FOR UPDATE",[req.params.id]);
+    const row=found.rows[0];
+    if(!row||!["pending","processing"].includes(row.status)){await client.query("ROLLBACK");return res.status(409).json({error:"This payout request can no longer be reviewed."});}
+    if(row.user_id===req.earnUser.id){await client.query("ROLLBACK");return res.status(403).json({error:"You cannot review your own payout request."});}
+    if(decision==="paid"){
+      if(req.body?.confirmPaid!==true){await client.query("ROLLBACK");return res.status(400).json({error:"Confirm that the transfer has actually been completed."});}
+      await client.query("INSERT INTO earn_payout_ledger(payout_request_id,user_id,amount_minor,provider_reference) VALUES($1,$2,$3,$4)",[row.id,row.user_id,row.amount_minor,reference]);
+    }
+    const updated=await client.query("UPDATE earn_payout_requests SET status=$2,provider_reference=CASE WHEN $2='paid' THEN $3 ELSE provider_reference END,review_note=$4,reviewer_id=$5,reviewed_at=NOW(),paid_at=CASE WHEN $2='paid' THEN NOW() ELSE paid_at END,updated_at=NOW() WHERE id=$1 RETURNING id,user_id,amount_minor,payout_method,status,provider_reference,review_note,reviewed_at,paid_at",[row.id,decision,reference,note,req.earnUser.id]);
+    await client.query("COMMIT");
+    const {recordSecurityEvent}=require("../admin/audit");
+    const logged=await recordSecurityEvent(req,{type:"earn_payout_reviewed",severity:decision==="rejected"?"warning":"info",userId:req.earnUser.id,metadata:{payout_request_id:row.id,payout_method:row.payout_method,status:decision}});
+    if(!logged)return res.status(503).json({error:"Payout decision saved but audit confirmation failed."});
+    return res.set("Cache-Control","no-store").json({request:updated.rows[0]});
+  }catch{await client.query("ROLLBACK").catch(()=>{});return res.status(503).json({error:"The payout decision could not be saved."});}
+  finally{client.release();}
+});
+
 module.exports=router;
