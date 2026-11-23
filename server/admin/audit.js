@@ -2,7 +2,7 @@ const crypto = require("node:crypto");
 
 const ALLOWED_TYPES = new Set([
   "login_failed", "otp_invalid", "otp_expired", "refresh_reuse",
-  "admin_access_denied", "user_status_updated", "user_role_updated", "platform_module_status_updated", "identity_verification_updated", "identity_verification_requested", "social_report_reviewed", "earn_campaign_created", "earn_campaign_status_updated", "earn_submission_reviewed", "earn_task_request_submitted", "earn_task_request_reviewed", "earn_task_funding_verified", "earn_campaign_moderated", "earn_campaign_funding_verified", "auth_rate_limited", "provider_delivery_failed", "api_error", "api_not_found", "api_rate_limited", "client_error"
+  "admin_access_denied", "user_status_updated", "user_role_updated", "platform_module_status_updated", "identity_verification_updated", "identity_verification_requested", "social_report_reviewed", "earn_campaign_created", "earn_campaign_status_updated", "earn_submission_reviewed", "earn_task_request_submitted", "earn_task_request_reviewed", "earn_task_funding_verified", "earn_campaign_moderated", "earn_campaign_funding_verified", "earn_appeal_reviewed", "auth_rate_limited", "provider_delivery_failed", "api_error", "api_not_found", "api_rate_limited", "client_error"
 ]);
 const ALLOWED_SEVERITIES = new Set(["info", "warning", "high", "critical"]);
 const ALLOWED_METADATA_KEYS = new Set(["channel", "reason", "route", "method", "provider", "component", "target_user_id", "module_key", "status", "role_key", "action", "report_id", "target_type", "campaign_id", "submission_id", "request_id", "funding_reference", "task_type"]);
