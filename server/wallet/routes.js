@@ -2,6 +2,12 @@ const express = require("express");
 const crypto = require("node:crypto");
 const router = express.Router();
 
+function safeMinor(value) {
+  const amount = Number(value);
+  if (!Number.isSafeInteger(amount) || amount < 0) throw new Error("Wallet amount is outside the safe integer range.");
+  return amount;
+}
+
 function readToken(req, env) {
   const header = req.get("authorization") || "";
   if (!/^Bearer /i.test(header) || !env.ACCESS_TOKEN_SECRET || String(env.ACCESS_TOKEN_SECRET).length < 32) return null;
@@ -50,11 +56,11 @@ router.get("/summary", async (req, res) => {
         "UNION ALL SELECT 'withdrawal',amount_minor,status,created_at,COALESCE(provider_reference,id::text) FROM earn_payout_requests WHERE user_id=$1" +
         ") entries ORDER BY created_at DESC LIMIT 30", [req.walletUser.id])
     ]);
-    const taskMinor = Number(taskCredits.rows[0].total);
-    const sponsorMinor = Number(sponsorCredits.rows[0].total);
-    const pendingMinor = Number(pendingTasks.rows[0].total);
-    const paidMinor = Number(paidOut.rows[0].total);
-    const heldMinor = Number(reserved.rows[0].total);
+    const taskMinor = safeMinor(taskCredits.rows[0].total);
+    const sponsorMinor = safeMinor(sponsorCredits.rows[0].total);
+    const pendingMinor = safeMinor(pendingTasks.rows[0].total);
+    const paidMinor = safeMinor(paidOut.rows[0].total);
+    const heldMinor = safeMinor(reserved.rows[0].total);
     const grossEarnedMinor = taskMinor + sponsorMinor;
     const availableMinor = Math.max(0, grossEarnedMinor - paidMinor - heldMinor);
     return res.set("Cache-Control", "no-store").json({
