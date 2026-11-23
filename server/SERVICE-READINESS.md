@@ -11,7 +11,7 @@ This checklist reflects the current repository and the production `platform_modu
 | Identity verification | Ethio ID is generated for accounts | Add a privacy-safe verification request/review workflow; do not treat OTP as identity verification or imply government recognition |
 | Subscription foundation | Free, Premium and Pro plan records and subscription/payment tables exist; read-only plans and current-account endpoints exist | Configure entitlements, payment-provider verification, subscription lifecycle and UI; Premium/Pro remain drafts |
 | Service access | Registry contains 20 modules; all are still `planned` | Define explicit module release status and server-side access checks before enabling a service |
-| Wallet and payments | Read-only `/api/v1/wallet/summary` bridge is implemented on the feature branch; production wallet and withdrawal flows remain disabled | Review and test the read-only bridge; then implement a dedicated immutable wallet ledger, safe withdrawal reservation, provider callbacks, reconciliation, refunds and finance audit controls |
+| Wallet and payments | Read-only `/api/v1/wallet/summary` bridge and protected read-only `finance.html` dashboard are implemented on the feature branch; production wallet and withdrawal flows remain disabled | Review and test the read-only bridge and finance dashboard; then implement a dedicated immutable wallet ledger, safe withdrawal reservation, provider callbacks, reconciliation, refunds and finance audit controls |
 
 ## Service registry
 
@@ -73,4 +73,4 @@ Do not change a module from `planned` to `active` merely because its UI tile exi
 
 ## Ethio Wallet implementation note
 
-The feature branch currently adds a read-only summary endpoint that derives the display balance from existing Earn task and sponsor credit ledgers and subtracts paid and reserved payout amounts. It does not persist a duplicate wallet balance and does not enable withdrawal requests or Chapa transfers. The wallet module must remain `planned` until the complete security, provider, legal, operational and regression gates are passed.
+The feature branch currently adds a read-only summary endpoint that derives the display balance from existing Earn task and sponsor credit ledgers and subtracts paid and reserved payout amounts. It also adds a Finance Manager/Admin/Super Admin-only dashboard using the existing protected Earn finance summary and payout-list endpoints. It does not persist a duplicate wallet balance and does not enable withdrawal requests or Chapa transfers. The wallet module must remain `planned` until the complete security, provider, legal, operational and regression gates are passed.
