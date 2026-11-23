@@ -101,12 +101,21 @@ campaigns=taskData.campaigns||[];
 const s=summaryData.summary||{};
 $("earned").textContent=money(s.earnedMinor);$("pending").textContent=money(s.pendingMinor);$("approved").textContent=String(s.approvedCount||0);
 renderTasks();renderHistory(summaryData.history||[]);
-try{const q=await api("/admin/submissions?status=pending");const a=await api("/admin/campaigns");const access=await api("/admin/access");$("adminPanel").classList.remove("hidden");$("adminDashboardLink").classList.toggle("hidden",!access.canOpenCentralAdmin);renderReviews(q.submissions||[]);renderAdminCampaigns(a.campaigns||[]);}catch(e){$("adminPanel").classList.add("hidden");$("adminDashboardLink").classList.add("hidden");}
+try{
+const [q,a,access,requests]=await Promise.all([api("/admin/submissions?status=pending"),api("/admin/campaigns"),api("/admin/access"),api("/admin/requests")]);
+$("adminPanel").classList.remove("hidden");
+$("adminDashboardLink").classList.toggle("hidden",!access.canOpenCentralAdmin);
+$("newTaskBtn").classList.toggle("hidden",!access.roles.some(x=>["super_admin","admin","finance_manager"].includes(x)));
+renderReviews(q.submissions||[]);
+renderAdminCampaigns(a.campaigns||[],access.roles||[]);
+renderPartnerQueue(requests.requests||[],access.roles||[]);
+}catch(e){$("adminPanel").classList.add("hidden");$("adminDashboardLink").classList.add("hidden");}
+try{const mine=await api("/my-requests");renderMyRequests(mine.requests||[]);}catch{}
 }catch(e){$("tasks").innerHTML='<div class="empty">'+esc(e.message||t("err"))+' · <a href="/auth.html" style="font-weight:800;color:#082b59">Sign in</a></div>';}
 }
 function renderTasks(){
 if(!campaigns.length){$("tasks").innerHTML='<div class="empty">'+esc(t("noTasks"))+'</div>';return;}
-$("tasks").innerHTML=campaigns.map(c=>'<article class="task"><div class="task-top"><span class="category">'+esc(c.category)+'</span><span class="reward">'+money(c.reward_minor)+'</span></div><h3>'+esc(c.title)+'</h3><p>'+esc(c.description)+'</p><div class="task-meta"><span>'+esc(t("slotsLeft"))+': '+Number(c.remaining_slots||0)+'</span><span>'+(c.ends_at?'Ends '+new Date(c.ends_at).toLocaleDateString():'No end date')+'</span></div><button class="btn" data-task="'+esc(c.id)+'">'+esc(t("start"))+'</button></article>').join("");
+$("tasks").innerHTML=campaigns.map(c=>'<article class="task"><div class="task-top"><span class="category">'+esc(c.task_type||c.category)+'</span><span class="reward">'+money(c.reward_minor)+'</span></div><h3>'+esc(c.title)+'</h3><p>'+esc(c.description)+'</p><div class="task-meta"><span>'+esc(c.provider_name||"Ethio One")+'</span><span>'+Number(c.estimated_minutes||10)+' min · '+esc(c.skill_level||"beginner")+'</span></div><div class="task-meta"><span>'+esc(t("slotsLeft"))+': '+Number(c.remaining_slots||0)+'</span><span>'+(c.ends_at?'Ends '+new Date(c.ends_at).toLocaleDateString():'No end date')+'</span></div><button class="btn" data-task="'+esc(c.id)+'">'+esc(t("start"))+'</button></article>').join("");
 $("tasks").querySelectorAll("[data-task]").forEach(b=>b.onclick=()=>openTask(b.dataset.task));
 }
 function renderHistory(rows){
@@ -116,7 +125,7 @@ $("history").innerHTML=rows.map(r=>'<div class="history-row"><div><b>'+esc(r.tit
 }
 function openTask(id){
 selectedTask=campaigns.find(c=>c.id===id);if(!selectedTask)return;
-$("submitTitle").textContent=selectedTask.title;$("submitInstructions").textContent=selectedTask.instructions;
+$("submitTitle").textContent=selectedTask.title;$("submitInstructions").innerHTML=esc(selectedTask.instructions)+(selectedTask.provider_url?'<p><a href="'+esc(selectedTask.provider_url)+'" target="_blank" rel="noopener">Open task provider ↗</a></p>':"");
 $("proofText").value="";$("proofUrl").value="";$("submitError").textContent="";$("submitDialog").showModal();
 }
 $("submitForm").onsubmit=async e=>{
