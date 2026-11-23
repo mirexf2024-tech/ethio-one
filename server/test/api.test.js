@@ -110,6 +110,10 @@ test("API health and safe degraded-mode responses", async (t) => {
   assert.equal(adminLocked.status, 503);
   assert.deepEqual(await adminLocked.json(), { error: "Admin service is temporarily unavailable." });
 
+  const lotteryLocked = await fetch(`${base}/api/v1/lottery/overview`);
+  assert.equal(lotteryLocked.status, 503);
+  assert.deepEqual(await lotteryLocked.json(), { error: "Lottery planning service is temporarily unavailable." });
+
   const subscriptionPlans = await fetch(`${base}/api/v1/subscriptions/plans`);
   assert.equal(subscriptionPlans.status, 503);
   assert.deepEqual(await subscriptionPlans.json(), { error: "Subscription services are temporarily unavailable." });
