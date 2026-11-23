@@ -26,7 +26,7 @@
 ## Architecture
 - Frontend: existing static Ethio One web app.
 - API: existing Express service; future isolated router under `/api/v1/lottery`.
-- Database: existing Neon PostgreSQL; additive migration `019_ethio_lottery_raffle_foundation.sql`.
+- Database: existing Neon PostgreSQL; additive migration `020_ethio_lottery_raffle_foundation.sql`.
 - Payment integration: provider adapters only after written provider approvals; use provider-hosted checkout or documented APIs, signed callbacks, server-side status verification, idempotency and reconciliation.
 - Draw engine: independently reviewed randomisation, committed seed/hash, two-person approval, reproducible audit evidence and result publication only after verification.
 - Security: RBAC, least privilege, rate limiting, immutable audit events, no client-trusted payment status, encryption of secrets and PII minimisation.
