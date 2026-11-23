@@ -66,3 +66,17 @@ The migration creates:
 
 ## Non-goals before approval
 No live ticket purchases, real payment intents, prize payouts, public paid-raffle advertising, live draw, or attempts to bypass legal/provider requirements.
+
+
+## Implemented private workspace (2026-11-23)
+- Private Super Admin workspace: `/raffle-admin.html` (OM/AM/EN).
+- Linked from the main Super Admin page.
+- API routes under `/api/v1/lottery/admin` require the verified Super Admin account matching `ADMIN_EMAIL`.
+- Implemented draft campaign creation/editing, licence record entry, payment-provider approval records, sandbox ticket generation, sandbox payment simulation and sandbox draw preview.
+- Public `GET /api/v1/lottery/status` remains read-only and always reports all live switches as false.
+- Sandbox ticket generation is limited to editable draft campaigns and the signed-in Super Admin account.
+- Simulated payments are hard-coded to the database `sandbox` environment and do not contact providers or move money.
+- Sandbox draw output is explicitly a preview; it does not declare a real winner or pay a prize.
+- The API contains no public ticket purchase, live payment, production draw or prize payout route.
+- Existing migration `020_ethio_lottery_raffle_foundation` is applied to the production database. Initial raffle campaign, ticket, payment, draw and audit counts were all zero before sandbox testing.
+- Deployment status must be checked after every commit; a Render deployment being queued or in progress is not a live release.
