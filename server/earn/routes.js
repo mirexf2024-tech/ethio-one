@@ -214,10 +214,18 @@ router.post("/admin/campaigns",async(req,res)=>{
   const db=req.app.locals.db;
   const b=req.body||{};
   const title=typeof b.title==="string"?b.title.trim():"",description=typeof b.description==="string"?b.description.trim():"",instructions=typeof b.instructions==="string"?b.instructions.trim():"";
+  if(!await requireRoles(req,res,["super_admin","admin","finance_manager"]))return;
   const category=typeof b.category==="string"?b.category.trim().toLowerCase():"general";
-  if(title.length<5||title.length>140||description.length<10||description.length>1200||instructions.length<10||instructions.length>10000||!amount(b.rewardMinor)||!amount(b.budgetMinor)||b.budgetMinor<b.rewardMinor||!Number.isInteger(b.maxCompletions)||b.maxCompletions<1||b.maxCompletions>100000||b.budgetMinor<b.rewardMinor*b.maxCompletions||!/^[a-z0-9_-]{2,40}$/.test(category))return res.status(400).json({error:"Please check the task details and budget."});
+  const taskType=TASK_TYPES.has(b.taskType)?b.taskType:"other";
+  const providerName=typeof b.providerName==="string"?b.providerName.trim().slice(0,160):"Ethio One";
+  const providerUrl=b.providerUrl?safeHttpsUrl(String(b.providerUrl).trim()):null;
+  const estimatedMinutes=Number.isInteger(b.estimatedMinutes)?b.estimatedMinutes:10;
+  const skillLevel=["beginner","intermediate","advanced"].includes(b.skillLevel)?b.skillLevel:"beginner";
+  const languages=Array.isArray(b.languages)?b.languages.filter(x=>["om","am","en"].includes(x)).slice(0,3):["om","am","en"];
+  const quality=typeof b.qualityCriteria==="string"?b.qualityCriteria.trim().slice(0,1500):"";
+  if(title.length<5||title.length>140||description.length<10||description.length>1200||instructions.length<10||instructions.length>10000||!amount(b.rewardMinor)||!amount(b.budgetMinor)||b.budgetMinor<b.rewardMinor||!Number.isInteger(b.maxCompletions)||b.maxCompletions<1||b.maxCompletions>100000||b.budgetMinor<b.rewardMinor*b.maxCompletions||!/^[a-z0-9_-]{2,40}$/.test(category)||estimatedMinutes<1||estimatedMinutes>1440||!quality||blockedTaskText([title,description,instructions].join(" ")))return res.status(400).json({error:"Check task details, quality criteria and budget. Paid reviews, fake engagement and deposit tasks are prohibited."});
   try{
-    const r=await db.query("INSERT INTO earn_campaigns(title,description,instructions,category,reward_minor,budget_minor,max_completions,evidence_required,evidence_hint,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id,title,status,reward_minor,budget_minor,max_completions,created_at",[title,description,instructions,category,b.rewardMinor,b.budgetMinor,b.maxCompletions,b.evidenceRequired!==false,typeof b.evidenceHint==="string"?b.evidenceHint.slice(0,300):"",req.earnUser.id]);
+    const r=await db.query("INSERT INTO earn_campaigns(title,description,instructions,category,task_type,delivery_mode,provider_name,provider_url,reward_minor,budget_minor,max_completions,evidence_required,evidence_hint,estimated_minutes,skill_level,language_codes,quality_criteria,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id,title,status,reward_minor,budget_minor,max_completions,created_at,funding_status,moderation_status",[title,description,instructions,category,taskType,providerUrl?"partner_link":"ethio_one",providerName,providerUrl,b.rewardMinor,b.budgetMinor,b.maxCompletions,b.evidenceRequired!==false,typeof b.evidenceHint==="string"?b.evidenceHint.slice(0,300):"",estimatedMinutes,skillLevel,languages.length?languages:["om","am","en"],quality,req.earnUser.id]);
     const { recordSecurityEvent } = require("../admin/audit");
     const auditRecorded = await recordSecurityEvent(req,{type:"earn_campaign_created",severity:"info",userId:req.earnUser.id,metadata:{campaign_id:r.rows[0].id,status:r.rows[0].status}});
     return res.status(201).json({campaign:r.rows[0],auditRecorded});
@@ -226,7 +234,7 @@ router.post("/admin/campaigns",async(req,res)=>{
 router.patch("/admin/campaigns/:id/status",async(req,res)=>{
   if(!validId(req.params.id)||!["published","paused","archived"].includes(req.body?.status))return res.status(400).json({error:"Invalid task status."});
   try{
-    const r=await req.app.locals.db.query("UPDATE earn_campaigns SET status=$2,updated_at=NOW() WHERE id=$1 AND status IN ('draft','published','paused') RETURNING id,status",[req.params.id,req.body.status]);
+    const r=await req.app.locals.db.query("UPDATE earn_campaigns SET status=$2,updated_at=NOW() WHERE id=$1 AND status IN ('draft','published','paused') AND ($2<>'published' OR (funding_status='verified' AND moderation_status='approved')) RETURNING id,status",[req.params.id,req.body.status]);
     if(!r.rowCount)return res.status(404).json({error:"Task not found or cannot be changed."});
     const { recordSecurityEvent } = require("../admin/audit");
     const auditRecorded = await recordSecurityEvent(req,{type:"earn_campaign_status_updated",severity:req.body.status==="archived"||req.body.status==="paused"?"warning":"info",userId:req.earnUser.id,metadata:{campaign_id:r.rows[0].id,status:r.rows[0].status}});
@@ -235,6 +243,7 @@ router.patch("/admin/campaigns/:id/status",async(req,res)=>{
 });
 router.post("/admin/submissions/:id/review",async(req,res)=>{
   const db=req.app.locals.db;
+  if(!await requireRoles(req,res,["moderator","admin","super_admin","finance_manager"]))return;
   if(!validId(req.params.id)||!["approved","rejected"].includes(req.body?.decision))return res.status(400).json({error:"Invalid review decision."});
   const note=typeof req.body.note==="string"?req.body.note.trim().slice(0,500):"";
   const client=await db.connect();
