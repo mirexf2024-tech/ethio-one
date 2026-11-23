@@ -57,7 +57,7 @@ function blockedTaskText(value){
 async function publishReadyRequest(client,row){
   if(!row||row.status!=="moderator_approved"||row.funding_status!=="verified"||row.campaign_id)return null;
   const inserted=await client.query(
-    "INSERT INTO earn_campaigns(title,description,instructions,category,task_type,delivery_mode,provider_name,provider_url,reward_minor,budget_minor,max_completions,evidence_required,evidence_hint,estimated_minutes,skill_level,language_codes,quality_criteria,funding_status,funding_reference,funding_verified_by,funding_verified_at,moderation_status,moderator_id,moderated_at,status,created_by) VALUES($1,$2,$3,$4,$5,'partner_link',$6,$7,$8,$9,$10,TRUE,$11,$12,$13,$14,$15,'verified',$16,$17,$18,'approved',$19,$20,'published',$21) RETURNING id,title,status",
+    "INSERT INTO earn_campaigns(title,description,instructions,category,task_type,delivery_mode,provider_name,provider_url,reward_minor,budget_minor,max_completions,evidence_required,evidence_hint,estimated_minutes,skill_level,language_codes,quality_criteria,funding_status,funding_reference,funding_verified_by,funding_verified_at,moderation_status,moderator_id,moderated_at,status,created_by) VALUES($1,$2,$3,$4,$4,'partner_link',$5,$6,$7,$8,$9,TRUE,$10,$11,$12,$13,$14,'verified',$15,$16,$17,'approved',$18,$19,'published',$20) RETURNING id,title,status",
     [row.task_title,row.task_description,row.task_instructions,row.task_type,row.provider_name,row.provider_url,row.reward_minor,row.budget_minor,row.max_completions,row.evidence_hint,row.estimated_minutes,row.skill_level,row.language_codes,row.quality_criteria,row.funding_reference,row.funding_verified_by,row.funding_verified_at,row.moderator_id,row.moderated_at,row.requester_id]
   );
   const campaign=inserted.rows[0];
