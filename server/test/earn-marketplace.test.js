@@ -11,6 +11,21 @@ const finance = fs.readFileSync(path.join(__dirname, "../schema/013_ethio_earn_p
 const payouts = fs.readFileSync(path.join(__dirname, "../schema/019_ethio_earn_sponsors_payouts.sql"), "utf8");
 const earnPage = fs.readFileSync(path.join(__dirname, "../../earn.html"), "utf8");
 
+test("API, database schema and all Ethio Earn forms expose the complete supported task catalog", () => {
+  const types = ["data_labeling","transcription","translation","survey","research","data_entry","content_review","qa_testing","design","video_audio","local_data","business_listing","map_verification","product_photography","product_description","social_media","document_digitization","voice_recording","customer_support","app_testing","other"];
+  for (const type of types) {
+    assert.ok(routes.includes('"'+type+'"'), "API accepts "+type);
+    assert.ok(marketplace.includes("'"+type+"'"), "database schema accepts "+type);
+    for (const id of ["taskFilter","taskCategory","partnerType"]) {
+      const match = earnPage.match(new RegExp('<select id="'+id+'"[^>]*>([\\s\\S]*?)</select>'));
+      assert.ok(match && match[1].includes('value="'+type+'"'), id+" exposes "+type);
+    }
+    for (const lang of ["OM","AM","EN"]) {
+      assert.ok(earnPage.includes("taskType_"+type+":"), lang+" has a label for "+type);
+    }
+  }
+});
+ 
 test("only published, moderated and funded campaigns appear in the member marketplace", () => {
   assert.match(routes, /status='published' AND funding_status='verified' AND moderation_status='approved'/);
   assert.match(routes, /status='published' AND funding_status='verified' AND moderation_status='approved' FOR UPDATE/);
