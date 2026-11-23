@@ -161,6 +161,55 @@ router.get("/admin/submissions",async(req,res)=>{
     return res.json({submissions:r.rows});
   }catch{return res.status(503).json({error:"Review queue is temporarily unavailable."});}
 });
+router.get("/admin/requests",async(req,res)=>{
+  try{
+    const r=await req.app.locals.db.query(
+      "SELECT r.id,r.requester_id,u.full_name,u.username,r.organization_name,r.organization_website,r.contact_email,r.task_title,r.task_description,r.task_instructions,r.task_type,r.provider_name,r.provider_url,r.reward_minor,r.budget_minor,r.max_completions,r.estimated_minutes,r.skill_level,r.language_codes,r.evidence_hint,r.quality_criteria,r.status,r.funding_status,r.funding_reference,r.review_note,r.campaign_id,r.created_at FROM earn_task_requests r JOIN users u ON u.id=r.requester_id WHERE r.status<>'published' ORDER BY r.created_at ASC LIMIT 100");
+    return res.set("Cache-Control","no-store").json({requests:r.rows});
+  }catch{return res.status(503).json({error:"Partner task review queue is unavailable."});}
+});
+router.patch("/admin/requests/:id/moderation",async(req,res)=>{
+  if(!await requireRoles(req,res,["moderator","admin","super_admin"]))return;
+  const decision=req.body?.decision,note=typeof req.body?.note==="string"?req.body.note.trim().slice(0,500):"";
+  if(!validId(req.params.id)||!["approved","needs_changes","rejected"].includes(decision)||note.length<3)return res.status(400).json({error:"Choose a valid decision and add a review note."});
+  const client=await req.app.locals.db.connect();
+  try{
+    await client.query("BEGIN");
+    const found=await client.query("SELECT * FROM earn_task_requests WHERE id=$1 FOR UPDATE",[req.params.id]);
+    const row=found.rows[0];
+    if(!row||row.status==="published"||row.status==="rejected"){await client.query("ROLLBACK");return res.status(409).json({error:"This request can no longer be reviewed."});}
+    const status=decision==="approved"?"moderator_approved":decision;
+    const updated=await client.query("UPDATE earn_task_requests SET status=$2,moderator_id=$3,moderated_at=NOW(),review_note=$4,updated_at=NOW() WHERE id=$1 RETURNING *",[row.id,status,req.earnUser.id,note]);
+    const campaign=await publishReadyRequest(client,updated.rows[0]);
+    await client.query("COMMIT");
+    const {recordSecurityEvent}=require("../admin/audit");
+    const logged=await recordSecurityEvent(req,{type:"earn_task_request_reviewed",severity:decision==="rejected"?"warning":"info",userId:req.earnUser.id,metadata:{request_id:row.id,status:decision,task_type:row.task_type}});
+    if(!logged)return res.status(503).json({error:"Decision saved but audit confirmation failed."});
+    return res.set("Cache-Control","no-store").json({ok:true,status:campaign?"published":status,campaign});
+  }catch{await client.query("ROLLBACK").catch(()=>{});return res.status(503).json({error:"The partner request could not be reviewed."});}
+  finally{client.release();}
+});
+router.patch("/admin/requests/:id/funding",async(req,res)=>{
+  if(!await requireRoles(req,res,["finance_manager","admin","super_admin"]))return;
+  const decision=req.body?.decision,reference=typeof req.body?.reference==="string"?req.body.reference.trim():"";
+  if(!validId(req.params.id)||!["verified","rejected"].includes(decision)||reference.length<4||reference.length>160||/[\\r\\n]/.test(reference))return res.status(400).json({error:"A verified funding reference is required."});
+  const client=await req.app.locals.db.connect();
+  try{
+    await client.query("BEGIN");
+    const found=await client.query("SELECT * FROM earn_task_requests WHERE id=$1 FOR UPDATE",[req.params.id]);
+    const row=found.rows[0];
+    if(!row||row.status==="published"||row.status==="rejected"){await client.query("ROLLBACK");return res.status(409).json({error:"This request cannot accept a funding update."});}
+    const status=decision==="rejected"?"rejected":row.status;
+    const updated=await client.query("UPDATE earn_task_requests SET funding_status=$2,funding_reference=$3,funding_verified_by=$4,funding_verified_at=CASE WHEN $2='verified' THEN NOW() ELSE NULL END,status=$5,updated_at=NOW() WHERE id=$1 RETURNING *",[row.id,decision,reference,req.earnUser.id,status]);
+    const campaign=await publishReadyRequest(client,updated.rows[0]);
+    await client.query("COMMIT");
+    const {recordSecurityEvent}=require("../admin/audit");
+    const logged=await recordSecurityEvent(req,{type:"earn_task_funding_verified",severity:decision==="rejected"?"warning":"info",userId:req.earnUser.id,metadata:{request_id:row.id,status:decision,funding_reference:reference}});
+    if(!logged)return res.status(503).json({error:"Funding decision saved but audit confirmation failed."});
+    return res.set("Cache-Control","no-store").json({ok:true,status:campaign?"published":status,campaign});
+  }catch{await client.query("ROLLBACK").catch(()=>{});return res.status(503).json({error:"Funding status could not be updated."});}
+  finally{client.release();}
+});
 router.post("/admin/campaigns",async(req,res)=>{
   const db=req.app.locals.db;
   const b=req.body||{};
