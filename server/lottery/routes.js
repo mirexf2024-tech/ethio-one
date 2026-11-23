@@ -103,8 +103,9 @@ router.post("/campaigns", async (req, res) => {
     return res.status(400).json({ error: "Check the draft title, description, prize summary, rules and optional draft price." });
   }
   const db = req.app.locals.db;
-  const client = await db.connect();
+  let client;
   try {
+    client = await db.connect();
     await client.query("BEGIN");
     const inserted = await client.query(
       "INSERT INTO lottery_raffle_campaigns(title,description,prize_summary,rules,ticket_price_minor,status,sales_enabled,public_visible,created_by,updated_by) VALUES($1,$2,$3,$4,$5,'draft',FALSE,FALSE,$6,$6) RETURNING id,title,status,sales_enabled,public_visible,created_at",
@@ -117,7 +118,7 @@ router.post("/campaigns", async (req, res) => {
     await client.query("ROLLBACK").catch(() => {});
     return res.status(503).json({ error: "Draft campaign could not be saved." });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 });
 
@@ -137,16 +138,27 @@ router.patch("/campaigns/:id", async (req, res) => {
       (ticketPriceMinor !== null && (!Number.isSafeInteger(ticketPriceMinor) || ticketPriceMinor < 0 || ticketPriceMinor > 100000000000))) {
     return res.status(400).json({ error: "Only draft, prepared or archived campaign details can be saved." });
   }
+  const db = req.app.locals.db;
+  let client;
   try {
-    const result = await req.app.locals.db.query(
+    client = await db.connect();
+    await client.query("BEGIN");
+    const result = await client.query(
       "UPDATE lottery_raffle_campaigns SET title=$2,description=$3,prize_summary=$4,rules=$5,ticket_price_minor=$6,status=$7,updated_by=$8,updated_at=NOW() WHERE id=$1 RETURNING id,title,status,sales_enabled,public_visible,updated_at",
       [req.params.id,title,description,prizeSummary,rules,ticketPriceMinor,status,req.lotteryAdmin.id]
     );
-    if (!result.rows[0]) return res.status(404).json({ error: "Campaign draft not found." });
-    await audit(req.app.locals.db, req.lotteryAdmin.id, "raffle_campaign_draft_updated", "campaign", req.params.id, { status });
+    if (!result.rows[0]) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Campaign draft not found." });
+    }
+    await audit(client, req.lotteryAdmin.id, "raffle_campaign_draft_updated", "campaign", req.params.id, { status });
+    await client.query("COMMIT");
     return res.set("Cache-Control", "no-store").json({ ok: true, campaign: result.rows[0] });
   } catch {
+    if (client) await client.query("ROLLBACK").catch(() => {});
     return res.status(503).json({ error: "Campaign draft could not be updated." });
+  } finally {
+    if (client) client.release();
   }
 });
 
