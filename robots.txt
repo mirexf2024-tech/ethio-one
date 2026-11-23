@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
+Disallow: /auth.html
+Disallow: /social.html
+Disallow: /admin.html
+Disallow: /moderation.html
 
 Sitemap: https://ethio-one.onrender.com/sitemap.xml
