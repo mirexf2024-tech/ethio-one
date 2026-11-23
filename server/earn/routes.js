@@ -80,6 +80,12 @@ router.post("/campaigns/:id/submit",rateLimit({windowMs:60*60*1000,limit:12,stan
     return res.status(503).json({error:"Your submission could not be saved."});
   }finally{client.release();}
 });
+router.get("/admin/campaigns",async(req,res)=>{
+  try{
+    const r=await req.app.locals.db.query("SELECT id,title,description,category,reward_minor,budget_minor,max_completions,reserved_completions,status,created_at FROM earn_campaigns ORDER BY created_at DESC LIMIT 100");
+    return res.set("Cache-Control","no-store").json({campaigns:r.rows});
+  }catch{return res.status(503).json({error:"Task management is temporarily unavailable."});}
+});
 router.get("/admin/submissions",async(req,res)=>{
   try{
     const status=["pending","approved","rejected"].includes(req.query.status)?req.query.status:"pending";
