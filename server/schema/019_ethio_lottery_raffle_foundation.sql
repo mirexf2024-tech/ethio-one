@@ -4,9 +4,9 @@ CREATE TABLE IF NOT EXISTS raffle_feature_control (
   id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   public_status VARCHAR(20) NOT NULL DEFAULT 'planned'
     CHECK (public_status IN ('planned','building','paused','active')),
-  sales_enabled BOOLEAN NOT NULL DEFAULT FALSE CHECK (sales_enabled = FALSE),
-  live_payments_enabled BOOLEAN NOT NULL DEFAULT FALSE CHECK (live_payments_enabled = FALSE),
-  live_draws_enabled BOOLEAN NOT NULL DEFAULT FALSE CHECK (live_draws_enabled = FALSE),
+  sales_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  live_payments_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  live_draws_enabled BOOLEAN NOT NULL DEFAULT FALSE,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 INSERT INTO raffle_feature_control (id, public_status, sales_enabled, live_payments_enabled, live_draws_enabled)
@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS raffle_payment_records (
   merchant_reference VARCHAR(120),
   amount_minor BIGINT NOT NULL CHECK (amount_minor > 0),
   currency CHAR(3) NOT NULL DEFAULT 'ETB',
-  environment VARCHAR(12) NOT NULL DEFAULT 'sandbox' CHECK (environment = 'sandbox'),
+  environment VARCHAR(12) NOT NULL DEFAULT 'sandbox' CHECK (environment IN ('sandbox','live')),
   status VARCHAR(20) NOT NULL DEFAULT 'simulated'
     CHECK (status IN ('simulated','failed','reversed')),
   idempotency_key VARCHAR(120) NOT NULL UNIQUE,
