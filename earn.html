@@ -34,13 +34,13 @@ dialog{border:0;border-radius:20px;padding:0;width:min(520px,calc(100% - 28px));
   </div>
   <div class="notice" style="margin-top:0"><b>!</b><span id="payoutNotice" data-t="payoutDisabled">Withdrawals are not enabled yet. Your rewards remain safely recorded in your account.</span></div>
   <form id="payoutForm" class="payout-form">
-    <div class="field"><label data-t="payoutMethod">Payout method</label><select id="payoutMethod"><option value="telebirr" data-t="payoutTelebirr">Telebirr</option><option value="cbe" data-t="payoutCbe">Commercial Bank of Ethiopia (CBE)</option><option value="awash" data-t="payoutAwash">Awash Bank</option><option value="other" data-t="payoutOther">Other method</option></select></div>
-    <div class="field"><label data-t="payoutAccountHolder">Account holder name</label><input id="payoutHolder" maxlength="120" required></div>
-    <div class="field"><label data-t="payoutAccountNumber">Account / phone number</label><input id="payoutAccount" maxlength="80" autocomplete="off" required></div>
-    <div class="field"><label data-t="payoutAmount">Withdrawal amount (ETB)</label><input id="payoutAmount" type="number" min="50" step=".01" required></div>
+    <div class="field"><label data-t="payoutMethod">Payout method</label><select id="payoutMethod" disabled><option value="telebirr" data-t="payoutTelebirr">Telebirr</option><option value="cbe" data-t="payoutCbe">Commercial Bank of Ethiopia (CBE)</option><option value="awash" data-t="payoutAwash">Awash Bank</option><option value="other" data-t="payoutOther">Other method</option></select></div>
+    <div class="field"><label data-t="payoutAccountHolder">Account holder name</label><input id="payoutHolder" maxlength="120" disabled required></div>
+    <div class="field"><label data-t="payoutAccountNumber">Account / phone number</label><input id="payoutAccount" maxlength="80" disabled autocomplete="off" required></div>
+    <div class="field"><label data-t="payoutAmount">Withdrawal amount (ETB)</label><input id="payoutAmount" type="number" disabled min="50" step=".01" required></div>
     <p class="muted" data-t="payoutMin">Minimum withdrawal is ETB 50.</p>
     <div class="error" id="payoutError"></div>
-    <button class="btn gold" id="payoutSubmit" type="submit" data-t="payoutSubmit">Request withdrawal</button>
+    <button class="btn gold" id="payoutSubmit" type="submit" disabled data-t="payoutSubmit">Request withdrawal</button>
   </form>
   <div class="section-head" style="margin-top:22px"><div><h2 data-t="payoutHistory">Withdrawal history</h2></div></div>
   <div id="payoutHistory"><p class="muted" data-t="payoutNoHistory">No payout requests yet.</p></div>
