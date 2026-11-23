@@ -28,7 +28,7 @@ router.use(async(req,res,next)=>{
   }catch{return res.status(503).json({error:"Ethio Earn is temporarily unavailable."});}
 });
 async function isReviewer(db,userId){
-  const r=await db.query("SELECT 1 FROM user_roles WHERE user_id=$1 AND role_key IN ('super_admin','admin','finance_manager') LIMIT 1",[userId]);
+  const r=await db.query("SELECT 1 FROM user_roles WHERE user_id=$1 AND role_key IN ('super_admin','admin','finance_manager','moderator') LIMIT 1",[userId]);
   return !!r.rowCount;
 }
 router.use("/admin",async(req,res,next)=>{
@@ -39,10 +39,36 @@ router.use("/admin",async(req,res,next)=>{
 });
 function validId(v){return typeof v==="string"&&/^[0-9a-f-]{36}$/i.test(v);}
 function amount(v){return Number.isSafeInteger(v)&&v>0&&v<=100000000;}
+async function hasRole(db,userId,roles){
+  const r=await db.query("SELECT 1 FROM user_roles WHERE user_id=$1 AND role_key=ANY($2::text[]) LIMIT 1",[userId,roles]);
+  return !!r.rowCount;
+}
+async function requireRoles(req,res,roles){
+  try{if(await hasRole(req.app.locals.db,req.earnUser.id,roles))return true;res.status(403).json({error:"You do not have permission for this Ethio Earn action."});return false;}
+  catch{res.status(503).json({error:"Role permissions are temporarily unavailable."});return false;}
+}
+const TASK_TYPES=new Set(["data_labeling","transcription","translation","survey","research","data_entry","content_review","qa_testing","design","video_audio","local_data","other"]);
+function safeHttpsUrl(value){
+  try{const u=new URL(value);return u.protocol==="https:"&&u.hostname.includes(".")&&!["localhost","127.0.0.1"].includes(u.hostname)&&!u.hostname.endsWith(".local")?u.toString():null;}catch{return null;}
+}
+function blockedTaskText(value){
+  return /(pay\s+to\s+(unlock|join|start)|deposit\s+(money|crypto)|leave\s+(a\s+)?positive\s+review|rate\s+(five|5)\s+stars|buy\s+then\s+review|fake\s+engagement|follow\s+and\s+like\s+for\s+pay|product\s+boosting)/i.test(value);
+}
+async function publishReadyRequest(client,row){
+  if(!row||row.status!=="moderator_approved"||row.funding_status!=="verified"||row.campaign_id)return null;
+  const inserted=await client.query(
+    "INSERT INTO earn_campaigns(title,description,instructions,category,task_type,delivery_mode,provider_name,provider_url,reward_minor,budget_minor,max_completions,evidence_required,evidence_hint,estimated_minutes,skill_level,language_codes,quality_criteria,funding_status,funding_reference,funding_verified_by,funding_verified_at,moderation_status,moderator_id,moderated_at,status,created_by) VALUES($1,$2,$3,$4,$5,'partner_link',$6,$7,$8,$9,$10,TRUE,$11,$12,$13,$14,$15,'verified',$16,$17,$18,'approved',$19,$20,'published',$21) RETURNING id,title,status",
+    [row.task_title,row.task_description,row.task_instructions,row.task_type,row.provider_name,row.provider_url,row.reward_minor,row.budget_minor,row.max_completions,row.evidence_hint,row.estimated_minutes,row.skill_level,row.language_codes,row.quality_criteria,row.funding_reference,row.funding_verified_by,row.funding_verified_at,row.moderator_id,row.moderated_at,row.requester_id]
+  );
+  const campaign=inserted.rows[0];
+  await client.query("UPDATE earn_task_requests SET status='published',campaign_id=$2,updated_at=NOW() WHERE id=$1",[row.id,campaign.id]);
+  return campaign;
+}
+
 router.get("/campaigns",async(req,res)=>{
   try{
     const r=await req.app.locals.db.query(
-      "SELECT id,title,description,instructions,category,reward_minor,budget_minor-reserved_minor AS remaining_budget_minor,max_completions-reserved_completions AS remaining_slots,evidence_required,evidence_hint,ends_at FROM earn_campaigns WHERE status='published' AND (starts_at IS NULL OR starts_at<=NOW()) AND (ends_at IS NULL OR ends_at>NOW()) AND reserved_completions<max_completions AND reserved_minor<budget_minor ORDER BY created_at DESC LIMIT 100");
+      "SELECT id,title,description,instructions,category,task_type,delivery_mode,provider_name,provider_url,estimated_minutes,skill_level,language_codes,quality_criteria,reward_minor,budget_minor-reserved_minor AS remaining_budget_minor,max_completions-reserved_completions AS remaining_slots,evidence_required,evidence_hint,ends_at FROM earn_campaigns WHERE status='published' AND funding_status='verified' AND moderation_status='approved' AND (starts_at IS NULL OR starts_at<=NOW()) AND (ends_at IS NULL OR ends_at>NOW()) AND reserved_completions<max_completions AND reserved_minor<budget_minor ORDER BY created_at DESC LIMIT 100");
     return res.set("Cache-Control","no-store").json({campaigns:r.rows,currency:"ETB"});
   }catch{return res.status(503).json({error:"Tasks are temporarily unavailable."});}
 });
