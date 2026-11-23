@@ -91,7 +91,7 @@ router.post("/campaigns/:id/submit",rateLimit({windowMs:60*60*1000,limit:12,stan
   const db=req.app.locals.db,client=await db.connect();
   try{
     await client.query("BEGIN");
-    const c=await client.query("SELECT * FROM earn_campaigns WHERE id=$1 AND status='published' FOR UPDATE",[req.params.id]);
+    const c=await client.query("SELECT * FROM earn_campaigns WHERE id=$1 AND status='published' AND funding_status='verified' AND moderation_status='approved' FOR UPDATE",[req.params.id]);
     const campaign=c.rows[0];
     if(!campaign||(campaign.starts_at&&new Date(campaign.starts_at)>new Date())||(campaign.ends_at&&new Date(campaign.ends_at)<=new Date())){await client.query("ROLLBACK");return res.status(404).json({error:"This task is no longer available."});}
     if(campaign.evidence_required&&!evidenceText&&!evidenceUrl){await client.query("ROLLBACK");return res.status(400).json({error:"Please provide the required task proof."});}
@@ -224,7 +224,7 @@ router.post("/admin/campaigns",async(req,res)=>{
   const skillLevel=["beginner","intermediate","advanced"].includes(b.skillLevel)?b.skillLevel:"beginner";
   const languages=Array.isArray(b.languages)?b.languages.filter(x=>["om","am","en"].includes(x)).slice(0,3):["om","am","en"];
   const quality=typeof b.qualityCriteria==="string"?b.qualityCriteria.trim().slice(0,1500):"";
-  if(title.length<5||title.length>140||description.length<10||description.length>1200||instructions.length<10||instructions.length>10000||!amount(b.rewardMinor)||!amount(b.budgetMinor)||b.budgetMinor<b.rewardMinor||!Number.isInteger(b.maxCompletions)||b.maxCompletions<1||b.maxCompletions>100000||b.budgetMinor<b.rewardMinor*b.maxCompletions||!/^[a-z0-9_-]{2,40}$/.test(category)||estimatedMinutes<1||estimatedMinutes>1440||!quality||blockedTaskText([title,description,instructions].join(" ")))return res.status(400).json({error:"Check task details, quality criteria and budget. Paid reviews, fake engagement and deposit tasks are prohibited."});
+  if(title.length<5||title.length>140||description.length<10||description.length>1200||instructions.length<10||instructions.length>10000||!amount(b.rewardMinor)||!amount(b.budgetMinor)||b.budgetMinor<b.rewardMinor||!Number.isInteger(b.maxCompletions)||b.maxCompletions<1||b.maxCompletions>100000||b.budgetMinor<b.rewardMinor*b.maxCompletions||!/^[a-z0-9_-]{2,40}$/.test(category)||estimatedMinutes<1||estimatedMinutes>1440||(b.providerUrl&&!providerUrl)||!quality||blockedTaskText([title,description,instructions].join(" ")))return res.status(400).json({error:"Check task details, quality criteria and budget. Paid reviews, fake engagement and deposit tasks are prohibited."});
   try{
     const r=await db.query("INSERT INTO earn_campaigns(title,description,instructions,category,task_type,delivery_mode,provider_name,provider_url,reward_minor,budget_minor,max_completions,evidence_required,evidence_hint,estimated_minutes,skill_level,language_codes,quality_criteria,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id,title,status,reward_minor,budget_minor,max_completions,created_at,funding_status,moderation_status",[title,description,instructions,category,taskType,providerUrl?"partner_link":"ethio_one",providerName,providerUrl,b.rewardMinor,b.budgetMinor,b.maxCompletions,b.evidenceRequired!==false,typeof b.evidenceHint==="string"?b.evidenceHint.slice(0,300):"",estimatedMinutes,skillLevel,languages.length?languages:["om","am","en"],quality,req.earnUser.id]);
     const { recordSecurityEvent } = require("../admin/audit");
@@ -280,6 +280,7 @@ router.post("/admin/submissions/:id/review",async(req,res)=>{
   if(!await requireRoles(req,res,["moderator","admin","super_admin","finance_manager"]))return;
   if(!validId(req.params.id)||!["approved","rejected"].includes(req.body?.decision))return res.status(400).json({error:"Invalid review decision."});
   const note=typeof req.body.note==="string"?req.body.note.trim().slice(0,500):"";
+  if(req.body.decision==="rejected"&&note.length<3)return res.status(400).json({error:"A clear rejection reason is required."});
   const client=await db.connect();
   try{
     await client.query("BEGIN");
