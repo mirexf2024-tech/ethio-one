@@ -15,7 +15,7 @@ dialog{border:0;border-radius:20px;padding:0;width:min(520px,calc(100% - 28px));
 </style>
 </head>
 <body>
-<header><a class="brand" href="/">ETHIO <span>ONE</span> / EARN</a><div class="head-actions"><button id="langBtn" type="button">OM</button><a href="/">Home</a></div></header>
+<header><a class="brand" href="/">ETHIO <span>ONE</span> / EARN</a><div class="head-actions"><a id="adminDashboardLink" href="/admin.html" class="hidden" aria-label="Open Ethio One Admin Dashboard">Admin Dashboard ↗</a><button id="langBtn" type="button">OM</button><a href="/">Home</a></div></header>
 <main>
 <section class="hero"><div class="eyebrow" data-t="eyebrow">ETHIO EARN · TASK MARKETPLACE</div><h1 data-t="title">Dandeettii kee fayyadami. Badhaasa argadhu.</h1><p data-t="intro">Hojiiwwan ifa ta’an filadhu, qajeelfama hordofi, ragaa ergi; hojii kee erga mirkanaa’ee booda galiin kee ni galmaa’a.</p></section>
 <div class="notice"><b data-t="honest">Hubachiisa</b><span data-t="notice">Ethio Earn amma ijaarsaa fi qorannoo keessa jira. Kaffaltiin baankii ykn wallet gara alaatti baasuu amma hin banamne; badhaasni mirkanaa’e akka galmee keessaa qofa mul’ata.</span></div>
@@ -83,7 +83,7 @@ campaigns=taskData.campaigns||[];
 const s=summaryData.summary||{};
 $("earned").textContent=money(s.earnedMinor);$("pending").textContent=money(s.pendingMinor);$("approved").textContent=String(s.approvedCount||0);
 renderTasks();renderHistory(summaryData.history||[]);
-try{const q=await api("/admin/submissions?status=pending");const a=await api("/admin/campaigns");$("adminPanel").classList.remove("hidden");renderReviews(q.submissions||[]);renderAdminCampaigns(a.campaigns||[]);}catch(e){$("adminPanel").classList.add("hidden");}
+try{const q=await api("/admin/submissions?status=pending");const a=await api("/admin/campaigns");$("adminPanel").classList.remove("hidden");$("adminDashboardLink").classList.remove("hidden");renderReviews(q.submissions||[]);renderAdminCampaigns(a.campaigns||[]);}catch(e){$("adminPanel").classList.add("hidden");$("adminDashboardLink").classList.add("hidden");}
 }catch(e){$("tasks").innerHTML='<div class="empty">'+esc(e.message||t("err"))+' · <a href="/auth.html" style="font-weight:800;color:#082b59">Sign in</a></div>';}
 }
 function renderTasks(){
