@@ -35,19 +35,26 @@ async function requireSuperAdmin(req, res, next) {
     return res.status(401).json({ error: "Super Admin authentication required." });
   }
   try {
+    const delegatedIdentityReview = req.path.startsWith("/identity-verifications") ||
+      /^\\/users\\/[^/]+\\/identity-verification$/.test(req.path);
     const result = await db.query(
-      "SELECT u.id,u.email,u.email_verified_at,u.status FROM users u JOIN user_roles ur ON ur.user_id=u.id AND ur.role_key='super_admin' WHERE u.id=$1 AND u.status='active' LIMIT 1",
+      "SELECT u.id,u.email,u.email_verified_at,u.status,COALESCE(array_agg(DISTINCT ur.role_key) FILTER (WHERE ur.role_key IS NOT NULL),ARRAY[]::varchar[]) AS roles FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id WHERE u.id=$1 AND u.status='active' GROUP BY u.id LIMIT 1",
       [payload.sub]
     );
     const user = result.rows[0];
-    if (!user || !user.email_verified_at ||
-        String(user.email || "").toLowerCase() !== String(env.ADMIN_EMAIL).trim().toLowerCase()) {
+    const roles = user?.roles || [];
+    const isSuperAdmin = !!user && roles.includes("super_admin") &&
+      !!user.email_verified_at &&
+      String(user.email || "").toLowerCase() === String(env.ADMIN_EMAIL || "").trim().toLowerCase();
+    const canReviewIdentity = !!user && !!user.email_verified_at &&
+      (roles.includes("support") || roles.includes("super_admin"));
+    if (!user || !user.email_verified_at || (delegatedIdentityReview ? !canReviewIdentity : !isSuperAdmin)) {
       const { recordSecurityEvent } = require("./audit");
       await recordSecurityEvent(req, { type: "admin_access_denied", severity: "high", userId: user?.id || null,
-        metadata: { route: req.path, method: req.method, reason: "not_allowlisted" } });
-      return res.status(403).json({ error: "Super Admin access denied." });
+        metadata: { route: req.path, method: req.method, reason: "role_not_permitted" } });
+      return res.status(403).json({ error: delegatedIdentityReview ? "Support review access required." : "Super Admin access denied." });
     }
-    req.superAdmin = { id: user.id, email: user.email };
+    req.superAdmin = { id: user.id, email: user.email, roles, isSuperAdmin };
     return next();
   } catch {
     return res.status(503).json({ error: "Admin service is temporarily unavailable." });
