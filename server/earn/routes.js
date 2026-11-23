@@ -114,6 +114,8 @@ router.post("/submissions/:id/appeal",rateLimit({windowMs:24*60*60*1000,limit:3,
     const s=found.rows[0];
     if(!s||s.status!=="rejected"||!s.reviewed_at||new Date(s.reviewed_at)<new Date(Date.now()-7*24*60*60*1000))return res.status(409).json({error:"Appeals are available only for rejected tasks within seven days."});
     const r=await req.app.locals.db.query("INSERT INTO earn_submission_appeals(submission_id,user_id,reason) VALUES($1,$2,$3) RETURNING id,status,created_at",[s.id,req.earnUser.id,reason]);
+    const {recordSecurityEvent}=require("../admin/audit");
+    await recordSecurityEvent(req,{type:"earn_appeal_submitted",severity:"info",userId:req.earnUser.id,metadata:{submission_id:s.id,status:"pending"}});
     return res.status(201).json({appeal:r.rows[0]});
   }catch(e){if(e.code==="23505")return res.status(409).json({error:"An appeal has already been submitted for this task."});return res.status(503).json({error:"Your appeal could not be saved."});}
 });
