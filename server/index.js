@@ -11,6 +11,7 @@ const foundationRouter = require("./foundation/routes");
 const subscriptionsRouter = require("./subscriptions/routes");
 const socialRouter = require("./social/routes");
 const earnRouter = require("./earn/routes");
+const lotteryRouter = require("./lottery/routes");
 const { recordSecurityEvent } = require("./admin/audit");
 
 const app = express();
@@ -107,6 +108,7 @@ app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/account", foundationRouter);
 app.use("/api/v1/subscriptions", subscriptionsRouter);
 app.use("/api/v1/earn", rateLimit({ windowMs: 60 * 1000, limit: 40, standardHeaders: "draft-7", legacyHeaders: false }), earnRouter);
+app.use("/api/v1/lottery", rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: "draft-7", legacyHeaders: false }), lotteryRouter);
 app.use("/api/v1/social", rateLimit({ windowMs: 60 * 1000, limit: 45, standardHeaders: "draft-7", legacyHeaders: false }), socialRouter);
 app.use("/api/v1/telegram/link/start", rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: "draft-7", legacyHeaders: false }));
 app.use("/api/v1/telegram", telegramRouter);
