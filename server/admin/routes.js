@@ -228,6 +228,73 @@ router.patch("/users/:userId/status", async (req, res) => {
   }
 });
 
+
+router.patch("/users/:userId/roles", async (req, res) => {
+  const userId = req.params.userId;
+  const roleKey = req.body?.roleKey;
+  const action = req.body?.action;
+  const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+  const managedRoles = ["content_manager", "finance_manager", "moderator", "support"];
+  if (!/^[0-9a-f-]{36}$/i.test(userId) || !managedRoles.includes(roleKey) ||
+      !["grant", "revoke"].includes(action) || reason.length < 3 || reason.length > 200 ||
+      /[\\r\\n]/.test(reason)) {
+    return res.status(400).json({ error: "Choose an allowed role, action and short reason." });
+  }
+  if (userId === req.superAdmin.id) {
+    return res.status(403).json({ error: "You cannot change roles on your own account." });
+  }
+  const client = await req.app.locals.db.connect();
+  try {
+    await client.query("BEGIN");
+    const target = await client.query(
+      "SELECT u.id,u.status,EXISTS(SELECT 1 FROM user_roles r WHERE r.user_id=u.id AND r.role_key='super_admin') AS is_super_admin FROM users u WHERE u.id=$1 FOR UPDATE",
+      [userId]
+    );
+    if (!target.rows[0]) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "User not found." });
+    }
+    if (target.rows[0].is_super_admin) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({ error: "Super Admin roles are protected." });
+    }
+    if (target.rows[0].status !== "active") {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "Only active accounts can have roles changed." });
+    }
+    if (action === "grant") {
+      await client.query(
+        "INSERT INTO user_roles (user_id,role_key,granted_by) VALUES ($1,$2,$3) ON CONFLICT (user_id,role_key) DO NOTHING",
+        [userId, roleKey, req.superAdmin.id]
+      );
+    } else {
+      await client.query(
+        "DELETE FROM user_roles WHERE user_id=$1 AND role_key=$2",
+        [userId, roleKey]
+      );
+    }
+    const roles = await client.query(
+      "SELECT role_key FROM user_roles WHERE user_id=$1 ORDER BY role_key",
+      [userId]
+    );
+    await client.query("COMMIT");
+    const { recordSecurityEvent } = require("./audit");
+    const logged = await recordSecurityEvent(req, {
+      type: "user_role_updated",
+      severity: "warning",
+      userId: req.superAdmin.id,
+      metadata: { target_user_id: userId, role_key: roleKey, action, reason }
+    });
+    if (!logged) return res.status(503).json({ error: "Role saved, but audit confirmation failed. Contact support." });
+    return res.set("Cache-Control", "no-store").json({ ok: true, roles: roles.rows.map(row => row.role_key) });
+  } catch {
+    await client.query("ROLLBACK").catch(() => {});
+    return res.status(503).json({ error: "User role could not be updated." });
+  } finally {
+    client.release();
+  }
+});
+
 router.get("/identity-verifications", async (req, res) => {
   const status = typeof req.query.status === "string" ? req.query.status : "pending_review";
   const allowed = ["unverified", "pending_review", "verified", "needs_more_info", "rejected"];
