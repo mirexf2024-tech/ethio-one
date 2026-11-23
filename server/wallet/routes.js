@@ -8,6 +8,12 @@ function safeMinor(value) {
   return amount;
 }
 
+function safeAddMinor(left, right) {
+  const total = left + right;
+  if (!Number.isSafeInteger(total) || total < 0) throw new Error("Wallet total is outside the safe integer range.");
+  return total;
+}
+
 function readToken(req, env) {
   const header = req.get("authorization") || "";
   if (!/^Bearer /i.test(header) || !env.ACCESS_TOKEN_SECRET || String(env.ACCESS_TOKEN_SECRET).length < 32) return null;
@@ -63,8 +69,16 @@ router.get("/summary", async (req, res) => {
     const paidMinor = safeMinor(paidOut.rows[0].total);
     const heldMinor = safeMinor(reserved.rows[0].total);
     const paidRequestMinor = safeMinor(paidRequests.rows[0].total);
-    const grossEarnedMinor = taskMinor + sponsorMinor;
-    const availableMinor = Math.max(0, grossEarnedMinor - paidRequestMinor - heldMinor);
+
+    // A payout is spendable only when both the request and immutable payout
+    // ledger agree. Fail closed if historical records are inconsistent.
+    if (paidMinor !== paidRequestMinor) {
+      throw new Error("Paid payout requests and payout ledger are not reconciled.");
+    }
+
+    const grossEarnedMinor = safeAddMinor(taskMinor, sponsorMinor);
+    const committedMinor = safeAddMinor(paidRequestMinor, heldMinor);
+    const availableMinor = Math.max(0, grossEarnedMinor - committedMinor);
     return res.set("Cache-Control", "no-store").json({
       currency: "ETB",
       balances: {
