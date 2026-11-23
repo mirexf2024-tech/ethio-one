@@ -30,6 +30,14 @@ Node.js API foundation for the Ethio One platform.
 - `POST /api/v1/social/conversations/:id/read` — mark incoming messages and their inbox notifications as read.
 - `GET /api/v1/social/calls/incoming` — authenticated incoming-call inbox.
 - `POST /api/v1/social/conversations/:id/calls` — create an audio/video call and submit its WebRTC offer.
+- `GET /api/v1/earn/campaigns` — list published task campaigns for an authenticated member.
+- `GET /api/v1/earn/me/summary` — private approved rewards, pending submissions and task history.
+- `POST /api/v1/earn/campaigns/:id/submit` — submit task evidence for review; one submission per member per task.
+- `GET /api/v1/earn/admin/campaigns` and `POST /api/v1/earn/admin/campaigns` — admin campaign management.
+- `PATCH /api/v1/earn/admin/campaigns/:id/status` — publish, pause or archive a campaign.
+- `GET /api/v1/earn/admin/submissions` and `POST /api/v1/earn/admin/submissions/:id/review` — review task evidence and approve or reject submissions.
+- `010_ethio_earn_task_marketplace.sql` — additive task, submission and reward-ledger schema. Apply only after reviewing the live migration ledger and confirming the production schema; it is not automatically applied by deploying the API.
+
 - `GET /api/v1/social/calls/:id` — read call state and new peer signaling events.
 - `POST /api/v1/social/calls/:id/signals` — submit an answer or ICE candidate.
 - `PATCH /api/v1/social/calls/:id` — accept, reject, end, or mark a call missed.
@@ -75,3 +83,8 @@ Authentication routes are implemented for registration, OTP verification, login,
 - `005_security_events.sql` — additive audit-log migration. It was applied to the live Ethio One database after explicit approval on 2026-11-20 and verified in the production schema and migration ledger. Do not re-run it manually.
 - `ADMIN_EMAIL` and `AUDIT_LOG_PEPPER` are configured in Render. `ACCESS_TOKEN_SECRET` and `AUTH_CHALLENGE_PEPPER` are not yet confirmed configured; keep `AUTH_ENABLED` disabled until both secrets, a verified admin account, production email delivery, database readiness, and end-to-end authentication are verified. Configure `ALERTS_FROM` and enable `SECURITY_ALERTS_ENABLED` only after a verified custom sender domain is available and delivery is tested.
 - The dashboard does not expose private messages, passwords, OTPs, tokens, or raw IP addresses. Administrative write actions and account bans are intentionally not included.
+
+## Ethio Earn rollout
+The member UI is served at `/earn.html` and uses the existing short-lived Ethio One access token plus refresh-token rotation. Tasks are created as drafts and must be explicitly published by an authorized administrator. Rewards are credited only after an authorized reviewer approves the submitted evidence. Rejected submissions release the reserved task budget and completion slot. ETB values are stored in minor units.
+
+**Payouts are disabled.** The ledger is an in-app accounting record only; there is no bank, Telebirr, M-Pesa or other withdrawal integration in this release. Do not advertise cash withdrawal or promise earnings until a licensed payout provider, fraud controls, operational funding and legal requirements have been verified. Task campaigns must have a real funded budget and clear, lawful instructions before publication.
