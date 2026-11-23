@@ -223,6 +223,14 @@ router.get("/admin/access",async(req,res)=>{
     return res.set("Cache-Control","no-store").json({canOpenCentralAdmin:roles.includes("super_admin"),roles});
   }catch{return res.status(503).json({error:"Permission details are temporarily unavailable."});}
 });
+router.get("/admin/finance/summary",async(req,res)=>{
+  if(!await requireRoles(req,res,["finance_manager","admin","super_admin"]))return;
+  try{
+    const r=await req.app.locals.db.query("SELECT COALESCE(SUM(gross_funding_minor),0)::bigint AS gross_funding_minor,COALESCE(SUM(platform_fee_minor),0)::bigint AS platform_fee_minor,COALESCE(SUM(reward_pool_minor),0)::bigint AS reward_pool_minor,COALESCE(SUM(rewards_credited_minor),0)::bigint AS rewards_credited_minor,COALESCE(SUM(reward_pool_minor-rewards_credited_minor),0)::bigint AS rewards_unallocated_minor,COUNT(*)::int AS funded_campaigns FROM earn_platform_revenue");
+    const x=r.rows[0];
+    return res.set("Cache-Control","no-store").json({summary:{grossFundingMinor:Number(x.gross_funding_minor),platformFeeMinor:Number(x.platform_fee_minor),rewardPoolMinor:Number(x.reward_pool_minor),rewardsCreditedMinor:Number(x.rewards_credited_minor),rewardsUnallocatedMinor:Number(x.rewards_unallocated_minor),fundedCampaigns:x.funded_campaigns,currency:"ETB",withdrawalsEnabled:false}});
+  }catch{return res.status(503).json({error:"Ethio Earn finance summary is unavailable."});}
+});
 router.get("/admin/campaigns",async(req,res)=>{
   try{
     const r=await req.app.locals.db.query("SELECT id,title,description,category,task_type,delivery_mode,provider_name,provider_url,estimated_minutes,skill_level,reward_minor,budget_minor,reward_pool_minor,platform_fee_minor,platform_fee_bps,max_completions,reserved_completions,status,funding_status,funding_reference,moderation_status,created_at FROM earn_campaigns ORDER BY created_at DESC LIMIT 100");
