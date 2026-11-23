@@ -58,3 +58,19 @@ test("wallet uses the shared authenticated session and stays read-only", () => {
   assert.match(wallet, /withdrawals are not enabled/i);
   assert.match(wallet, /disabled data-i="withdraw"/);
 });
+
+const finance = fs.readFileSync(path.join(__dirname, "..", "finance.html"), "utf8");
+const admin = fs.readFileSync(path.join(__dirname, "..", "admin.html"), "utf8");
+
+test("admin center links to the read-only finance dashboard", () => {
+  assert.match(admin, /href="\/finance\.html"/);
+});
+
+test("finance dashboard uses protected finance APIs and does not enable payouts", () => {
+  assert.match(finance, /\/admin\/finance\/summary/);
+  assert.match(finance, /\/admin\/payouts\?status=/);
+  assert.match(finance, /withdrawal requests|withdrawals|payouts/i);
+  assert.match(finance, /cannot approve or dispatch payments/i);
+  assert.match(finance, /sessionStorage\.setItem/);
+  assert.doesNotMatch(finance, /fetch\([^)]*\/admin\/payouts[^)]*method:\s*["']PATCH/i);
+});
