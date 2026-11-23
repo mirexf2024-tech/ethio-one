@@ -34,11 +34,11 @@ test("Super Admin page has all three supported interface languages", () => {
 
 test("Ethio Lottery planning console is private and its browser script parses", () => {
   const html = fs.readFileSync(path.join(__dirname, "../lottery-admin.html"), "utf8");
-  const match = html.match(/<script>([\\s\\S]*?)<\\/script>/i);
+  const match = html.match(/<script>([\s\S]*?)<\/script>/i);
   assert.ok(match, "lottery planning console must include its application script");
   assert.doesNotThrow(() => new vm.Script(match[1]), "lottery planning console JavaScript must parse");
   assert.match(html, /name="robots" content="noindex,nofollow,noarchive"/);
   assert.match(html, /PLANNED ONLY/);
   assert.match(html, /sales OFF/);
-  assert.doesNotMatch(html, /\\/api\\/v1\\/lottery\\/(?:tickets|payments|draws)/);
+  assert.doesNotMatch(html, /\/api\/v1\/lottery\/(?:tickets|payments|draws)/);
 });
