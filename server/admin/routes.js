@@ -36,7 +36,7 @@ async function requireSuperAdmin(req, res, next) {
   }
   try {
     const delegatedIdentityReview = req.path.startsWith("/identity-verifications") ||
-      /^\\/users\\/[^/]+\\/identity-verification$/.test(req.path);
+      req.path.includes("/identity-verification");
     const result = await db.query(
       "SELECT u.id,u.email,u.email_verified_at,u.status,COALESCE(array_agg(DISTINCT ur.role_key) FILTER (WHERE ur.role_key IS NOT NULL),ARRAY[]::varchar[]) AS roles FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id WHERE u.id=$1 AND u.status='active' GROUP BY u.id LIMIT 1",
       [payload.sub]
