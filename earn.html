@@ -145,7 +145,8 @@ finally{$("submitBtn").disabled=false;}
 };
 function renderMyRequests(rows){
  if(!rows.length){$("myRequests").textContent="";return;}
- $("myRequests").innerHTML='<div style="margin-top:10px">'+rows.map(r=>'<div class="history-row"><div><b>'+esc(r.task_title)+'</b><div class="muted">'+esc(r.organization_name)+' · '+new Date(r.created_at).toLocaleDateString()+'</div>'+(r.review_note?'<div class="muted">'+esc(r.review_note)+'</div>':'')+'</div><span class="status">'+esc(r.status)+' / '+esc(r.funding_status)+'</span></div>').join("")+'</div>';
+ $("myRequests").innerHTML='<div style="margin-top:10px">'+rows.map(r=>'<div class="history-row"><div><b>'+esc(r.task_title)+'</b><div class="muted">'+esc(r.organization_name)+' · '+new Date(r.created_at).toLocaleDateString()+'</div>'+(r.review_note?'<div class="muted">'+esc(r.review_note)+'</div>':'')+(r.status==="needs_changes"?'<button class="btn ghost" data-revise="'+esc(r.id)+'">Revise request</button>':'')+'</div><span class="status">'+esc(r.status)+' / '+esc(r.funding_status)+'</span></div>').join("")+'</div>';
+$("myRequests").querySelectorAll("[data-revise]").forEach(b=>b.onclick=async()=>{const r=rows.find(x=>x.id===b.dataset.revise);if(!r)return;const title=prompt("Update task title:",r.task_title);if(title===null)return;const description=prompt("Update description:",r.task_description);if(description===null)return;const instructions=prompt("Update instructions:",r.task_instructions);if(instructions===null)return;const qualityCriteria=prompt("Update quality criteria:",r.quality_criteria);if(qualityCriteria===null)return;b.disabled=true;try{await api("/requests/"+r.id,{method:"PATCH",body:JSON.stringify({title,description,instructions,qualityCriteria})});await load();}catch(e){alert(e.message);}finally{b.disabled=false;}});
 }
 function renderAppeals(rows){
  if(!rows.length){$("appealQueue").innerHTML='<p class="muted">No appeals awaiting review.</p>';return;}
