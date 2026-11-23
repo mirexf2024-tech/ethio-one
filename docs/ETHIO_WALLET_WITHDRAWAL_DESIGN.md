@@ -90,6 +90,17 @@ Recommended phased approach:
 
 Do not select a gateway based only on its checkout/payment acceptance capability. Incoming payment APIs are not the same as outgoing disbursement APIs.
 
+### Current technical lead to evaluate: Chapa (not yet selected)
+
+Chapa's public developer documentation currently distinguishes pay-in and payout methods, lists payout rails including Telebirr, M-Pesa, CBE bank transfer and several other Ethiopian wallets/banks, and documents payout transfer events/webhooks. Its changelog says Yaya Wallet was added as a payout method on 2025-12-12. This makes Chapa the strongest documented first integration candidate found in this research, but not an approved or contracted provider for ETHIO ONE.
+
+Before selection, obtain written confirmation from Chapa that ETHIO ONE can use its payout product for worker earnings, confirm merchant onboarding and settlement/funding rules, current fees and per-rail limits, required KYC/business documents, sandbox access, callback signature validation, reversal handling and reconciliation reports. The existing payout methods in Ethio Earn should not be assumed to match Chapa's current API method identifiers. Keep the provider behind an adapter so a later direct Telebirr/M-PESA or other licensed provider integration does not alter the wallet ledger.
+
+Official Chapa references:
+- Payout methods and limits: https://developer.chapa.co/payment-methods
+- Payout webhook events and HMAC signature option: https://developer.chapa.co/integrations/webhooks
+- Chapa changelog (Yaya Wallet payout support, 2025-12-12): https://developer.chapa.co/changelog
+
 ## 7. User experience
 
 Create a dedicated `wallet.html` / Wallet screen linked from the ETHIO ONE home and account menu:
