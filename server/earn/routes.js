@@ -52,7 +52,7 @@ function safeHttpsUrl(value){
   try{const u=new URL(value);return u.protocol==="https:"&&u.hostname.includes(".")&&!["localhost","127.0.0.1"].includes(u.hostname)&&!u.hostname.endsWith(".local")?u.toString():null;}catch{return null;}
 }
 function blockedTaskText(value){
-  return /(pay\s+to\s+(unlock|join|start)|deposit\s+(money|crypto)|leave\s+(a\s+)?positive\s+review|rate\s+(five|5)\s+stars|buy\s+then\s+review|fake\s+engagement|follow\s+and\s+like\s+for\s+pay|product\s+boosting)/i.test(value);
+  return /(pay\s+(to\s+(unlock|join|start|get\s+paid)|upfront)|(?:activation|registration|unlock)\s+fee|deposit\s+(money|funds|crypto)|crypto\s+(top\s*up|deposit)|leave\s+(a\s+)?positive\s+review|rate\s+(five|5)\s+stars|buy\s+then\s+review|fake\s+engagement|follow\s*(and|&)\s*like\s+for\s+pay|subscribe\s+for\s+pay|click\s+ads\s+for\s+money|product\s+boosting|share\s+(your\s+)?(password|otp|one[- ]time\s+code)|request\s+(your\s+)?(password|otp|bank\s+details|credit\s+card)|send\s+(your\s+)?(passport|national\s+id|bank\s+account))/i.test(value);
 }
 async function publishReadyRequest(client,row){
   if(!row||row.status!=="moderator_approved"||row.funding_status!=="verified"||row.campaign_id)return null;
