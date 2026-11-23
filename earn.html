@@ -160,6 +160,19 @@ if(!rows.length){$("reviewQueue").innerHTML='<p class="muted">'+esc(t("noReviews
 $("reviewQueue").innerHTML=rows.map(r=>'<div class="review-row"><div style="min-width:0;flex:1"><b>'+esc(r.title)+'</b><div class="muted">@'+esc(r.username||r.user_id)+' · '+new Date(r.created_at).toLocaleString()+'</div><p>'+esc(r.evidence_text||"")+'</p>'+(r.evidence_url?'<a href="'+esc(r.evidence_url)+'" target="_blank" rel="noopener" style="color:#1b5b9c">Open proof link</a>':'')+'</div><div style="display:flex;flex-direction:column;gap:6px"><button class="btn" data-review="'+esc(r.id)+'" data-decision="approved">'+esc(t("approve"))+'</button><button class="btn ghost" data-review="'+esc(r.id)+'" data-decision="rejected">'+esc(t("reject"))+'</button></div></div>').join("");
 $("reviewQueue").querySelectorAll("[data-review]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{await api("/admin/submissions/"+b.dataset.review+"/review",{method:"POST",body:JSON.stringify({decision:b.dataset.decision,note:""})});await load();}catch(e){alert(e.message);}finally{b.disabled=false;}});
 }
+$("requestTaskBtn").onclick=()=>$("partnerDialog").showModal();
+$("partnerForm").onsubmit=async e=>{
+ e.preventDefault();
+ const reward=Math.round(Number($("partnerReward").value)*100),budget=Math.round(Number($("partnerBudget").value)*100),slots=Number($("partnerSlots").value),minutes=Number($("partnerMinutes").value);
+ $("partnerError").textContent="";
+ if(!Number.isSafeInteger(reward)||!Number.isSafeInteger(budget)||!Number.isInteger(slots)||budget<reward*slots){$("partnerError").textContent="Total budget must cover reward per task × slots.";return;}
+ $("partnerSubmitBtn").disabled=true;
+ try{
+  const result=await api("/requests",{method:"POST",body:JSON.stringify({organizationName:$("partnerOrg").value,organizationWebsite:$("partnerWebsite").value,title:$("partnerTitle").value,description:$("partnerDescription").value,instructions:$("partnerInstructions").value,taskType:$("partnerType").value,providerName:$("partnerProvider").value,providerUrl:$("partnerUrl").value,rewardMinor:reward,budgetMinor:budget,maxCompletions:slots,estimatedMinutes:minutes,skillLevel:$("partnerSkill").value,qualityCriteria:$("partnerQuality").value,evidenceHint:$("partnerEvidence").value,languages:["om","am","en"]})});
+  $("partnerDialog").close();$("partnerForm").reset();alert(result.message||"Request submitted.");await load();
+ }catch(err){$("partnerError").textContent=err.message||t("err");}
+ finally{$("partnerSubmitBtn").disabled=false;}
+};
 $("newTaskBtn").onclick=()=>$("createDialog").showModal();
 $("createForm").onsubmit=async e=>{
 e.preventDefault();const reward=Math.round(Number($("taskReward").value)*100),budget=Math.round(Number($("taskBudget").value)*100),slots=Number($("taskSlots").value);
@@ -167,8 +180,8 @@ $("createError").textContent="";
 if(!Number.isSafeInteger(reward)||!Number.isSafeInteger(budget)||!Number.isInteger(slots)||budget<reward*slots){$("createError").textContent="Budget must cover reward × slots.";return;}
 $("createBtn").disabled=true;
 try{
-await api("/admin/campaigns",{method:"POST",body:JSON.stringify({title:$("taskName").value,description:$("taskDescription").value,instructions:$("taskInstructions").value,category:$("taskCategory").value,rewardMinor:reward,budgetMinor:budget,maxCompletions:slots,evidenceRequired:$("taskEvidence").value==="true"})});
-$("createDialog").close();alert(t("created"));$("createForm").reset();$("taskCategory").value="general";await load();
+await api("/admin/campaigns",{method:"POST",body:JSON.stringify({title:$("taskName").value,description:$("taskDescription").value,instructions:$("taskInstructions").value,category:$("taskCategory").value,taskType:$("taskCategory").value,providerName:$("taskProvider").value,providerUrl:$("taskProviderUrl").value||null,estimatedMinutes:Number($("taskMinutes").value),skillLevel:$("taskSkill").value,qualityCriteria:$("taskQuality").value,rewardMinor:reward,budgetMinor:budget,maxCompletions:slots,evidenceRequired:$("taskEvidence").value==="true"})});
+$("createDialog").close();alert(t("created"));$("createForm").reset();$("taskCategory").value="data_labeling";$("taskProvider").value="Ethio One";$("taskMinutes").value="10";$("taskSkill").value="beginner";await load();
 }catch(err){$("createError").textContent=err.message||t("err");}
 finally{$("createBtn").disabled=false;}
 };
