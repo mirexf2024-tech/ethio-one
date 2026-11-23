@@ -77,7 +77,7 @@ router.get("/me/summary",async(req,res)=>{
     const [pending,credits,history]=await Promise.all([
       req.app.locals.db.query("SELECT COALESCE(SUM(c.reward_minor),0)::bigint AS pending_minor,COUNT(*)::int AS pending_count FROM earn_submissions s JOIN earn_campaigns c ON c.id=s.campaign_id WHERE s.user_id=$1 AND s.status='pending'",[req.earnUser.id]),
       req.app.locals.db.query("SELECT COALESCE(SUM(amount_minor),0)::bigint AS earned_minor,COUNT(*)::int AS approved_count FROM earn_ledger WHERE user_id=$1",[req.earnUser.id]),
-      req.app.locals.db.query("SELECT s.id,s.status,s.created_at,s.reviewed_at,s.review_note,c.title,c.reward_minor FROM earn_submissions s JOIN earn_campaigns c ON c.id=s.campaign_id WHERE s.user_id=$1 ORDER BY s.created_at DESC LIMIT 30",[req.earnUser.id])
+      req.app.locals.db.query("SELECT s.id,s.status,s.created_at,s.reviewed_at,s.review_note,c.title,c.reward_minor,a.status AS appeal_status FROM earn_submissions s JOIN earn_campaigns c ON c.id=s.campaign_id LEFT JOIN earn_submission_appeals a ON a.submission_id=s.id WHERE s.user_id=$1 ORDER BY s.created_at DESC LIMIT 30",[req.earnUser.id])
     ]);
     return res.set("Cache-Control","no-store").json({summary:{pendingMinor:Number(pending.rows[0].pending_minor),pendingCount:pending.rows[0].pending_count,earnedMinor:Number(credits.rows[0].earned_minor),approvedCount:credits.rows[0].approved_count,payoutsEnabled:false},history:history.rows});
   }catch{return res.status(503).json({error:"Your earnings summary is temporarily unavailable."});}
@@ -105,6 +105,58 @@ router.post("/campaigns/:id/submit",rateLimit({windowMs:60*60*1000,limit:12,stan
     if(e.code==="23505")return res.status(409).json({error:"You have already submitted this task."});
     return res.status(503).json({error:"Your submission could not be saved."});
   }finally{client.release();}
+});
+router.post("/submissions/:id/appeal",rateLimit({windowMs:24*60*60*1000,limit:3,standardHeaders:"draft-7",legacyHeaders:false}),async(req,res)=>{
+  const reason=typeof req.body?.reason==="string"?req.body.reason.trim():"";
+  if(!validId(req.params.id)||reason.length<20||reason.length>1000)return res.status(400).json({error:"Explain the appeal in at least 20 characters."});
+  try{
+    const found=await req.app.locals.db.query("SELECT id,status,reviewed_at FROM earn_submissions WHERE id=$1 AND user_id=$2",[req.params.id,req.earnUser.id]);
+    const s=found.rows[0];
+    if(!s||s.status!=="rejected"||!s.reviewed_at||new Date(s.reviewed_at)<new Date(Date.now()-7*24*60*60*1000))return res.status(409).json({error:"Appeals are available only for rejected tasks within seven days."});
+    const r=await req.app.locals.db.query("INSERT INTO earn_submission_appeals(submission_id,user_id,reason) VALUES($1,$2,$3) RETURNING id,status,created_at",[s.id,req.earnUser.id,reason]);
+    return res.status(201).json({appeal:r.rows[0]});
+  }catch(e){if(e.code==="23505")return res.status(409).json({error:"An appeal has already been submitted for this task."});return res.status(503).json({error:"Your appeal could not be saved."});}
+});
+router.post("/submissions/:id/resubmit",async(req,res)=>{
+  if(!validId(req.params.id))return res.status(400).json({error:"Invalid submission."});
+  const evidenceText=typeof req.body?.evidenceText==="string"?req.body.evidenceText.trim():"";
+  const evidenceUrl=typeof req.body?.evidenceUrl==="string"?req.body.evidenceUrl.trim():"";
+  if(evidenceText.length>2000||evidenceUrl.length>1000||(evidenceUrl&&!/^https:\/\//i.test(evidenceUrl))||(!evidenceText&&!evidenceUrl))return res.status(400).json({error:"Provide updated task proof."});
+  const client=await req.app.locals.db.connect();
+  try{
+    await client.query("BEGIN");
+    const found=await client.query("SELECT s.*,c.reward_minor,c.id AS cid,c.status AS campaign_status,c.funding_status,c.moderation_status,c.reserved_completions,c.max_completions,c.reserved_minor,c.budget_minor,c.ends_at,a.id AS appeal_id,a.status AS appeal_status FROM earn_submissions s JOIN earn_campaigns c ON c.id=s.campaign_id JOIN earn_submission_appeals a ON a.submission_id=s.id WHERE s.id=$1 AND s.user_id=$2 FOR UPDATE OF s,c,a",[req.params.id,req.earnUser.id]);
+    const s=found.rows[0];
+    if(!s||s.status!=="rejected"||s.appeal_status!=="accepted"||s.campaign_status!=="published"||s.funding_status!=="verified"||s.moderation_status!=="approved"||(s.ends_at&&new Date(s.ends_at)<=new Date())){await client.query("ROLLBACK");return res.status(409).json({error:"This task is not eligible for resubmission."});}
+    if(Number(s.reserved_completions)>=s.max_completions||Number(s.reserved_minor)+Number(s.reward_minor)>Number(s.budget_minor)){await client.query("ROLLBACK");return res.status(409).json({error:"This task no longer has funded capacity."});}
+    await client.query("UPDATE earn_campaigns SET reserved_completions=reserved_completions+1,reserved_minor=reserved_minor+reward_minor,updated_at=NOW() WHERE id=$1",[s.cid]);
+    await client.query("UPDATE earn_submissions SET evidence_text=$2,evidence_url=$3,status='pending',reviewer_id=NULL,review_note='',reviewed_at=NULL,updated_at=NOW() WHERE id=$1",[s.id,evidenceText,evidenceUrl||null]);
+    await client.query("UPDATE earn_submission_appeals SET status='reopened' WHERE id=$1",[s.appeal_id]);
+    await client.query("COMMIT");
+    return res.status(200).json({ok:true,message:"Updated proof resubmitted for review."});
+  }catch{await client.query("ROLLBACK").catch(()=>{});return res.status(503).json({error:"Your revised proof could not be submitted."});}
+  finally{client.release();}
+});
+router.get("/admin/appeals",async(req,res)=>{
+  if(!await requireRoles(req,res,["moderator","admin","super_admin"]))return;
+  const status=["pending","accepted","rejected","reopened"].includes(req.query.status)?req.query.status:"pending";
+  try{
+    const r=await req.app.locals.db.query("SELECT a.id,a.submission_id,a.user_id,a.reason,a.status,a.created_at,u.username,u.full_name,c.title,s.review_note AS rejection_reason FROM earn_submission_appeals a JOIN users u ON u.id=a.user_id JOIN earn_submissions s ON s.id=a.submission_id JOIN earn_campaigns c ON c.id=s.campaign_id WHERE a.status=$1 ORDER BY a.created_at ASC LIMIT 100",[status]);
+    return res.set("Cache-Control","no-store").json({appeals:r.rows});
+  }catch{return res.status(503).json({error:"Appeal queue is unavailable."});}
+});
+router.patch("/admin/appeals/:id/review",async(req,res)=>{
+  if(!await requireRoles(req,res,["moderator","admin","super_admin"]))return;
+  const decision=req.body?.decision,note=typeof req.body?.note==="string"?req.body.note.trim().slice(0,500):"";
+  if(!validId(req.params.id)||!["accepted","rejected"].includes(decision)||note.length<3)return res.status(400).json({error:"Choose a decision and add a review note."});
+  try{
+    const r=await req.app.locals.db.query("UPDATE earn_submission_appeals SET status=$2,reviewer_id=$3,review_note=$4,reviewed_at=NOW() WHERE id=$1 AND status='pending' RETURNING id,status,submission_id",[req.params.id,decision,req.earnUser.id,note]);
+    if(!r.rowCount)return res.status(409).json({error:"This appeal has already been reviewed."});
+    const {recordSecurityEvent}=require("../admin/audit");
+    const logged=await recordSecurityEvent(req,{type:"earn_appeal_reviewed",severity:decision==="rejected"?"warning":"info",userId:req.earnUser.id,metadata:{submission_id:r.rows[0].submission_id,status:decision}});
+    if(!logged)return res.status(503).json({error:"Appeal decision saved but audit confirmation failed."});
+    return res.set("Cache-Control","no-store").json({appeal:r.rows[0]});
+  }catch{return res.status(503).json({error:"Appeal review could not be saved."});}
 });
 router.get("/my-requests",async(req,res)=>{
   try{
