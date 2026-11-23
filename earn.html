@@ -49,17 +49,29 @@ function money(minor){return "ETB "+(Number(minor||0)/100).toLocaleString(undefi
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function get(k){try{return sessionStorage.getItem(k);}catch{return null;}}
 function put(k,v){try{sessionStorage.setItem(k,v);}catch{}}
-async function api(path,options={}){
-const headers={...(options.headers||{}),"Content-Type":"application/json"};
-if(access)headers.Authorization="Bearer "+access;
-let res=await fetch(EARN+path,{...options,headers});
-if(res.status===401&&refresh){
-const rr=await fetch(AUTH+"/refresh",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({refreshToken:refresh})});
-if(rr.ok){const tok=await rr.json();access=tok.accessToken;refresh=tok.refreshToken;put(keys.access,access);put(keys.refresh,refresh);headers.Authorization="Bearer "+access;res=await fetch(EARN+path,{...options,headers});}
+let refreshPromise=null;
+async function renewSession(){
+ if(!refresh)return false;
+ if(!refreshPromise){
+  refreshPromise=(async()=>{
+   const rr=await fetch(AUTH+"/refresh",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({refreshToken:refresh})});
+   if(!rr.ok){refresh=null;put(keys.refresh,"");put(keys.access,"");return false;}
+   const tok=await rr.json();access=tok.accessToken;refresh=tok.refreshToken;put(keys.access,access);put(keys.refresh,refresh);return true;
+  })().finally(()=>{refreshPromise=null;});
+ }
+ return refreshPromise;
 }
-const data=await res.json().catch(()=>({}));
-if(!res.ok)throw new Error(data.error||t("err"));
-return data;
+async function api(path,options={}){
+ const headers={...(options.headers||{}),"Content-Type":"application/json"};
+ if(access)headers.Authorization="Bearer "+access;
+ let res=await fetch(EARN+path,{...options,headers});
+ if(res.status===401&&await renewSession()){
+  headers.Authorization="Bearer "+access;
+  res=await fetch(EARN+path,{...options,headers});
+ }
+ const data=await res.json().catch(()=>({}));
+ if(!res.ok)throw new Error(data.error||t("err"));
+ return data;
 }
 function requireLogin(){access=get(keys.access);refresh=get(keys.refresh);if(!access&&!refresh){$("tasks").innerHTML='<div class="empty">'+esc(t("signIn"))+' <a href="/auth.html" style="color:#082b59;font-weight:800">Sign in →</a></div>';return false;}return true;}
 async function load(){
