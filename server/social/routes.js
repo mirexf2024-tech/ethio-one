@@ -356,8 +356,18 @@ router.get("/moderation/reports",requireAuth,async(req,res)=>{
   try{
     const role=await req.app.locals.db.query("SELECT 1 FROM user_roles WHERE user_id=$1 AND role_key IN ('moderator','content_manager','admin','super_admin') LIMIT 1",[req.socialUserId]);
     if(!role.rowCount) return res.status(403).json({error:"Moderator access required."});
-    const r=await req.app.locals.db.query("SELECT id,target_type,target_id,reason,details,status,created_at FROM social_reports WHERE status IN ('open','reviewing') ORDER BY created_at ASC LIMIT 100");
-    return res.json({reports:r.rows});
+    const r=await req.app.locals.db.query(
+      `SELECT sr.id,sr.target_type,sr.target_id,sr.reason,sr.details,sr.status,sr.created_at,
+        COALESCE(p.body,c.body,u.full_name) AS target_preview,
+        COALESCE(p.user_id,c.user_id,u.id) AS target_owner_id,
+        COALESCE(p.status,c.status,u.status) AS target_status
+       FROM social_reports sr
+       LEFT JOIN social_posts p ON sr.target_type='post' AND p.id=sr.target_id
+       LEFT JOIN social_comments c ON sr.target_type='comment' AND c.id=sr.target_id
+       LEFT JOIN users u ON sr.target_type='user' AND u.id=sr.target_id
+       WHERE sr.status IN ('open','reviewing') ORDER BY sr.created_at ASC LIMIT 100`
+    );
+    return res.set("Cache-Control","no-store").json({reports:r.rows});
   }catch{return res.status(503).json({error:"Moderation queue is unavailable."});}
 });
 router.patch("/moderation/reports/:id",requireAuth,async(req,res)=>{
@@ -383,7 +393,14 @@ router.patch("/moderation/reports/:id",requireAuth,async(req,res)=>{
       }
       const updated=await client.query("UPDATE social_reports SET status=$2,reviewed_at=NOW(),reviewed_by=$3 WHERE id=$1 RETURNING id,status,reviewed_at",[req.params.id,status,req.socialUserId]);
       await client.query("COMMIT");
-      return res.json({report:updated.rows[0],targetRemoved:action==="remove_target"});
+      const { recordSecurityEvent } = require("../admin/audit");
+      const auditRecorded = await recordSecurityEvent(req, {
+        type: "social_report_reviewed",
+        severity: status === "dismissed" ? "info" : "warning",
+        userId: req.socialUserId,
+        metadata: { report_id: req.params.id, target_type: report.rows[0].target_type, status, action: action || "review" }
+      });
+      return res.set("Cache-Control","no-store").json({report:updated.rows[0],targetRemoved:action==="remove_target",auditRecorded});
     }catch(error){await client.query("ROLLBACK").catch(()=>{});throw error;}
     finally{client.release();}
   }catch{return res.status(503).json({error:"Report status could not be updated."});}
