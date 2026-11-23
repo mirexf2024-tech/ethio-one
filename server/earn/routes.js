@@ -165,9 +165,23 @@ router.patch("/admin/appeals/:id/review",async(req,res)=>{
 });
 router.get("/my-requests",async(req,res)=>{
   try{
-    const r=await req.app.locals.db.query("SELECT id,organization_name,task_title,task_type,status,funding_status,review_note,campaign_id,created_at,updated_at FROM earn_task_requests WHERE requester_id=$1 ORDER BY created_at DESC LIMIT 30",[req.earnUser.id]);
+    const r=await req.app.locals.db.query("SELECT id,organization_name,task_title,task_description,task_instructions,task_type,provider_name,provider_url,quality_criteria,status,funding_status,review_note,campaign_id,created_at,updated_at FROM earn_task_requests WHERE requester_id=$1 ORDER BY created_at DESC LIMIT 30",[req.earnUser.id]);
     return res.set("Cache-Control","no-store").json({requests:r.rows});
   }catch{return res.status(503).json({error:"Your task requests are temporarily unavailable."});}
+});
+router.patch("/requests/:id",async(req,res)=>{
+  if(!validId(req.params.id))return res.status(400).json({error:"Invalid request."});
+  const b=req.body||{};
+  const title=typeof b.title==="string"?b.title.trim():"";
+  const description=typeof b.description==="string"?b.description.trim():"";
+  const instructions=typeof b.instructions==="string"?b.instructions.trim():"";
+  const quality=typeof b.qualityCriteria==="string"?b.qualityCriteria.trim():"";
+  if(title.length<5||title.length>140||description.length<10||description.length>1200||instructions.length<10||instructions.length>10000||quality.length<5||quality.length>1500||blockedTaskText([title,description,instructions].join(" ")))return res.status(400).json({error:"Please correct the task details and quality criteria."});
+  try{
+    const r=await req.app.locals.db.query("UPDATE earn_task_requests SET task_title=$3,task_description=$4,task_instructions=$5,quality_criteria=$6,status='submitted',funding_status='unverified',funding_reference=NULL,funding_verified_by=NULL,funding_verified_at=NULL,moderator_id=NULL,moderated_at=NULL,review_note='',updated_at=NOW() WHERE id=$1 AND requester_id=$2 AND status='needs_changes' RETURNING id,status,funding_status,updated_at",[req.params.id,req.earnUser.id,title,description,instructions,quality]);
+    if(!r.rowCount)return res.status(409).json({error:"Only requests marked for changes can be revised."});
+    return res.json({request:r.rows[0],message:"Updated request sent back for moderation and funding review."});
+  }catch{return res.status(503).json({error:"Your revised request could not be saved."});}
 });
 router.post("/requests",rateLimit({windowMs:24*60*60*1000,limit:3,standardHeaders:"draft-7",legacyHeaders:false}),async(req,res)=>{
   const b=req.body||{};
