@@ -43,12 +43,13 @@ router.use(async (req, res, next) => {
 router.get("/summary", async (req, res) => {
   const db = req.app.locals.db;
   try {
-    const [taskCredits, sponsorCredits, pendingTasks, paidOut, reserved, activity] = await Promise.all([
+    const [taskCredits, sponsorCredits, pendingTasks, paidOut, reserved, paidRequests, activity] = await Promise.all([
       db.query("SELECT COALESCE(SUM(amount_minor),0)::bigint AS total FROM earn_ledger WHERE user_id=$1", [req.walletUser.id]),
       db.query("SELECT COALESCE(SUM(amount_minor),0)::bigint AS total FROM earn_sponsor_ad_credits WHERE user_id=$1", [req.walletUser.id]),
       db.query("SELECT COALESCE(SUM(c.reward_minor),0)::bigint AS total FROM earn_submissions s JOIN earn_campaigns c ON c.id=s.campaign_id WHERE s.user_id=$1 AND s.status='pending'", [req.walletUser.id]),
       db.query("SELECT COALESCE(SUM(amount_minor),0)::bigint AS total FROM earn_payout_ledger WHERE user_id=$1", [req.walletUser.id]),
       db.query("SELECT COALESCE(SUM(amount_minor),0)::bigint AS total FROM earn_payout_requests WHERE user_id=$1 AND status IN ('pending','processing')", [req.walletUser.id]),
+      db.query("SELECT COALESCE(SUM(amount_minor),0)::bigint AS total FROM earn_payout_requests WHERE user_id=$1 AND status='paid'", [req.walletUser.id]),
       db.query(
         "SELECT kind,amount_minor,status,created_at,reference FROM (" +
         "SELECT 'task_reward'::text AS kind,amount_minor,'approved'::text AS status,created_at,campaign_id::text AS reference FROM earn_ledger WHERE user_id=$1 " +
@@ -61,8 +62,9 @@ router.get("/summary", async (req, res) => {
     const pendingMinor = safeMinor(pendingTasks.rows[0].total);
     const paidMinor = safeMinor(paidOut.rows[0].total);
     const heldMinor = safeMinor(reserved.rows[0].total);
+    const paidRequestMinor = safeMinor(paidRequests.rows[0].total);
     const grossEarnedMinor = taskMinor + sponsorMinor;
-    const availableMinor = Math.max(0, grossEarnedMinor - paidMinor - heldMinor);
+    const availableMinor = Math.max(0, grossEarnedMinor - paidRequestMinor - heldMinor);
     return res.set("Cache-Control", "no-store").json({
       currency: "ETB",
       balances: {
