@@ -133,6 +133,6 @@ test("Ethio Earn payout controls are present, localized and disabled by default"
     const dictionary=earnPage.slice(start,end<0?undefined:end);
     assert.ok(dictionary.includes("payoutTitle:") && dictionary.includes("payoutDisabled:"), lang + " payout labels must be translated");
   }
-  assert.doesNotMatch(earnPage, /[\\u4e00-\\u9fff]/);
+  assert.doesNotMatch(earnPage, /[\u4e00-\u9fff]/);
   assert.match(earnPage, /id="payoutSubmit" type="submit" disabled/);
 });
