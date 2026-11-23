@@ -1,6 +1,6 @@
 # Ethio One Service Readiness
 
-This is the working implementation checklist for the 19 services in Ethio One. The production `platform_modules` registry currently contains all 19 module keys and each has status `planned`. A visible service tile is not evidence that the service itself is implemented.
+This checklist reflects the current repository and the production `platform_modules` registry. The live registry contains **20 service modules**; every module currently has status `planned`. A visible service tile or a mounted API router does not by itself mean a service is production-ready.
 
 ## Shared platform foundation
 
@@ -10,34 +10,52 @@ This is the working implementation checklist for the 19 services in Ethio One. T
 | User profile | Profile, roles and notifications APIs exist | Complete profile editing, avatar workflow and multilingual validation |
 | Identity verification | Ethio ID is generated for accounts | Add a privacy-safe verification request/review workflow; do not treat OTP as identity verification or imply government recognition |
 | Subscription foundation | Free, Premium and Pro plan records and subscription/payment tables exist; read-only plans and current-account endpoints exist | Configure entitlements, payment-provider verification, subscription lifecycle and UI; Premium/Pro remain drafts |
-| Service access | Registry lists 19 planned modules | Define explicit module release status and server-side access checks before enabling any service |
-| Wallet and payments | Not implemented as a production transaction flow | Select licensed/available provider, implement signed callbacks, reconciliation, refunds and audit trail |
+| Service access | Registry contains 20 modules; all are still `planned` | Define explicit module release status and server-side access checks before enabling a service |
+| Wallet and payments | Production payment and withdrawal flows are not enabled | Select a licensed/available provider, implement signed callbacks, reconciliation, refunds and audit trail |
 
 ## Service registry
 
-All services below are present in the production registry with status `planned`. No service-specific API router is currently mounted in `server/index.js`.
+The production registry currently reports all 20 services as `planned`. API router status below is descriptive only; it is not a release approval.
 
-| # | Service | Module key | Registry status |
-|---:|---|---|---|
-| 1 | Ethio Social | `social` | Planned |
-| 2 | Ethio Tube | `tube` | Planned |
-| 3 | Ethio Live | `live` | Planned |
-| 4 | Ethio Chat | `chat` | Planned |
-| 5 | Ethio Market | `market` | Planned |
-| 6 | Ethio News | `news` | Planned |
-| 7 | Ethio Learning | `learning` | Planned |
-| 8 | Ethio Technology | `technology` | Planned |
-| 9 | Ethio Wallet | `wallet` | Planned |
-| 10 | Ethio Travel | `travel` | Planned |
-| 11 | Ethio Assistant | `assistant` | Planned |
-| 12 | Ethio Jobs | `jobs` | Planned |
-| 13 | Ethio Access | `access` | Planned |
-| 14 | Ethio Studio | `studio` | Planned |
-| 15 | Ethio Religio | `religio` | Planned |
-| 16 | Ethio Earn | `earn` | Planned |
-| 17 | Ethio Email | `email` | Planned |
-| 18 | Ethio Sport | `sport` | Planned |
-| 19 | Ethio Cafe | `cafe` | Planned |
+| # | Service | Module key | API / implementation note | Registry status |
+|---:|---|---|---|---|
+| 1 | Ethio Social | `social` | Social API router mounted; further end-to-end and moderation checks required | Planned |
+| 2 | Ethio Tube | `tube` | No dedicated service API router verified | Planned |
+| 3 | Ethio Live | `live` | No dedicated service API router verified | Planned |
+| 4 | Ethio Chat | `chat` | No dedicated service API router verified | Planned |
+| 5 | Ethio Market | `market` | No dedicated service API router verified | Planned |
+| 6 | Ethio News | `news` | No dedicated service API router verified | Planned |
+| 7 | Ethio Learning | `learning` | No dedicated service API router verified | Planned |
+| 8 | Ethio Technology | `technology` | No dedicated service API router verified | Planned |
+| 9 | Ethio Wallet | `wallet` | Payment and wallet release not enabled | Planned |
+| 10 | Ethio Travel | `travel` | No dedicated service API router verified | Planned |
+| 11 | Ethio Assistant | `assistant` | No dedicated service API router verified | Planned |
+| 12 | Ethio Jobs | `jobs` | No dedicated service API router verified | Planned |
+| 13 | Ethio Access | `access` | No dedicated service API router verified | Planned |
+| 14 | Ethio Studio | `studio` | No dedicated service API router verified | Planned |
+| 15 | Ethio Religio | `religio` | No dedicated service API router verified | Planned |
+| 16 | Ethio Earn | `earn` | Web page and API router exist; task catalog and review/funding flows exist. Live database currently has zero campaigns. Withdrawals remain disabled. | Planned |
+| 17 | Ethio Email | `email` | No dedicated service API router verified | Planned |
+| 18 | Ethio Sport | `sport` | No dedicated service API router verified | Planned |
+| 19 | Ethio Cafe | `cafe` | No dedicated service API router verified | Planned |
+| 20 | Ethio Lottery | `lottery` | API router exists; public ticket sales, payments, draws and payouts remain release-locked pending required approvals | Planned |
+
+## Ethio Earn task catalog
+
+Ethio Earn supports these task categories in its database and API contract:
+
+- Data labeling / AI, transcription, translation, surveys and research
+- Data entry, content review, QA testing, design and audio/video work
+- Local data collection, business listings and map verification
+- Product photography and product descriptions
+- Social media tasks, document digitization and voice recording
+- Customer support, app testing and other approved task types
+
+Only genuine, clearly described work may be published. Tasks must not require workers to pay an unlock fee, provide passwords/OTPs, create fake engagement, leave fabricated reviews, or disclose sensitive identity or financial information as task proof.
+
+Current production database check: Earn campaign count is zero. This means there are no live Ethio Earn tasks to complete at this time; do not create fake/demo campaigns to make the marketplace look populated. Sponsor funding and moderation must both be verified before a campaign is published. The existing 10% platform fee remains disclosed in the sponsor budget calculation. Payouts stay disabled until the payment route, security configuration, reconciliation and operational controls are tested.
+
+External work-platform links are informational only. Their availability, eligibility and payment methods in Ethiopia must not be guaranteed by Ethio One.
 
 ## Release order
 
@@ -50,4 +68,4 @@ All services below are present in the production registry with status `planned`.
 
 ## Release rule
 
-Do not change a module from `planned` to `active` merely because its UI tile exists. Do not grant Premium/Pro access from a client-side flag. A paid entitlement must be backed by a provider-verified successful payment and an active subscription.
+Do not change a module from `planned` to `active` merely because its UI tile exists or its API router is mounted. Do not grant Premium/Pro access from a client-side flag. A paid entitlement must be backed by a provider-verified successful payment and an active subscription.
