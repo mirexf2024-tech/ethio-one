@@ -172,7 +172,7 @@ router.patch("/users/:userId/status", async (req, res) => {
   const status = req.body?.status;
   const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
   if (!/^[0-9a-f-]{36}$/i.test(userId) || !["active", "suspended"].includes(status) ||
-      reason.length < 3 || reason.length > 200 || /[\\r\\n]/.test(reason)) {
+      reason.length < 3 || reason.length > 200 || /[\r\n]/.test(reason)) {
     return res.status(400).json({ error: "Choose a valid account status and provide a short reason." });
   }
   if (userId === req.superAdmin.id) {
@@ -237,7 +237,7 @@ router.patch("/users/:userId/roles", async (req, res) => {
   const managedRoles = ["content_manager", "finance_manager", "moderator", "support"];
   if (!/^[0-9a-f-]{36}$/i.test(userId) || !managedRoles.includes(roleKey) ||
       !["grant", "revoke"].includes(action) || reason.length < 3 || reason.length > 200 ||
-      /[\\r\\n]/.test(reason)) {
+      /[\r\n]/.test(reason)) {
     return res.status(400).json({ error: "Choose an allowed role, action and short reason." });
   }
   if (userId === req.superAdmin.id) {
@@ -318,7 +318,7 @@ router.patch("/users/:userId/identity-verification", async (req, res) => {
   const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
   const allowed = ["pending_review", "verified", "needs_more_info", "rejected"];
   if (!/^[0-9a-f-]{36}$/i.test(userId) || !allowed.includes(status) ||
-      reason.length > 500 || /[\\r\\n]/.test(reason) ||
+      reason.length > 500 || /[\r\n]/.test(reason) ||
       (["needs_more_info", "rejected"].includes(status) && reason.length < 3)) {
     return res.status(400).json({ error: "Check the verification decision and review note." });
   }
