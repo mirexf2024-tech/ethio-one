@@ -80,3 +80,6 @@ No live ticket purchases, real payment intents, prize payouts, public paid-raffl
 - The API contains no public ticket purchase, live payment, production draw or prize payout route.
 - Existing migration `020_ethio_lottery_raffle_foundation` is applied to the production database. Initial raffle campaign, ticket, payment, draw and audit counts were all zero before sandbox testing.
 - Deployment status must be checked after every commit; a Render deployment being queued or in progress is not a live release.
+
+- Database migration `021_ethio_lottery_hard_release_lock.sql` is applied: DB constraints force all live switches off, keep campaigns in draft/planned/pending approval, and restrict tickets/payments/draw records to sandbox-only states. Removing these checks later requires a separately reviewed migration after the legal/provider gates pass.
+- Private admin UI and backend were deployed; Render reported a successful API build/start for the sandbox workflow commit. A package-install warning reported one high-severity dependency advisory and is tracked for security review; no forced dependency upgrade was applied.
