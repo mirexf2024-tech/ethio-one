@@ -20,7 +20,7 @@ function readAccessToken(token, secret) {
 async function requireSuperAdmin(req, res, next) {
   const env = req.app.locals.authEnv || process.env;
   const db = req.app.locals.db;
-  const match = /^Bearer\\s+(.+)$/i.exec(req.get("authorization") || "");
+  const match = /^Bearer\s+(.+)$/i.exec(req.get("authorization") || "");
   const payload = match && readAccessToken(match[1], env.ACCESS_TOKEN_SECRET);
   if (!db) return res.status(503).json({ error: "Lottery administration is temporarily unavailable." });
   if (env.AUTH_ENABLED !== "true" || !env.ADMIN_EMAIL || !payload) {
