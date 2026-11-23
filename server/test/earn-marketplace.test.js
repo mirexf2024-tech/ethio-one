@@ -17,7 +17,9 @@ test("only published, moderated and funded campaigns appear in the member market
 test("partner task intake requires a verified provider URL, budget coverage and quality criteria", () => {
   assert.match(routes, /router\.post\("\/requests"/);
   assert.match(routes, /safeHttpsUrl/);
-  assert.match(routes, /rewardPoolMinor=Number\.isSafeInteger\(rewardMinor\)&&Number\.isInteger\(slots\)\?rewardMinor\*slots:0/);\n  assert.match(routes, /platformFeeMinor=Math\.ceil\(rewardPoolMinor\*platformFeeBps\/10000\)/);\n  assert.match(routes, /budgetMinor!==rewardPoolMinor\+platformFeeMinor/);
+  assert.match(routes, /rewardPoolMinor=Number\.isSafeInteger\(rewardMinor\)&&Number\.isInteger\(slots\)\?rewardMinor\*slots:0/);
+  assert.match(routes, /platformFeeMinor=Math\.ceil\(rewardPoolMinor\*platformFeeBps\/10000\)/);
+  assert.match(routes, /budgetMinor!==rewardPoolMinor\+platformFeeMinor/);
   assert.match(routes, /!quality/);
   assert.match(routes, /blockedTaskText/);
 });
