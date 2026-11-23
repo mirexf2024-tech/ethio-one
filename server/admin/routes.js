@@ -144,6 +144,90 @@ router.get("/modules", async (req, res) => {
 });
 
 
+
+router.get("/users", async (req, res) => {
+  const q = typeof req.query.q === "string" ? req.query.q.trim().slice(0, 80) : "";
+  const status = ["active", "suspended", "pending_verification"].includes(req.query.status) ? req.query.status : null;
+  const limit = Math.min(50, Math.max(1, Number.parseInt(req.query.limit, 10) || 25));
+  const offset = Math.max(0, Number.parseInt(req.query.offset, 10) || 0);
+  try {
+    const result = await req.app.locals.db.query(
+      `SELECT u.id,u.ethio_id,u.full_name,u.username,u.email,u.phone,u.status,u.created_at,
+        COALESCE(array_agg(DISTINCT ur.role_key) FILTER (WHERE ur.role_key IS NOT NULL), ARRAY[]::varchar[]) AS roles
+       FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id
+       WHERE ($1::text='' OR u.full_name ILIKE '%' || $1 || '%' OR u.username ILIKE '%' || $1 || '%' OR
+              u.email ILIKE '%' || $1 || '%' OR u.ethio_id ILIKE '%' || $1 || '%' OR u.phone ILIKE '%' || $1 || '%')
+         AND ($2::text IS NULL OR u.status=$2)
+       GROUP BY u.id ORDER BY u.created_at DESC LIMIT $3 OFFSET $4`,
+      [q, status, limit, offset]
+    );
+    return res.set("Cache-Control", "no-store").json({ users: result.rows, limit, offset });
+  } catch {
+    return res.status(503).json({ error: "User directory is temporarily unavailable." });
+  }
+});
+
+router.patch("/users/:userId/status", async (req, res) => {
+  const userId = req.params.userId;
+  const status = req.body?.status;
+  const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+  if (!/^[0-9a-f-]{36}$/i.test(userId) || !["active", "suspended"].includes(status) ||
+      reason.length < 3 || reason.length > 200 || /[\\r\\n]/.test(reason)) {
+    return res.status(400).json({ error: "Choose a valid account status and provide a short reason." });
+  }
+  if (userId === req.superAdmin.id) {
+    return res.status(403).json({ error: "You cannot change your own administrator account." });
+  }
+  const db = req.app.locals.db;
+  const client = await db.connect();
+  try {
+    await client.query("BEGIN");
+    const found = await client.query(
+      "SELECT u.id,u.status,EXISTS(SELECT 1 FROM user_roles r WHERE r.user_id=u.id AND r.role_key='super_admin') AS is_super_admin FROM users u WHERE u.id=$1 FOR UPDATE",
+      [userId]
+    );
+    const target = found.rows[0];
+    if (!target) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "User not found." });
+    }
+    if (target.is_super_admin) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({ error: "Super Admin accounts are protected from this action." });
+    }
+    if (target.status === "pending_verification") {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "Pending verification accounts cannot be suspended or restored here." });
+    }
+    if (target.status === status) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "The account already has this status." });
+    }
+    const updated = await client.query(
+      "UPDATE users SET status=$2,updated_at=NOW() WHERE id=$1 RETURNING id,ethio_id,full_name,status,updated_at",
+      [userId, status]
+    );
+    if (status === "suspended") {
+      await client.query("UPDATE auth_sessions SET revoked_at=NOW() WHERE user_id=$1 AND revoked_at IS NULL", [userId]);
+    }
+    await client.query("COMMIT");
+    const { recordSecurityEvent } = require("./audit");
+    const logged = await recordSecurityEvent(req, {
+      type: "user_status_updated",
+      severity: status === "suspended" ? "warning" : "info",
+      userId: req.superAdmin.id,
+      metadata: { target_user_id: userId, status, reason }
+    });
+    if (!logged) return res.status(503).json({ error: "Account status saved, but audit confirmation failed. Contact support." });
+    return res.set("Cache-Control", "no-store").json({ ok: true, user: updated.rows[0] });
+  } catch {
+    await client.query("ROLLBACK").catch(() => {});
+    return res.status(503).json({ error: "Account status could not be updated." });
+  } finally {
+    client.release();
+  }
+});
+
 router.get("/identity-verifications", async (req, res) => {
   const status = typeof req.query.status === "string" ? req.query.status : "pending_review";
   const allowed = ["unverified", "pending_review", "verified", "needs_more_info", "rejected"];
