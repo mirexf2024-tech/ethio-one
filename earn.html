@@ -27,7 +27,7 @@ dialog{border:0;border-radius:20px;padding:0;width:min(520px,calc(100% - 28px));
 <div class="section-head"><div><h2 data-t="available">Hojiiwwan jiran</h2><p data-t="availableHint">Hojii tokko filachuun dura qajeelfama fi badhaasa isaa dubbisi.</p></div><button class="btn ghost" id="refreshBtn" data-t="refresh">Haaromsi</button></div>
 <section class="task-grid" id="tasks"><div class="empty" data-t="loading">Hojiiwwan fe'amaa jiru…</div></section>
 <section class="panel"><div class="section-head" style="margin:0"><div><h2 data-t="history">Seenaa hojii koo</h2><p data-t="historyHint">Ragaan kee fi murtiin ilaaltootaa.</p></div></div><div id="history"><p class="muted" data-t="loading">Fe'amaa jira…</p></div></section>
-<section class="panel hidden" id="adminPanel"><div class="section-head" style="margin:0"><div><h2 data-t="admin">Bulchiinsa Ethio Earn</h2><p data-t="adminHint">Hojii haaraa qopheessi; ragaa ergame ilaali.</p></div><button class="btn gold" id="newTaskBtn" data-t="newTask">+ Hojii haaraa</button></div><div id="reviewQueue"><p class="muted">Loading…</p></div></section>
+<section class="panel hidden" id="adminPanel"><div class="section-head" style="margin:0"><div><h2 data-t="admin">Bulchiinsa Ethio Earn</h2><p data-t="adminHint">Hojii haaraa qopheessi; ragaa ergame ilaali.</p></div><button class="btn gold" id="newTaskBtn" data-t="newTask">+ Hojii haaraa</button></div><div id="reviewQueue"><p class="muted">Loading…</p></div><div class="section-head" style="margin-top:22px"><div><h2>Campaigns</h2><p>Draft and published tasks</p></div></div><div id="adminCampaigns"></div></section>
 </main>
 <footer>Ethio One · One Identity. Many Possibilities.</footer>
 <dialog id="submitDialog"><form method="dialog" class="modal" id="submitForm"><h2 id="submitTitle">Submit task</h2><p id="submitInstructions"></p><div class="field"><label data-t="proofText">Ibsa gabaabaa / Ragaa</label><textarea id="proofText" maxlength="2000" placeholder="What did you complete?"></textarea></div><div class="field"><label data-t="proofUrl">Link ragaa (filannoo)</label><input id="proofUrl" type="url" maxlength="1000" placeholder="https://..."></div><div class="error" id="submitError"></div><div class="modal-actions"><button type="button" class="btn ghost" data-close="submitDialog" data-t="cancel">Dhiisi</button><button type="submit" class="btn gold" id="submitBtn" data-t="sendProof">Ragaa ergi</button></div></form></dialog>
@@ -71,7 +71,7 @@ campaigns=taskData.campaigns||[];
 const s=summaryData.summary||{};
 $("earned").textContent=money(s.earnedMinor);$("pending").textContent=money(s.pendingMinor);$("approved").textContent=String(s.approvedCount||0);
 renderTasks();renderHistory(summaryData.history||[]);
-try{const q=await api("/admin/submissions?status=pending");$("adminPanel").classList.remove("hidden");renderReviews(q.submissions||[]);}catch(e){if(!String(e.message).includes("permission")){$("adminPanel").classList.add("hidden");}else $("adminPanel").classList.add("hidden");}
+try{const q=await api("/admin/submissions?status=pending");const a=await api("/admin/campaigns");$("adminPanel").classList.remove("hidden");renderReviews(q.submissions||[]);renderAdminCampaigns(a.campaigns||[]);}catch(e){$("adminPanel").classList.add("hidden");}
 }catch(e){$("tasks").innerHTML='<div class="empty">'+esc(e.message||t("err"))+' · <a href="/auth.html" style="font-weight:800;color:#082b59">Sign in</a></div>';}
 }
 function renderTasks(){
@@ -98,6 +98,11 @@ try{await api("/campaigns/"+encodeURIComponent(selectedTask.id)+"/submit",{metho
 catch(err){$("submitError").textContent=err.message||t("err");}
 finally{$("submitBtn").disabled=false;}
 };
+function renderAdminCampaigns(rows){
+if(!rows.length){$("adminCampaigns").innerHTML='<p class="muted">No campaigns created yet.</p>';return;}
+$("adminCampaigns").innerHTML=rows.map(c=>'<div class="history-row"><div><b>'+esc(c.title)+'</b><div class="muted">'+esc(c.category)+' · '+money(c.reward_minor)+' · '+Number(c.reserved_completions||0)+'/'+Number(c.max_completions||0)+'</div></div><div style="display:flex;align-items:center;gap:8px"><span class="status">'+esc(c.status)+'</span>'+(c.status==="draft"||c.status==="paused"?'<button class="btn gold" data-publish="'+esc(c.id)+'">Publish</button>':"")+'</div></div>').join("");
+$("adminCampaigns").querySelectorAll("[data-publish]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{await api("/admin/campaigns/"+b.dataset.publish+"/status",{method:"PATCH",body:JSON.stringify({status:"published"})});await load();}catch(e){alert(e.message);}finally{b.disabled=false;}});
+}
 function renderReviews(rows){
 if(!rows.length){$("reviewQueue").innerHTML='<p class="muted">'+esc(t("noReviews"))+'</p>';return;}
 $("reviewQueue").innerHTML=rows.map(r=>'<div class="review-row"><div style="min-width:0;flex:1"><b>'+esc(r.title)+'</b><div class="muted">@'+esc(r.username||r.user_id)+' · '+new Date(r.created_at).toLocaleString()+'</div><p>'+esc(r.evidence_text||"")+'</p>'+(r.evidence_url?'<a href="'+esc(r.evidence_url)+'" target="_blank" rel="noopener" style="color:#1b5b9c">Open proof link</a>':'')+'</div><div style="display:flex;flex-direction:column;gap:6px"><button class="btn" data-review="'+esc(r.id)+'" data-decision="approved">'+esc(t("approve"))+'</button><button class="btn ghost" data-review="'+esc(r.id)+'" data-decision="rejected">'+esc(t("reject"))+'</button></div></div>').join("");
