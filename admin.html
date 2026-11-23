@@ -46,7 +46,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   <div class="shell">
     <header class="top">
       <div class="brand"><div class="mark">E</div><div><b>ETHIO ONE <span style="color:var(--gold)">/</span> ADMIN</b><small id="brandSub">Super Admin monitoring</small></div></div>
-      <div class="top-actions"><select id="language" aria-label="Language"><option value="om">Afaan Oromoo</option><option value="am">አማርኛ</option><option value="en">English</option></select><button id="logout" class="ghost hidden">Logout</button></div>
+      <div class="top-actions"><a class="ghost" href="/earn.html" style="display:inline-block;padding:10px 13px;border:1px solid var(--line);border-radius:10px;color:var(--ink);text-decoration:none;font-weight:750">Ethio Earn ↗</a><a class="ghost" href="/moderation.html" style="display:inline-block;padding:10px 13px;border:1px solid var(--line);border-radius:10px;color:var(--ink);text-decoration:none;font-weight:750">Moderation ↗</a><select id="language" aria-label="Language"><option value="om">Afaan Oromoo</option><option value="am">አማርኛ</option><option value="en">English</option></select><button id="logout" class="ghost hidden">Logout</button></div>
     </header>
 
     <main>
@@ -76,7 +76,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
           <div class="panel stat"><span id="statHigh">High / Critical</span><strong id="highValue">—</strong></div>
         </div>
         <div class="two">
-          <section class="panel"><h2 id="modulesTitle">Haala tajaajiloota</h2><div id="moduleList" class="service-list"><p class="muted">Loading…</p></div></section>
+          <section class="panel"><h2 id="modulesTitle">Haala tajaajiloota</h2><div id="moduleList" class="service-list"><p class="muted">Loading…</p></div><div style="display:flex;flex-wrap:wrap;gap:9px;margin-top:16px;padding-top:14px;border-top:1px solid #ffffff18"><a href="/earn.html" style="display:inline-flex;padding:10px 13px;border-radius:10px;background:#d9a928;color:#10284a;font-weight:800;font-size:12px">Manage Ethio Earn ↗</a><a href="/social.html" style="display:inline-flex;padding:10px 13px;border-radius:10px;border:1px solid #ffffff30;color:#edf3fc;font-weight:750;font-size:12px">Open Ethio Social ↗</a><a href="/moderation.html" style="display:inline-flex;padding:10px 13px;border-radius:10px;border:1px solid #ffffff30;color:#edf3fc;font-weight:750;font-size:12px">Content Moderation ↗</a></div></section>
           <section class="panel"><h2 id="securityTitle">Nageenya yeroo dhiyoo</h2><div id="eventList" class="service-list"><p class="muted">Loading…</p></div></section>
         </div>
         <section class="panel" style="margin-top:14px"><div class="heading" style="margin:0 0 8px"><div><h2 id="eventsTitle">Security event history</h2><p class="muted" id="privacyNote">Odeeffannoo dhuunfaa, password, OTP fi ergaa hin agarsiisu.</p></div><select id="severityFilter" aria-label="Severity"><option value="">All severity</option><option value="critical">Critical</option><option value="high">High</option><option value="warning">Warning</option><option value="info">Info</option></select></div><div class="events"><table><thead><tr><th id="thType">Event</th><th id="thSeverity">Severity</th><th id="thTime">Yeroo</th><th id="thMeta">Details</th></tr></thead><tbody id="eventRows"><tr><td colspan="4" class="muted">No data</td></tr></tbody></table></div></section>
