@@ -1,6 +1,6 @@
 # Ethio One Service Readiness
 
-This is the working implementation checklist for the 19 services in Ethio One. The production `platform_modules` registry currently contains all 19 module keys and each has status `planned`. A visible service tile is not evidence that the service itself is implemented.
+This is the working implementation checklist for the 20 services in Ethio One. The production `platform_modules` registry currently contains 19 modules; Ethio Lottery is prepared as the 20th module in branch migration 019 and is not yet applied to production. A visible service tile is not evidence that the service itself is implemented.
 
 ## Shared platform foundation
 
@@ -10,7 +10,7 @@ This is the working implementation checklist for the 19 services in Ethio One. T
 | User profile | Profile, roles and notifications APIs exist | Complete profile editing, avatar workflow and multilingual validation |
 | Identity verification | Ethio ID is generated for accounts | Add a privacy-safe verification request/review workflow; do not treat OTP as identity verification or imply government recognition |
 | Subscription foundation | Free, Premium and Pro plan records and subscription/payment tables exist; read-only plans and current-account endpoints exist | Configure entitlements, payment-provider verification, subscription lifecycle and UI; Premium/Pro remain drafts |
-| Service access | Registry lists 19 planned modules | Define explicit module release status and server-side access checks before enabling any service |
+| Service access | Registry lists 19 planned modules in production today; Ethio Lottery becomes the 20th only after migration 019 is explicitly approved and applied | Define explicit module release status and server-side access checks before enabling any service |
 | Wallet and payments | Not implemented as a production transaction flow | Select licensed/available provider, implement signed callbacks, reconciliation, refunds and audit trail |
 
 ## Service registry
@@ -37,9 +37,9 @@ All services below are present in the production registry with status `planned`.
 | 16 | Ethio Earn | `earn` | Planned |
 | 17 | Ethio Email | `email` | Planned |
 | 18 | Ethio Sport | `sport` | Planned |
-| 19 | Ethio Cafe | `cafe` | Planned |
+| 19 | Ethio Cafe | `cafe` | Planned |\n| 20 | Ethio Lottery (own raffle) | `lottery` | Planned — branch migration 019 only |
 
-## Release order
+## Ethio Lottery — planned-only controls\n\nThe own-raffle implementation is isolated on the feature branch. Its private planning API is Super Admin-only. The prepared migration creates only approval tracking, private campaign drafts, sandbox simulation records and audit logs. Database CHECK constraints force sales, public visibility, live payments and live draws to remain FALSE. No real ticket, payment, winner or prize-payout workflow is present. Do not apply migration 019 to production or merge/deploy this branch until separately authorised.\n\n## Release order
 
 1. Finish and verify the shared account and Ethio ID foundation.
 2. Define the Free/Premium/Pro entitlement matrix without changing current service availability.
