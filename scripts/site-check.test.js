@@ -54,7 +54,7 @@ test("Ethio Wallet service tile opens the wallet page", () => {
 test("wallet uses the shared authenticated session and stays read-only", () => {
   assert.match(wallet, /sessionStorage\.getItem\(k\)/);
   assert.match(wallet, /sessionStorage\.setItem\(k,v\)/);
-  assert.match(wallet, /\/api\/v1\/wallet/);
+  assert.match(wallet, /WALLET=API\+"\/wallet"/);
   assert.match(wallet, /withdrawals are not enabled/i);
   assert.match(wallet, /disabled data-i="withdraw"/);
 });
