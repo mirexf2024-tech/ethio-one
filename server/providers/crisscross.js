@@ -135,6 +135,7 @@ module.exports = {
   getAccessToken,
   initiateEthiopiaPayout,
   getPayout,
+  listEthiopiaBanks,
   validateEthiopiaPayout,
   resetTokenCacheForTests
 };
