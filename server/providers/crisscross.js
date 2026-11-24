@@ -1,6 +1,8 @@
+const crypto = require("node:crypto");
 const DEFAULT_BASE_URL = "https://api.crisscross.money";
 
 let cachedToken = null;
+let cachedTokenKey = null;
 let cachedTokenExpiresAt = 0;
 
 function getConfig(env = process.env) {
@@ -36,7 +38,10 @@ async function parseResponse(response) {
 
 async function getAccessToken(env = process.env) {
   const config = getConfig(env);
-  if (cachedToken && Date.now() < cachedTokenExpiresAt - 60_000) return cachedToken;
+  const tokenKey = crypto.createHash("sha256")
+    .update([config.baseUrl, config.clientId, config.clientSecret, config.merchantId].join("\\0"))
+    .digest("hex");
+  if (cachedToken && cachedTokenKey === tokenKey && Date.now() < cachedTokenExpiresAt - 60_000) return cachedToken;
 
   const response = await fetch(config.baseUrl + "/v1/auth/oauth2/token", {
     method: "POST",
@@ -49,6 +54,7 @@ async function getAccessToken(env = process.env) {
     throw new Error("CrissCross returned an invalid authentication response.");
   }
   cachedToken = body.access_token;
+  cachedTokenKey = tokenKey;
   cachedTokenExpiresAt = Date.now() + Math.max(60, Number(body.expires_in)) * 1000;
   return cachedToken;
 }
@@ -127,6 +133,7 @@ async function getPayout(transactionId, env = process.env) {
 
 function resetTokenCacheForTests() {
   cachedToken = null;
+  cachedTokenKey = null;
   cachedTokenExpiresAt = 0;
 }
 
