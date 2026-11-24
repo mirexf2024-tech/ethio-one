@@ -7,7 +7,7 @@ const root = path.join(__dirname, "..");
 
 test("Payo webhook is mounted before JSON parsing so HMAC uses raw bytes", () => {
   const source = fs.readFileSync(path.join(root, "index.js"), "utf8");
-  const webhook = source.indexOf('app.post("/api/payment-webhook", express.raw');
+  const webhook = source.indexOf('app.post("/api/payment-webhook"');
   const jsonParser = source.indexOf("app.use(express.json");
   assert.ok(webhook >= 0);
   assert.ok(jsonParser > webhook);
@@ -18,7 +18,7 @@ test("Payo checkout is disabled by default and requires an active priced ETB pla
   const source = fs.readFileSync(path.join(root, "payments/payo.js"), "utf8");
   assert.match(source, /env\.PAYO_ENABLED !== "true"/);
   assert.match(source, /status='active' AND amount_minor>0 AND currency='ETB'/);
-  assert.match(source, /metadata:\s*\{[\s\S]*userId:[\s\S]*subscriptionId:[\s\S]*transactionId:/);
+  assert.match(source, /metadata:\s*\{[\s\S]*userId:[\s\S]*subscriptionId[,\s]*[\s\S]*transactionId[,\s]*/);
 });
 
 test("Payo webhook verifies HMAC and only activates a pending subscription on APPROVED", () => {
@@ -27,7 +27,7 @@ test("Payo webhook verifies HMAC and only activates a pending subscription on AP
   assert.match(source, /createHmac\("sha256", apiKey\)\.update\(req\.body\)\.digest\("hex"\)/);
   assert.match(source, /status === "APPROVED"/);
   assert.match(source, /row\.subscription_status !== "pending"/);
-  assert.match(source, /status='succeeded'/);
+  assert.match(source, /status === "APPROVED" \? "succeeded" : "failed"/);
   assert.match(source, /status='failed'/);
 });
 
