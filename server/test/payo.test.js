@@ -19,6 +19,7 @@ test("Payo checkout is disabled by default and requires an active priced ETB pla
   assert.match(source, /env\.PAYO_ENABLED !== "true"/);
   assert.match(source, /status='active' AND amount_minor>0 AND currency='ETB'/);
   assert.match(source, /metadata:\s*\{[\s\S]*userId:[\s\S]*subscriptionId[,\s]*[\s\S]*transactionId[,\s]*/);
+  assert.match(source, /RETURNING id[\s\S]*if \(!savedOrder\.rowCount\)/);
 });
 
 test("Payo webhook verifies HMAC and only activates a pending subscription on APPROVED", () => {
@@ -29,6 +30,8 @@ test("Payo webhook verifies HMAC and only activates a pending subscription on AP
   assert.match(source, /row\.subscription_status !== "pending"/);
   assert.match(source, /status === "APPROVED" \? "succeeded" : "failed"/);
   assert.match(source, /\[row\.id, orderId, status === "APPROVED" \? "succeeded" : "failed"\]/);
+  assert.match(source, /let client;[\s\S]*client = await db\.connect\(\)/);
+  assert.match(source, /if \(client\) client\.release\(\)/);
   assert.match(source, /status='failed'/);
 });
 
