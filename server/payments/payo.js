@@ -208,7 +208,7 @@ async function handlePayoWebhook(req, res) {
 
     const reference = await client.query(
       "UPDATE payment_transactions SET provider_reference=COALESCE(provider_reference,$2),status=$3,verified_at=CASE WHEN $3='succeeded' THEN NOW() ELSE NULL END,updated_at=NOW() WHERE id=$1 AND provider='payo' AND status='pending' AND (provider_reference IS NULL OR provider_reference=$2) RETURNING id",
-      [transactionId, orderId, status === "APPROVED" ? "succeeded" : "failed"]
+      [row.id, orderId, status === "APPROVED" ? "succeeded" : "failed"]
     );
     if (!reference.rowCount) {
       await client.query("ROLLBACK");
