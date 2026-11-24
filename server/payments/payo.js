@@ -146,10 +146,21 @@ router.post("/payo/orders", rateLimit({
       return res.status(502).json({ error: "Payo did not return a valid checkout order." });
     }
 
-    await db.query(
-      "UPDATE payment_transactions SET provider_reference=$2,updated_at=NOW() WHERE id=$1 AND provider='payo' AND status='pending'",
+    const savedOrder = await db.query(
+      "UPDATE payment_transactions SET provider_reference=$2,updated_at=NOW() WHERE id=$1 AND provider='payo' AND status='pending' RETURNING id",
       [transactionId, orderId]
     );
+    if (!savedOrder.rowCount) {
+      await db.query(
+        "UPDATE payment_transactions SET status='failed',updated_at=NOW() WHERE id=$1 AND status='pending'",
+        [transactionId]
+      ).catch(() => {});
+      await db.query(
+        "UPDATE user_subscriptions SET status='failed',updated_at=NOW() WHERE id=$1 AND status='pending'",
+        [subscriptionId]
+      ).catch(() => {});
+      return res.status(502).json({ error: "Payo order could not be linked to your payment record." });
+    }
     return res.status(201).json({
       ok: true,
       orderId,
@@ -185,8 +196,9 @@ async function handlePayoWebhook(req, res) {
     return res.status(400).json({ error: "Invalid payment event fields." });
   }
 
-  const client = await db.connect();
+  let client;
   try {
+    client = await db.connect();
     await client.query("BEGIN");
     const found = await client.query(
       "SELECT p.id,p.user_id,p.subscription_id,p.amount_minor,p.status,p.provider_reference,s.plan_key,s.status AS subscription_status,s.current_period_start,s.current_period_end,sp.billing_interval FROM payment_transactions p JOIN user_subscriptions s ON s.id=p.subscription_id JOIN subscription_plans sp ON sp.plan_key=s.plan_key WHERE p.provider_reference=$1 AND p.provider='payo' FOR UPDATE OF p,s",
@@ -234,10 +246,10 @@ async function handlePayoWebhook(req, res) {
     await client.query("COMMIT");
     return res.status(200).json({ ok: true });
   } catch {
-    await client.query("ROLLBACK").catch(() => {});
+    if (client) await client.query("ROLLBACK").catch(() => {});
     return res.status(503).json({ error: "Webhook processing is temporarily unavailable." });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 
