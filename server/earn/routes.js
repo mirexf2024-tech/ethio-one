@@ -232,6 +232,7 @@ router.get("/admin/finance/summary",async(req,res)=>{
   }catch{return res.status(503).json({error:"Ethio Earn finance summary is unavailable."});}
 });
 router.get("/admin/campaigns",async(req,res)=>{
+  if(!await requireRoles(req,res,["finance_manager","moderator","admin","super_admin"]))return;
   try{
     const r=await req.app.locals.db.query("SELECT id,title,description,category,task_type,delivery_mode,provider_name,provider_url,estimated_minutes,skill_level,reward_minor,budget_minor,reward_pool_minor,platform_fee_minor,platform_fee_bps,max_completions,reserved_completions,status,funding_status,funding_reference,moderation_status,created_at FROM earn_campaigns ORDER BY created_at DESC LIMIT 100");
     return res.set("Cache-Control","no-store").json({campaigns:r.rows});
@@ -246,6 +247,7 @@ router.get("/admin/submissions",async(req,res)=>{
   }catch{return res.status(503).json({error:"Review queue is temporarily unavailable."});}
 });
 router.get("/admin/requests",async(req,res)=>{
+  if(!await requireRoles(req,res,["moderator","admin","super_admin"]))return;
   try{
     const r=await req.app.locals.db.query(
       "SELECT r.id,r.requester_id,u.full_name,u.username,r.organization_name,r.organization_website,r.contact_email,r.task_title,r.task_description,r.task_instructions,r.task_type,r.provider_name,r.provider_url,r.reward_minor,r.budget_minor,r.reward_pool_minor,r.platform_fee_minor,r.platform_fee_bps,r.max_completions,r.estimated_minutes,r.skill_level,r.language_codes,r.evidence_hint,r.quality_criteria,r.status,r.funding_status,r.funding_reference,r.review_note,r.campaign_id,r.created_at FROM earn_task_requests r JOIN users u ON u.id=r.requester_id WHERE r.status<>'published' ORDER BY r.created_at ASC LIMIT 100");
@@ -361,6 +363,7 @@ router.patch("/admin/campaigns/:id/funding",async(req,res)=>{
   finally{client.release();}
 });
 router.patch("/admin/campaigns/:id/status",async(req,res)=>{
+  if(!await requireRoles(req,res,["admin","super_admin"]))return;
   if(!validId(req.params.id)||!["published","paused","archived"].includes(req.body?.status))return res.status(400).json({error:"Invalid task status."});
   try{
     const r=await req.app.locals.db.query("UPDATE earn_campaigns SET status=$2,updated_at=NOW() WHERE id=$1 AND status IN ('draft','published','paused') AND ($2<>'published' OR (funding_status='verified' AND moderation_status='approved')) RETURNING id,status",[req.params.id,req.body.status]);
