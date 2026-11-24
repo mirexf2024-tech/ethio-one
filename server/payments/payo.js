@@ -77,6 +77,39 @@ router.post("/payo/orders", rateLimit({
     let subscriptionId, transactionId;
     try {
       await client.query("BEGIN");
+      const accountLock = await client.query(
+        "SELECT id FROM users WHERE id=$1 AND status='active' FOR UPDATE",
+        [token.sub]
+      );
+      if (!accountLock.rowCount) {
+        await client.query("ROLLBACK");
+        return res.status(401).json({ error: "Please sign in again." });
+      }
+      const activeSubscription = await client.query(
+        "SELECT id FROM user_subscriptions WHERE user_id=$1 AND status IN ('trialing','active','past_due') LIMIT 1",
+        [token.sub]
+      );
+      if (activeSubscription.rowCount) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ error: "Your account already has an active subscription." });
+      }
+      // Payo orders expire after 10 minutes. Release abandoned pending attempts after 15 minutes.
+      await client.query(
+        "UPDATE payment_transactions t SET status='failed',updated_at=NOW() FROM user_subscriptions s WHERE t.subscription_id=s.id AND t.user_id=$1 AND t.provider='payo' AND t.status='pending' AND s.status='pending' AND s.created_at < NOW() - INTERVAL '15 minutes'",
+        [token.sub]
+      );
+      await client.query(
+        "UPDATE user_subscriptions SET status='failed',updated_at=NOW() WHERE user_id=$1 AND status='pending' AND created_at < NOW() - INTERVAL '15 minutes'",
+        [token.sub]
+      );
+      const pendingSubscription = await client.query(
+        "SELECT id FROM user_subscriptions WHERE user_id=$1 AND status='pending' AND created_at >= NOW() - INTERVAL '15 minutes' LIMIT 1",
+        [token.sub]
+      );
+      if (pendingSubscription.rowCount) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ error: "A Premium checkout is already in progress. Please finish it or try again in 15 minutes." });
+      }
       const sub = await client.query(
         "INSERT INTO user_subscriptions(user_id,plan_key,status) VALUES($1,$2,'pending') RETURNING id",
         [token.sub, plan.plan_key]
