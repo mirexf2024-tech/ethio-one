@@ -114,6 +114,10 @@ async function initiateEthiopiaPayout(input, env = process.env) {
   return providerRequest("/v1/payout/initiate", { method: "POST", body: payload, env });
 }
 
+async function listEthiopiaBanks(env = process.env) {
+  return providerRequest("/v1/payout/banks?country=ETH", { env });
+}
+
 async function getPayout(transactionId, env = process.env) {
   if (typeof transactionId !== "string" || !/^[A-Za-z0-9-]{8,100}$/.test(transactionId)) {
     throw new Error("Invalid CrissCross transaction ID.");
