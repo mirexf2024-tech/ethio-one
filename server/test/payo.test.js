@@ -20,6 +20,9 @@ test("Payo checkout is disabled by default and requires an active priced ETB pla
   assert.match(source, /status='active' AND amount_minor>0 AND currency='ETB'/);
   assert.match(source, /metadata:\s*\{[\s\S]*userId:[\s\S]*subscriptionId[,\s]*[\s\S]*transactionId[,\s]*/);
   assert.match(source, /RETURNING id[\s\S]*if \(!savedOrder\.rowCount\)/);
+  assert.match(source, /FOR UPDATE/);
+  assert.match(source, /created_at < NOW\(\) - INTERVAL/);
+  assert.match(source, /A Premium checkout is already in progress/);
 });
 
 test("Payo webhook verifies HMAC and only activates a pending subscription on APPROVED", () => {
