@@ -53,7 +53,7 @@ app.use(cors({
 app.locals.db = pool;
 app.locals.authEnv = process.env;
 // Payo signs the exact raw request bytes. This route must run before express.json().
-app.post("/api/payment-webhook", express.raw({ type: "application/json", limit: "64kb" }), handlePayoWebhook);
+app.post("/api/payment-webhook", rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: "draft-7", legacyHeaders: false }), express.raw({ type: "application/json", limit: "64kb" }), handlePayoWebhook);
 app.use(express.json({ limit: "100kb" }));
 app.use("/api", (_req, res, next) => {
   res.set("Cache-Control", "no-store");
