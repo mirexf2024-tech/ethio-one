@@ -28,6 +28,7 @@ test("Payo webhook verifies HMAC and only activates a pending subscription on AP
   assert.match(source, /status === "APPROVED"/);
   assert.match(source, /row\.subscription_status !== "pending"/);
   assert.match(source, /status === "APPROVED" \? "succeeded" : "failed"/);
+  assert.match(source, /\[row\.id, orderId, status === "APPROVED" \? "succeeded" : "failed"\]/);
   assert.match(source, /status='failed'/);
 });
 
