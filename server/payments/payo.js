@@ -201,7 +201,7 @@ async function handlePayoWebhook(req, res) {
       await client.query("COMMIT");
       return res.status(200).json({ ok: true, duplicate: true });
     }
-    if (row.status !== "pending" || (row.subscription_status !== "pending" && row.subscription_status !== "failed")) {
+    if (row.status !== "pending" || row.subscription_status !== "pending") {
       await client.query("ROLLBACK");
       return res.status(409).json({ error: "Payment is not awaiting confirmation." });
     }
