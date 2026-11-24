@@ -1,20 +1,58 @@
 # Payment Integration Release Checklist
 
-This checklist records the current repository findings and the safe implementation order for Payo Premium collections and member earnings withdrawals.
+This checklist records repository findings and verified public provider documentation for Payo Premium collections and Debo Pay member withdrawals.
 
 ## Current code observations
 
 Inspected on the payout feature branch:
-- `server/index.js` mounts the Earn and Wallet routers and installs global `express.json()` before routers. A provider webhook that signs the raw request body must be mounted before JSON parsing or use a verified raw-body strategy.
+- `server/index.js` mounts the Earn and Wallet routers and installs global `express.json()` before routers. Payo and Debo webhooks require raw-body signature verification, so their routes must be mounted before JSON parsing or use a verified raw-body strategy.
 - `server/earn/routes.js` exposes member payout requests and finance review routes. Requests are currently held for manual finance review; withdrawals remain feature-flagged.
 - Payout destination methods are currently limited to `telebirr`, `cbe`, `awash`, and `other`.
 - Beneficiary data is stored as one encrypted account string. This does not model mobile operator plus phone number separately from bank code plus account number.
 - Payout statuses are currently `pending`, `processing`, `paid`, and `rejected`.
 - Finance can mark a request paid after an explicit manual confirmation and reference. This is suitable only for a documented manual-transfer workflow; provider-backed requests must not use this override.
-- `server/wallet/routes.js` is a read-only bridge over the existing Earn ledgers. It does not create a second wallet ledger.
+- `server/wallet/routes.js` is a read-only bridge over existing Earn ledgers. It does not create a second wallet ledger.
 - No Payo Premium order, payment webhook, entitlement activation, or refund flow was found in the inspected API routes.
 
 These are repository observations, not claims about live production configuration.
+
+## Verified provider documentation — 24 November 2026
+
+### Payo
+
+Payo's public site describes a receipt-based collection flow, not a direct wallet push/USSD checkout:
+- Create an order using `POST https://api.pygate.et/v1/orders` with amount, description and callback URL.
+- The customer pays by bank/wallet transfer and uploads a receipt; Payo verifies it using OCR and, where necessary, human review.
+- The payment webhook uses HMAC-SHA256 in `x-pygate-signature`; the webhook is retried with backoff for up to 24 hours.
+- Unpaid orders expire after 10 minutes.
+- Payo states its current beta is free and says a business license is not required to sign up.
+- Settlement goes directly to the merchant's own bank account; Payo does not hold the money.
+- Supported channels listed include CBE, Telebirr and Abyssinia, with additional rails described on the site.
+
+Important product implication: Payo can be used as an optional Premium payment-confirmation service, but the customer journey is transfer + receipt upload. The member must be shown clear instructions and a pending-review state. Do not describe this as an instant card-style checkout.
+
+Public reference: https://payment.et/
+
+Before launch, confirm the exact request/response schema, webhook raw-body signature construction, order lookup/status endpoint, refund/reversal behavior, settlement and support with Payo. The public landing page gives an overview, not a complete formal API contract.
+
+### Debo Pay
+
+Debo's public API reference currently documents:
+- API base URL `https://www.debopay.com/v1`.
+- Sandbox keys from Dashboard → API Keys and simulated test transactions.
+- `POST /v1/payouts` for transfers from Debo balance to an Ethiopian bank or wallet.
+- `POST /v1/transfers/bulk` for batches of up to 100 payouts.
+- Payout webhooks such as `payout.paid`, signed with HMAC-SHA256 over timestamp plus raw body.
+- The public docs list Telebirr, M-PESA, CBE Birr and other Ethiopian rails.
+
+The registration page distinguishes Individual DeboWallet (personal payments, bills and transfers) from Business accounts (merchant acceptance, settlement and supplier payments). The Terms say KYC may be required. The public pages do not confirm that an Individual DeboWallet can obtain merchant API credentials or run reward-platform disbursements.
+
+Public references:
+- https://www.debopay.com/docs
+- https://www.debopay.com/register
+- https://www.debopay.com/terms
+
+Therefore Debo is a technically documented payout candidate, not yet an approved no-business-license production provider for ETHIO ONE.
 
 ## Phase A — keep existing manual finance workflow safe
 
@@ -25,32 +63,27 @@ These are repository observations, not claims about live production configuratio
 
 ## Phase B — Payo Premium collection
 
-Before coding the provider adapter, obtain and record Payo's official API contract:
-- merchant onboarding and whether an individual account is accepted for this use case;
-- create-checkout endpoint, required fields, amount/currency format and expiry;
-- server-side payment verification endpoint;
-- webhook signature algorithm, header names, raw-body requirements and retry behavior;
-- refund/reversal API and settlement schedule;
-- fees, limits, support contacts and dispute process.
-
-Then implement:
+Implement only after the complete API contract and merchant setup are confirmed:
 - server-created Premium orders with immutable member, plan, amount, currency and unique reference;
-- server-side checkout creation only; never accept the amount or paid state from the browser;
-- signed webhook verification and provider status lookup;
-- idempotent event handling and atomic order-paid plus entitlement activation;
-- refund/reversal events that revoke or adjust the entitlement correctly;
-- receipts and member-visible payment history.
+- create Payo order from the server; never accept amount or paid state from the browser;
+- show the transfer instructions and receipt-upload flow accurately;
+- keep the order pending until a valid signed webhook confirms approval;
+- verify raw-body HMAC, amount, currency, merchant/project and order reference;
+- process duplicate/retried events idempotently;
+- atomically mark the order paid and grant exactly the purchased entitlement once;
+- handle expired, rejected, delayed and refunded orders;
+- provide receipts and member-visible payment history.
 
-A successful redirect or client-side screenshot is never proof of payment.
+A successful redirect, uploaded receipt, or client-side screenshot is never proof of payment. Only verified provider confirmation can activate Premium.
 
 ## Phase C — Debo Pay member disbursement
 
-Do not start live payout integration until Debo confirms in writing:
-- individual/unregistered developer eligibility for API disbursements for a rewards platform;
-- exact KYC documents and any business registration requirement;
-- whether sandbox credentials are available to an individual;
+Before live payout integration, obtain written confirmation from Debo:
+- whether an individual/unregistered developer can obtain API payout access for a rewards platform;
+- exact KYC documents and whether business registration is required;
+- whether sandbox API keys can be issued to an individual account;
 - how the Debo payout balance is funded and reconciled;
-- support for Telebirr, M-Pesa, CBE Birr and bank transfers for this account;
+- supported payout rails for the approved account;
 - fees, limits, settlement timing, reversals and failed-transfer handling.
 
 Implementation requirements after approval:
@@ -80,7 +113,7 @@ Implementation requirements after approval:
 Required tests:
 - valid, invalid, duplicated, delayed and out-of-order Payo webhooks;
 - wrong amount, currency, merchant, order reference and expired order;
-- payment success followed by refund/reversal;
+- payment approval followed by refund/reversal;
 - two simultaneous withdrawal requests competing for the same balance;
 - duplicated Debo webhook and replayed event;
 - provider timeout after accepting a payout, followed by status reconciliation;
