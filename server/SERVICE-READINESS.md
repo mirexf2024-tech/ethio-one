@@ -74,3 +74,11 @@ Do not change a module from `planned` to `active` merely because its UI tile exi
 ## Ethio Wallet implementation note
 
 The feature branch currently adds a read-only summary endpoint that derives the display balance from existing Earn task and sponsor credit ledgers and subtracts paid and reserved payout amounts. It also adds a Finance Manager/Admin/Super Admin-only dashboard using the existing protected Earn finance summary and payout-list endpoints. It does not persist a duplicate wallet balance and does not enable withdrawal requests or Chapa transfers. The wallet module must remain `planned` until the complete security, provider, legal, operational and regression gates are passed.
+
+## Payo Premium checkout implementation note
+
+The Payo integration is implemented on the review branch only. It creates a pending subscription and payment transaction before requesting a hosted checkout URL, verifies the callback HMAC against the exact raw request body, matches the provider order ID, account ID and ETB amount, and activates a paid plan only after an approved callback. The checkout route is feature-flagged and requires a non-zero active ETB plan price. The webhook route is mounted before the JSON parser. Premium transactions do not write to Ethio Earn reward or payout ledgers.
+
+Checkout concurrency is serialized by locking the member account row. A second checkout attempt is rejected while a recent pending order exists; abandoned pending Payo orders are marked failed after 15 minutes (the provider's documented checkout expiry is 10 minutes). This reduces duplicate orders and accidental double charges. It does not replace provider-side reconciliation or sandbox tests.
+
+Release gates still required: run the latest CI after all commits, verify the exact callback/signature contract with Payo sandbox, test approved/rejected/duplicate/mismatched callbacks, confirm plan price and entitlement policy, review the PR, merge only with approval, deploy, verify the webhook endpoint, and only then register the callback URL with Payo. Do not enable PAYO_ENABLED or activate Premium pricing before those gates pass.
