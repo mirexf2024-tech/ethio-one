@@ -63,7 +63,7 @@ router.post("/payo/orders", rateLimit({
     if (!plan) return res.status(409).json({ error: "This Premium plan has not been priced and enabled yet." });
 
     const current = await db.query(
-      "SELECT id FROM user_subscriptions WHERE user_id=$1 AND status IN ('trialing','active','past_due') LIMIT 1",
+      "SELECT s.id FROM user_subscriptions s WHERE s.user_id=$1 AND s.status IN ('trialing','active','past_due') AND s.plan_key<>'free' LIMIT 1",
       [token.sub]
     );
     if (current.rowCount) return res.status(409).json({ error: "Your account already has an active subscription." });
@@ -189,11 +189,11 @@ async function handlePayoWebhook(req, res) {
   try {
     await client.query("BEGIN");
     const found = await client.query(
-      "SELECT p.id,p.user_id,p.subscription_id,p.amount_minor,p.status,s.plan_key,s.status AS subscription_status,s.current_period_start,s.current_period_end,sp.billing_interval FROM payment_transactions p JOIN user_subscriptions s ON s.id=p.subscription_id JOIN subscription_plans sp ON sp.plan_key=s.plan_key WHERE p.id=$1 AND p.provider='payo' FOR UPDATE OF p,s",
+      "SELECT p.id,p.user_id,p.subscription_id,p.amount_minor,p.status,p.provider_reference,s.plan_key,s.status AS subscription_status,s.current_period_start,s.current_period_end,sp.billing_interval FROM payment_transactions p JOIN user_subscriptions s ON s.id=p.subscription_id JOIN subscription_plans sp ON sp.plan_key=s.plan_key WHERE p.id=$1 AND p.provider='payo' FOR UPDATE OF p,s",
       [transactionId]
     );
     const row = found.rows[0];
-    if (!row || row.user_id !== userId || Number(row.amount_minor) !== receivedMinor) {
+    if (!row || row.user_id !== userId || Number(row.amount_minor) !== receivedMinor || (row.provider_reference && row.provider_reference !== orderId)) {
       await client.query("ROLLBACK");
       return res.status(400).json({ error: "Payment order details do not match." });
     }
