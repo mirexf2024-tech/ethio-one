@@ -26,7 +26,14 @@ Use only sandbox credentials supplied by CrissCross. Confirm with their solution
 
 The caller must generate and persist a unique `merchantReference` before initiating a payout. The caller must reconcile the provider result by transaction ID/reference and verified final status.
 
-## Ethiopia payout notes\n\n- Ethiopia uses `currency: ETB`, `paymentLocation: ETH`, and `minorAmount` as specified by CrissCross. Confirm amount precision and limits with CrissCross before funding or sending test payouts.\n- Mobile money operators supported for payouts are `telebirr`, `mpesa`, `cbebirr`, and `yaya`. E-Birr and AwashBirr are collection-only.\n- Bank transfers require a `bankCode` from the Ethiopia bank-list endpoint.\n- Ethiopia sender KYC fields require `fullName`, `identity`, and `identityNumber`.\n\n## Not implemented / not enabled
+## Ethiopia payout notes
+
+- Ethiopia uses `currency: ETB`, `paymentLocation: ETH`, and `minorAmount` as specified by CrissCross. Confirm amount precision and limits with CrissCross before funding or sending test payouts.
+- Mobile money operators supported for payouts are `telebirr`, `mpesa`, `cbebirr`, and `yaya`. E-Birr and AwashBirr are collection-only.
+- Bank transfers require a `bankCode` from the Ethiopia bank-list endpoint.
+- Ethiopia sender KYC fields require `fullName`, `identity`, and `identityNumber`.
+
+## Not implemented / not enabled
 
 - No HTTP route calls the provider yet.
 - No sandbox credentials are configured.
