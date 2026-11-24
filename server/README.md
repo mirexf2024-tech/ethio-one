@@ -33,6 +33,8 @@ Node.js API foundation for the Ethio One platform.
 - `GET /api/v1/earn/campaigns` — list published task campaigns for an authenticated member.
 - `GET /api/v1/earn/me/summary` — private approved rewards, pending submissions and task history.
 - `GET /api/v1/wallet/summary` — read-only unified view over existing verified Ethio Earn and sponsor reward ledgers; withdrawals are not enabled.
+- `POST /api/v1/payments/payo/orders` — authenticated, feature-gated Payo checkout order for an active, priced Premium plan.
+- `POST /api/payment-webhook` — Payo signed callback; verifies the raw-body HMAC, matches order/user/amount, and activates Premium only for an approved pending order.
 - `POST /api/v1/earn/campaigns/:id/submit` — submit task evidence for review; one submission per member per task.
 - `GET /api/v1/earn/admin/campaigns` and `POST /api/v1/earn/admin/campaigns` — admin campaign management.
 - `PATCH /api/v1/earn/admin/campaigns/:id/status` — publish, pause or archive a campaign.
@@ -60,6 +62,10 @@ Node.js API foundation for the Ethio One platform.
 - `TELEGRAM_BOT_TOKEN` — Telegram bot token; configure only in Render secrets
 - `TELEGRAM_BOT_USERNAME` — bot username without the `@` prefix
 - `TELEGRAM_WEBHOOK_SECRET` — random webhook secret (1–256 characters; configure in Render and use as Telegram webhook secret token)
+- `PAYO_API_KEY` — Payo API key; store only as a Render secret.
+- `PAYO_ENABLED=true` — explicit Premium checkout kill switch; leave unset/false until the Payo account, active plan price, webhook, and sandbox checks are complete.
+- `PAYO_CALLBACK_URL` — optional override; default is https://ethio-one-api.onrender.com/api/payment-webhook.
+- `PAYO_API_URL` — optional API endpoint override; default is https://checkout.payment.et/api/v1/orders.
 - `PORT` — supplied by Render
 
 Do not commit secrets. Configure them in the hosting provider's environment settings.
@@ -94,3 +100,9 @@ The member UI is served at `/earn.html` and uses the existing short-lived Ethio 
 ### Ethio Wallet phase 1
 
 `GET /api/v1/wallet/summary` is a read-only aggregation over the existing Earn task reward ledger, sponsor-view credit ledger, pending submissions and payout records. It does not copy balances, create a second ledger, accept payout requests, or call a payment provider. Keep `EARN_PAYOUTS_ENABLED` disabled. This endpoint is an initial integration step, not a production wallet or withdrawal release.
+
+
+## Payo Premium checkout
+The Payo integration is additive and feature-gated. It uses the existing subscription_plans, user_subscriptions, and payment_transactions tables from migration 009_free_premium_access_foundation; it does not create or credit Ethio Earn balances. The member calls POST /api/v1/payments/payo/orders with a Bearer access token and { planKey: premium }. The API accepts only an active ETB plan with a non-zero configured price, creates pending accounting records, and returns Payo's hosted paymentUrl. Payo calls POST /api/payment-webhook; this route is mounted before express.json() so the HMAC is checked against the exact raw bytes using x-pygate-signature: sha256=<hex HMAC-SHA256 of raw body using PAYO_API_KEY>. The callback must match the transaction ID, user ID, order reference and amount. Replayed terminal callbacks are idempotent. Premium is activated only for a verified APPROVED callback; REJECTED marks the pending transaction/subscription failed. Basic app access and Ethio Earn rewards/withdrawals do not depend on Premium.
+
+Release gate: this code is not deployed or enabled by this change. Before setting PAYO_ENABLED=true, configure PAYO_API_KEY in Render, set a real Premium price and plan status to active, verify Payo's exact signature encoding and callback retry behavior in its sandbox, and test approved/rejected/duplicate/mismatched callbacks. Keep the webhook URL registered with Payo only after the route is deployed. Do not paste API keys into chat or commit them.
