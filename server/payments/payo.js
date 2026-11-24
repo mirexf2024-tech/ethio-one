@@ -180,7 +180,7 @@ async function handlePayoWebhook(req, res) {
   const transactionId = typeof metadata.transactionId === "string" ? metadata.transactionId : "";
   const userId = typeof metadata.userId === "string" ? metadata.userId : "";
   const receivedMinor = amountToMinor(event.amount);
-  if (!orderId || orderId.length > 160 || !/^[0-9a-f-]{36}$/i.test(transactionId) ||
+  if (!orderId || orderId.length > 160 || (transactionId && !/^[0-9a-f-]{36}$/i.test(transactionId)) ||
       !/^[0-9a-f-]{36}$/i.test(userId) || !["APPROVED", "REJECTED"].includes(status) || receivedMinor === null) {
     return res.status(400).json({ error: "Invalid payment event fields." });
   }
@@ -189,11 +189,11 @@ async function handlePayoWebhook(req, res) {
   try {
     await client.query("BEGIN");
     const found = await client.query(
-      "SELECT p.id,p.user_id,p.subscription_id,p.amount_minor,p.status,p.provider_reference,s.plan_key,s.status AS subscription_status,s.current_period_start,s.current_period_end,sp.billing_interval FROM payment_transactions p JOIN user_subscriptions s ON s.id=p.subscription_id JOIN subscription_plans sp ON sp.plan_key=s.plan_key WHERE p.id=$1 AND p.provider='payo' FOR UPDATE OF p,s",
-      [transactionId]
+      "SELECT p.id,p.user_id,p.subscription_id,p.amount_minor,p.status,p.provider_reference,s.plan_key,s.status AS subscription_status,s.current_period_start,s.current_period_end,sp.billing_interval FROM payment_transactions p JOIN user_subscriptions s ON s.id=p.subscription_id JOIN subscription_plans sp ON sp.plan_key=s.plan_key WHERE p.provider_reference=$1 AND p.provider='payo' FOR UPDATE OF p,s",
+      [orderId]
     );
     const row = found.rows[0];
-    if (!row || row.user_id !== userId || Number(row.amount_minor) !== receivedMinor || (row.provider_reference && row.provider_reference !== orderId)) {
+    if (!row || row.user_id !== userId || (transactionId && row.id !== transactionId) || Number(row.amount_minor) !== receivedMinor) {
       await client.query("ROLLBACK");
       return res.status(400).json({ error: "Payment order details do not match." });
     }
