@@ -580,7 +580,7 @@ async function loadMessages(id,quiet=false){
  }catch(e){if(activeConversationKind==="private"&&window.activeConversation===id&&!quiet)$("#messageList").textContent=e.message}
  finally{privateMessageBusy=false;if(privateMessageQueued){privateMessageQueued=false;if(activeConversationKind==="private"&&window.activeConversation)setTimeout(()=>loadMessages(window.activeConversation,true),160)}}
 }
-$("#messagesBtn").onclick=()=>$("#messagesBtn").click();
+$("#messagesBtn").onclick=null;
 $("#conversationSearch").addEventListener("input",()=>{const q=$("#conversationSearch").value.trim().toLocaleLowerCase();document.querySelectorAll("#conversationList .messenger-person").forEach(row=>row.hidden=!row.textContent.toLocaleLowerCase().includes(q))});
 $("#newMessageBtn").onclick=()=>{const panel=$("#newMessagePanel");panel.hidden=!panel.hidden;if(!panel.hidden)$("#newMessageSearch").focus()};
 let newMessageTimer=null;
