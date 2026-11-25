@@ -42,3 +42,21 @@ test("Ethio Social UI does not expose its retired inbox or group-chat composer",
   assert.match(html, /async function openInbox\(\)\{\s*toast\("Ethio Chat is being built separately/);
   assert.match(html, /async function startConversation\(userId,displayName\)\{\s*toast\("Ethio Chat is being built separately/);
 });
+
+test("Ethio Social exposes communities as the canonical alias for legacy group membership", async (t) => {
+  const app = express();
+  app.locals.db = {};
+  app.use(express.json());
+  app.use("/api/v1/social", socialRouter);
+  const server = app.listen(0);
+  await new Promise((resolve) => server.once("listening", resolve));
+  t.after(() => new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve())));
+  const base = `http://127.0.0.1:${server.address().port}/api/v1/social`;
+  const [communities, legacyGroups] = await Promise.all([
+    fetch(base + "/communities"),
+    fetch(base + "/groups")
+  ]);
+  assert.equal(communities.status, legacyGroups.status);
+  assert.notEqual(communities.status, 404);
+  assert.notEqual(communities.status, 410);
+});
