@@ -64,6 +64,16 @@ router.use(async(req,res,next)=>{
 });
 router.use(optionalAuth);
 
+// Social is a public-content and community space. All private/group messaging
+// and call flows belong to the separate Ethio Chat service.
+router.use(["/conversations", "/calls", "/groups/:id/messages"], (req, res) => {
+  return res.status(410).set("Cache-Control", "no-store").json({
+    error: "Messaging and calls are available in Ethio Chat.",
+    service: "ethio-chat",
+    redirect: "/chat"
+  });
+});
+
 
 router.get("/profile/me",requireAuth,async(req,res)=>{
  try{
