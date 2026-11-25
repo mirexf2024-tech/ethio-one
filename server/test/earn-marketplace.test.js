@@ -136,3 +136,28 @@ test("Ethio Earn payout controls are present, localized and disabled by default"
   assert.doesNotMatch(earnPage, /[\u4e00-\u9fff]/);
   assert.match(earnPage, /id="payoutSubmit" type="submit" disabled/);
 });
+
+
+test("campaign creators cannot self-approve or self-verify campaign funding", () => {
+  assert.match(routes, /AND created_by<>\$3 RETURNING id,title,status,moderation_status,funding_status/);
+  assert.match(routes, /AND created_by<>\$4 RETURNING id,title,status,funding_status,moderation_status/);
+});
+
+test("only admins can pause, archive or manually republish campaigns", () => {
+  const statusRoute=routes.slice(routes.indexOf('router.patch("/admin/campaigns/:id/status"'),routes.indexOf('router.post("/admin/submissions/:id/review"'));
+  assert.ok(statusRoute.includes('requireRoles(req,res,["admin","super_admin"])'));
+});
+
+test("finance access to decrypted payout account details is recorded before disclosure", () => {
+  assert.match(audit, /earn_payout_account_accessed/);
+  assert.match(routes, /type:"earn_payout_account_accessed",severity:"warning"/);
+  assert.ok(routes.includes('if(!logged)return res.status(503).json({error:"Payout account access could not be audited."});'));
+});
+
+
+test("appeal resubmissions reserve only the funded reward pool, excluding platform fees", () => {
+  const resubmit=routes.slice(routes.indexOf('router.post("/submissions/:id/resubmit"'),routes.indexOf('router.get("/admin/appeals"'));
+  assert.match(resubmit, /reserved_minor\)\+Number\(s\.reward_minor\)>Number\(s\.reward_pool_minor\)/);
+  assert.doesNotMatch(resubmit, /reserved_minor\)\+Number\(s\.reward_minor\)>Number\(s\.budget_minor\)/);
+  assert.match(resubmit, /c\.reserved_minor,c\.budget_minor,c\.reward_pool_minor,c\.ends_at/);
+});

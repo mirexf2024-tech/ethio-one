@@ -128,10 +128,10 @@ router.post("/submissions/:id/resubmit",async(req,res)=>{
   const client=await req.app.locals.db.connect();
   try{
     await client.query("BEGIN");
-    const found=await client.query("SELECT s.*,c.reward_minor,c.id AS cid,c.status AS campaign_status,c.funding_status,c.moderation_status,c.reserved_completions,c.max_completions,c.reserved_minor,c.budget_minor,c.ends_at,a.id AS appeal_id,a.status AS appeal_status FROM earn_submissions s JOIN earn_campaigns c ON c.id=s.campaign_id JOIN earn_submission_appeals a ON a.submission_id=s.id WHERE s.id=$1 AND s.user_id=$2 FOR UPDATE OF s,c,a",[req.params.id,req.earnUser.id]);
+    const found=await client.query("SELECT s.*,c.reward_minor,c.id AS cid,c.status AS campaign_status,c.funding_status,c.moderation_status,c.reserved_completions,c.max_completions,c.reserved_minor,c.budget_minor,c.reward_pool_minor,c.ends_at,a.id AS appeal_id,a.status AS appeal_status FROM earn_submissions s JOIN earn_campaigns c ON c.id=s.campaign_id JOIN earn_submission_appeals a ON a.submission_id=s.id WHERE s.id=$1 AND s.user_id=$2 FOR UPDATE OF s,c,a",[req.params.id,req.earnUser.id]);
     const s=found.rows[0];
     if(!s||s.status!=="rejected"||s.appeal_status!=="accepted"||s.campaign_status!=="published"||s.funding_status!=="verified"||s.moderation_status!=="approved"||(s.ends_at&&new Date(s.ends_at)<=new Date())){await client.query("ROLLBACK");return res.status(409).json({error:"This task is not eligible for resubmission."});}
-    if(Number(s.reserved_completions)>=s.max_completions||Number(s.reserved_minor)+Number(s.reward_minor)>Number(s.budget_minor)){await client.query("ROLLBACK");return res.status(409).json({error:"This task no longer has funded capacity."});}
+    if(Number(s.reserved_completions)>=s.max_completions||Number(s.reserved_minor)+Number(s.reward_minor)>Number(s.reward_pool_minor)){await client.query("ROLLBACK");return res.status(409).json({error:"This task no longer has funded capacity."});}
     await client.query("UPDATE earn_campaigns SET reserved_completions=reserved_completions+1,reserved_minor=reserved_minor+reward_minor,updated_at=NOW() WHERE id=$1",[s.cid]);
     await client.query("UPDATE earn_submissions SET evidence_text=$2,evidence_url=$3,status='pending',reviewer_id=NULL,review_note='',reviewed_at=NULL,updated_at=NOW() WHERE id=$1",[s.id,evidenceText,evidenceUrl||null]);
     await client.query("UPDATE earn_submission_appeals SET status='reopened' WHERE id=$1",[s.appeal_id]);
@@ -326,7 +326,7 @@ router.patch("/admin/campaigns/:id/moderation",async(req,res)=>{
   try{
     const status=decision==="approved"?"approved":decision;
     const r=await req.app.locals.db.query(
-      "UPDATE earn_campaigns SET moderation_status=$2,moderator_id=$3,moderated_at=NOW(),status=CASE WHEN $2='approved' AND funding_status='verified' THEN 'published' ELSE CASE WHEN $2='rejected' THEN 'archived' ELSE status END END,updated_at=NOW() WHERE id=$1 AND status IN ('draft','paused') RETURNING id,title,status,moderation_status,funding_status",
+      "UPDATE earn_campaigns SET moderation_status=$2,moderator_id=$3,moderated_at=NOW(),status=CASE WHEN $2='approved' AND funding_status='verified' THEN 'published' ELSE CASE WHEN $2='rejected' THEN 'archived' ELSE status END END,updated_at=NOW() WHERE id=$1 AND status IN ('draft','paused') AND created_by<>$3 RETURNING id,title,status,moderation_status,funding_status",
       [req.params.id,status,req.earnUser.id]
     );
     if(!r.rowCount)return res.status(404).json({error:"Task not found or already published."});
@@ -344,7 +344,7 @@ router.patch("/admin/campaigns/:id/funding",async(req,res)=>{
   try{
     await client.query("BEGIN");
     const r=await client.query(
-      "UPDATE earn_campaigns SET funding_status=$2,funding_reference=$3,funding_verified_by=$4,funding_verified_at=CASE WHEN $2='verified' THEN NOW() ELSE NULL END,status=CASE WHEN $2='verified' AND moderation_status='approved' THEN 'published' ELSE CASE WHEN $2='rejected' THEN 'archived' ELSE status END END,updated_at=NOW() WHERE id=$1 AND status IN ('draft','paused') AND moderation_status='approved' AND funding_status='unverified' RETURNING id,title,status,funding_status,moderation_status,budget_minor,reward_pool_minor,platform_fee_minor,platform_fee_bps",
+      "UPDATE earn_campaigns SET funding_status=$2,funding_reference=$3,funding_verified_by=$4,funding_verified_at=CASE WHEN $2='verified' THEN NOW() ELSE NULL END,status=CASE WHEN $2='verified' AND moderation_status='approved' THEN 'published' ELSE CASE WHEN $2='rejected' THEN 'archived' ELSE status END END,updated_at=NOW() WHERE id=$1 AND status IN ('draft','paused') AND moderation_status='approved' AND funding_status='unverified' AND created_by<>$4 RETURNING id,title,status,funding_status,moderation_status,budget_minor,reward_pool_minor,platform_fee_minor,platform_fee_bps",
       [req.params.id,decision,reference,req.earnUser.id]
     );
     if(!r.rowCount){await client.query("ROLLBACK");return res.status(404).json({error:"Task not found or funding was already verified."});}
@@ -361,6 +361,7 @@ router.patch("/admin/campaigns/:id/funding",async(req,res)=>{
   finally{client.release();}
 });
 router.patch("/admin/campaigns/:id/status",async(req,res)=>{
+  if(!await requireRoles(req,res,["admin","super_admin"]))return;
   if(!validId(req.params.id)||!["published","paused","archived"].includes(req.body?.status))return res.status(400).json({error:"Invalid task status."});
   try{
     const r=await req.app.locals.db.query("UPDATE earn_campaigns SET status=$2,updated_at=NOW() WHERE id=$1 AND status IN ('draft','published','paused') AND ($2<>'published' OR (funding_status='verified' AND moderation_status='approved')) RETURNING id,status",[req.params.id,req.body.status]);
@@ -481,7 +482,11 @@ router.get("/admin/payouts/:id/account",async(req,res)=>{
     const r=await req.app.locals.db.query("SELECT id,user_id,payout_method,account_ciphertext,account_iv,account_tag,account_hint,account_holder_name,status FROM earn_payout_requests WHERE id=$1",[req.params.id]);
     const row=r.rows[0];
     if(!row)return res.status(404).json({error:"Payout request not found."});
-    return res.set("Cache-Control","no-store").json({id:row.id,payoutMethod:row.payout_method,accountHolderName:row.account_holder_name,accountNumber:decryptPayoutAccount(row,key),accountHint:row.account_hint,status:row.status});
+    const accountNumber=decryptPayoutAccount(row,key);
+    const {recordSecurityEvent}=require("../admin/audit");
+    const logged=await recordSecurityEvent(req,{type:"earn_payout_account_accessed",severity:"warning",userId:req.earnUser.id,metadata:{payout_request_id:row.id,payout_method:row.payout_method,status:row.status}});
+    if(!logged)return res.status(503).json({error:"Payout account access could not be audited."});
+    return res.set("Cache-Control","no-store").json({id:row.id,payoutMethod:row.payout_method,accountHolderName:row.account_holder_name,accountNumber,accountHint:row.account_hint,status:row.status});
   }catch{return res.status(503).json({error:"Payout account details could not be opened."});}
 });
 
