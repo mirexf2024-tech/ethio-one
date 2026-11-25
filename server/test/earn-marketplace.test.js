@@ -159,5 +159,5 @@ test("appeal resubmissions reserve only the funded reward pool, excluding platfo
   const resubmit=routes.slice(routes.indexOf('router.post("/submissions/:id/resubmit"'),routes.indexOf('router.get("/admin/appeals"'));
   assert.match(resubmit, /reserved_minor\)\+Number\(s\.reward_minor\)>Number\(s\.reward_pool_minor\)/);
   assert.doesNotMatch(resubmit, /reserved_minor\)\+Number\(s\.reward_minor\)>Number\(s\.budget_minor\)/);
-  assert.match(resubmit, /c\\.reserved_minor,c\\.budget_minor,c\\.reward_pool_minor,c\\.ends_at/);
+  assert.match(resubmit, /c\.reserved_minor,c\.budget_minor,c\.reward_pool_minor,c\.ends_at/);
 });
