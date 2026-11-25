@@ -128,7 +128,7 @@ router.post("/submissions/:id/resubmit",async(req,res)=>{
   const client=await req.app.locals.db.connect();
   try{
     await client.query("BEGIN");
-    const found=await client.query("SELECT s.*,c.reward_minor,c.id AS cid,c.status AS campaign_status,c.funding_status,c.moderation_status,c.reserved_completions,c.max_completions,c.reserved_minor,c.budget_minor,c.ends_at,a.id AS appeal_id,a.status AS appeal_status FROM earn_submissions s JOIN earn_campaigns c ON c.id=s.campaign_id JOIN earn_submission_appeals a ON a.submission_id=s.id WHERE s.id=$1 AND s.user_id=$2 FOR UPDATE OF s,c,a",[req.params.id,req.earnUser.id]);
+    const found=await client.query("SELECT s.*,c.reward_minor,c.id AS cid,c.status AS campaign_status,c.funding_status,c.moderation_status,c.reserved_completions,c.max_completions,c.reserved_minor,c.budget_minor,c.reward_pool_minor,c.ends_at,a.id AS appeal_id,a.status AS appeal_status FROM earn_submissions s JOIN earn_campaigns c ON c.id=s.campaign_id JOIN earn_submission_appeals a ON a.submission_id=s.id WHERE s.id=$1 AND s.user_id=$2 FOR UPDATE OF s,c,a",[req.params.id,req.earnUser.id]);
     const s=found.rows[0];
     if(!s||s.status!=="rejected"||s.appeal_status!=="accepted"||s.campaign_status!=="published"||s.funding_status!=="verified"||s.moderation_status!=="approved"||(s.ends_at&&new Date(s.ends_at)<=new Date())){await client.query("ROLLBACK");return res.status(409).json({error:"This task is not eligible for resubmission."});}
     if(Number(s.reserved_completions)>=s.max_completions||Number(s.reserved_minor)+Number(s.reward_minor)>Number(s.reward_pool_minor)){await client.query("ROLLBACK");return res.status(409).json({error:"This task no longer has funded capacity."});}
