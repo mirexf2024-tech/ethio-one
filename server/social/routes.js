@@ -815,6 +815,93 @@ const getCommunity=async(req,res)=>{
 router.get("/communities/:id",requireAuth,getCommunity);
 router.get("/groups/:id",requireAuth,getCommunity);
 
+/* Community content is isolated from the global Social feed and visible only to members. */
+router.get("/communities/:id/posts",requireAuth,async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid community."});
+ const limit=Math.min(30,Math.max(1,Number.parseInt(req.query.limit,10)||20));
+ const before=typeof req.query.before==="string"&&uuid(req.query.before)?req.query.before:null;
+ try{
+  const member=await req.app.locals.db.query("SELECT 1 FROM social_group_members WHERE group_id=$1 AND user_id=$2",[req.params.id,req.socialUserId]);
+  if(!member.rowCount)return res.status(403).json({error:"Join this community to view its posts."});
+  const values=[req.params.id,req.socialUserId,limit];let cursorSql="";
+  if(before){values.push(before);cursorSql=" AND p.created_at < (SELECT created_at FROM social_community_posts WHERE id=$4 AND community_id=$1)";}
+  const posts=await req.app.locals.db.query(
+   `SELECT p.id,p.community_id,p.body,p.media,p.created_at,p.user_id AS author_id,
+    u.username,u.full_name,up.avatar_url,
+    (SELECT COUNT(*)::int FROM social_community_post_comments c WHERE c.post_id=p.id AND c.status='published') AS comment_count,
+    CASE WHEN EXISTS(SELECT 1 FROM social_likes l WHERE false) THEN true ELSE false END AS reserved
+    FROM social_community_posts p JOIN users u ON u.id=p.user_id
+    LEFT JOIN user_profiles up ON up.user_id=u.id
+    WHERE p.community_id=$1 AND p.status='published'
+    AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2))
+    ${cursorSql} ORDER BY p.created_at DESC LIMIT $3`,values);
+  return res.set("Cache-Control","no-store").json({posts:posts.rows});
+ }catch{return res.status(503).json({error:"Community posts are temporarily unavailable."});}
+});
+router.post("/communities/:id/posts",postCreateLimit,requireAuth,async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid community."});
+ const body=typeof req.body?.body==="string"?req.body.body.trim():"";
+ const media=req.body?.media===undefined?[]:req.body.media;
+ if(body.length>2000||(!body&&(!Array.isArray(media)||!media.length))||!safeMedia(media))
+  return res.status(400).json({error:"Check your post text and attachments."});
+ try{
+  const member=await req.app.locals.db.query("SELECT 1 FROM social_group_members WHERE group_id=$1 AND user_id=$2",[req.params.id,req.socialUserId]);
+  if(!member.rowCount)return res.status(403).json({error:"Join this community before posting."});
+  for(const item of media){
+   const owned=await req.app.locals.db.query("SELECT id FROM media_assets WHERE user_id=$1 AND public_id=$2 AND secure_url=$3 AND resource_type=$4 LIMIT 1",[req.socialUserId,item.publicId,item.url,item.type]);
+   if(!owned.rowCount)return res.status(403).json({error:"One or more attachments do not belong to this account."});
+  }
+  const created=await req.app.locals.db.query(
+   "INSERT INTO social_community_posts(community_id,user_id,body,media) VALUES($1,$2,$3,$4::jsonb) RETURNING id,community_id,user_id,body,media,created_at",
+   [req.params.id,req.socialUserId,body,JSON.stringify(media)]);
+  return res.status(201).json({post:created.rows[0]});
+ }catch{return res.status(503).json({error:"Your community post could not be published."});}
+});
+router.post("/communities/:communityId/posts/:postId/comments",commentCreateLimit,requireAuth,async(req,res)=>{
+ const {communityId,postId}=req.params,body=typeof req.body?.body==="string"?req.body.body.trim():"";
+ if(!uuid(communityId)||!uuid(postId)||!body||body.length>1000)return res.status(400).json({error:"Check your comment."});
+ try{
+  const created=await req.app.locals.db.query(
+   `INSERT INTO social_community_post_comments(post_id,user_id,body)
+    SELECT p.id,$3,$4 FROM social_community_posts p
+    JOIN social_group_members m ON m.group_id=p.community_id AND m.user_id=$3
+    WHERE p.id=$1 AND p.community_id=$2 AND p.status='published'
+    RETURNING id,post_id,user_id,body,created_at`,
+   [postId,communityId,req.socialUserId,body]);
+  return created.rowCount?res.status(201).json({comment:created.rows[0]}):res.status(404).json({error:"Community post not found or unavailable."});
+ }catch{return res.status(503).json({error:"Comment could not be published."});}
+});
+router.get("/communities/:communityId/posts/:postId/comments",requireAuth,async(req,res)=>{
+ const {communityId,postId}=req.params;
+ if(!uuid(communityId)||!uuid(postId))return res.status(400).json({error:"Invalid community post."});
+ try{
+  const result=await req.app.locals.db.query(
+   `SELECT c.id,c.body,c.created_at,c.user_id AS author_id,u.username,u.full_name,up.avatar_url
+    FROM social_community_post_comments c
+    JOIN social_community_posts p ON p.id=c.post_id
+    JOIN social_group_members m ON m.group_id=p.community_id AND m.user_id=$3
+    JOIN users u ON u.id=c.user_id LEFT JOIN user_profiles up ON up.user_id=u.id
+    WHERE p.id=$1 AND p.community_id=$2 AND p.status='published' AND c.status='published'
+    ORDER BY c.created_at ASC LIMIT 100`,
+   [postId,communityId,req.socialUserId]);
+  return res.set("Cache-Control","no-store").json({comments:result.rows});
+ }catch{return res.status(503).json({error:"Comments are temporarily unavailable."});}
+});
+router.delete("/communities/:communityId/posts/:postId",requireAuth,async(req,res)=>{
+ const {communityId,postId}=req.params;
+ if(!uuid(communityId)||!uuid(postId))return res.status(400).json({error:"Invalid community post."});
+ try{
+  const removed=await req.app.locals.db.query(
+   `UPDATE social_community_posts p SET status='removed',updated_at=NOW()
+    WHERE p.id=$1 AND p.community_id=$2 AND p.status='published'
+    AND (p.user_id=$3 OR EXISTS(SELECT 1 FROM social_group_members m WHERE m.group_id=p.community_id AND m.user_id=$3 AND m.role IN ('admin','moderator')))
+    RETURNING p.id`,
+   [postId,communityId,req.socialUserId]);
+  return removed.rowCount?res.json({ok:true}):res.status(404).json({error:"Post not found or you cannot remove it."});
+ }catch{return res.status(503).json({error:"Post could not be removed."});}
+});
+
+
 const updateCommunity=async(req,res)=>{
  if(!uuid(req.params.id))return res.status(400).json({error:"Invalid community."});
  const name=typeof req.body?.name==="string"?req.body.name.trim():"";
