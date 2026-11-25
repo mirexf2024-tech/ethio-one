@@ -752,7 +752,7 @@ router.get("/groups",requireAuth,async(req,res)=>{
  try{
   const r=await req.app.locals.db.query(
    `SELECT g.id,g.name,g.description,g.avatar_url,g.created_at,gm.role,
-    (SELECT COUNT(*)::int FROM social_group_members x WHERE x.group_id=g.id) AS member_count,
+    (SELECT COUNT(*)::int FROM social_group_members x WHERE x.group_id=g.id) AS member_count
     FROM social_groups g JOIN social_group_members gm ON gm.group_id=g.id
     WHERE gm.user_id=$1 ORDER BY g.created_at DESC LIMIT 100`,[req.socialUserId]);
   const key=req.originalUrl.includes("/communities")?"communities":"groups";return res.set("Cache-Control","no-store").json({[key]:r.rows});
