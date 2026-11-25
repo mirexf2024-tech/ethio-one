@@ -32,6 +32,7 @@ Node.js API foundation for the Ethio One platform.
 - `POST /api/v1/social/conversations/:id/calls` — create an audio/video call and submit its WebRTC offer.
 - `GET /api/v1/earn/campaigns` — list published task campaigns for an authenticated member.
 - `GET /api/v1/earn/me/summary` — private approved rewards, pending submissions and task history.
+- `GET /api/v1/wallet/summary` — read-only unified view over existing verified Ethio Earn and sponsor reward ledgers; withdrawals are not enabled.
 - `POST /api/v1/earn/campaigns/:id/submit` — submit task evidence for review; one submission per member per task.
 - `GET /api/v1/earn/admin/campaigns` and `POST /api/v1/earn/admin/campaigns` — admin campaign management.
 - `PATCH /api/v1/earn/admin/campaigns/:id/status` — publish, pause or archive a campaign.
@@ -88,3 +89,8 @@ Authentication routes are implemented for registration, OTP verification, login,
 The member UI is served at `/earn.html` and uses the existing short-lived Ethio One access token plus refresh-token rotation. Tasks are created as drafts and must be explicitly published by an authorized administrator. Rewards are credited only after an authorized reviewer approves the submitted evidence. Rejected submissions release the reserved task budget and completion slot. ETB values are stored in minor units.
 
 **Payouts are disabled.** The ledger is an in-app accounting record only; there is no bank, Telebirr, M-Pesa or other withdrawal integration in this release. Do not advertise cash withdrawal or promise earnings until a licensed payout provider, fraud controls, operational funding and legal requirements have been verified. Task campaigns must have a real funded budget and clear, lawful instructions before publication.
+
+
+### Ethio Wallet phase 1
+
+`GET /api/v1/wallet/summary` is a read-only aggregation over the existing Earn task reward ledger, sponsor-view credit ledger, pending submissions and payout records. It does not copy balances, create a second ledger, accept payout requests, or call a payment provider. Keep `EARN_PAYOUTS_ENABLED` disabled. This endpoint is an initial integration step, not a production wallet or withdrawal release.

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="om">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#082B59">
+<title>Ethio Wallet | Ethio One</title>
+<style>
+:root{--navy:#082b59;--deep:#061a35;--gold:#d9a928;--ink:#17263b;--muted:#66758a;--line:#e6ebf2;--bg:#f3f6fb;--green:#168653}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}a{color:inherit;text-decoration:none}button{font:inherit;cursor:pointer}
+header{height:68px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 max(18px,calc((100% - 1080px)/2));box-shadow:0 8px 24px #061a3522}.brand{font-weight:900;letter-spacing:-.04em;font-size:19px}.brand span{color:var(--gold)}.actions{display:flex;gap:9px}.actions a,.actions button{border:1px solid #ffffff55;color:#fff;background:#ffffff10;border-radius:11px;padding:9px 12px;font-size:12px;font-weight:750}
+main{max-width:1080px;margin:auto;padding:28px 18px 70px}.hero{background:linear-gradient(125deg,#061a35,#082b59 65%,#0b4c88);border:1px solid #d9a92866;border-radius:24px;padding:27px;color:white;box-shadow:0 18px 42px #082b5920}.eyebrow{font-size:10px;font-weight:850;letter-spacing:.16em;color:#f6d875}.hero h1{font-size:clamp(28px,5vw,42px);letter-spacing:-.05em;margin:10px 0}.hero p{color:#dce7f5;line-height:1.6;margin:0;max-width:620px;font-size:13px}
+.status{margin-top:18px;display:inline-flex;align-items:center;gap:8px;background:#ffffff14;border:1px solid #ffffff40;border-radius:999px;padding:8px 11px;font-size:11px;font-weight:750;color:#f9e6a6}.dot{width:7px;height:7px;border-radius:50%;background:#f2c64c}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.card{background:white;border:1px solid var(--line);border-radius:17px;padding:17px;min-width:0;box-shadow:0 5px 18px #10233a08}.card small{color:var(--muted);font-size:11px;font-weight:700}.card strong{display:block;color:var(--navy);font-size:25px;letter-spacing:-.04em;margin-top:8px}.card p{margin:4px 0 0;color:var(--muted);font-size:10px}
+.columns{display:grid;grid-template-columns:1.05fr .95fr;gap:14px}.panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;min-width:0}.panel h2{font-size:17px;color:var(--navy);margin:0 0 5px}.sub{font-size:11px;color:var(--muted);margin:0 0 14px;line-height:1.5}.source{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:13px 0;border-bottom:1px solid var(--line);font-size:12px}.source:last-child{border-bottom:0}.source b{color:var(--navy)}.source strong{color:var(--green);white-space:nowrap}.activity{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);font-size:11px}.activity:last-child{border-bottom:0}.activity span{display:block;color:var(--muted);font-size:10px;margin-top:4px}.activity b{white-space:nowrap;color:var(--navy)}
+.notice{margin:14px 0 0;background:#fff8e4;border:1px solid #eedb9c;color:#765811;border-radius:14px;padding:13px 15px;font-size:12px;line-height:1.55}.withdraw{margin-top:14px;width:100%;border:0;border-radius:12px;padding:13px 16px;background:#d9a928;color:#082b59;font-weight:850;opacity:.55;cursor:not-allowed}.empty{padding:22px 8px;text-align:center;color:var(--muted);font-size:12px}.error{color:#a63e3e;font-size:12px}.hidden{display:none!important}footer{text-align:center;color:#8390a2;font-size:11px;padding:24px}
+@media(max-width:760px){main{padding:17px 13px 55px}.hero{padding:22px 19px;border-radius:20px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.card{padding:14px}.card strong{font-size:22px}.columns{grid-template-columns:1fr}.actions a,.actions button{padding:8px 10px}}
+</style>
+</head>
+<body>
+<header><a class="brand" href="/">ETHIO <span>ONE</span> / WALLET</a><div class="actions"><button id="lang" type="button">OM</button><a href="/">Home</a></div></header>
+<main>
+<section class="hero"><div class="eyebrow" data-i="eyebrow">ETHIO ONE · WALLET</div><h1 data-i="title">Galii kee bakka tokkotti.</h1><p data-i="intro">Ethio Earn fi tajaajiloota ETHIO ONE irraa galii mirkanaa'e bakka tokkotti ilaali.</p><div class="status"><i class="dot"></i><span data-i="readonly">Balance dubbisuu qofa · Withdrawal hin banamne</span></div></section>
+<div class="grid">
+ <article class="card"><small data-i="available">Kan argamu</small><strong id="available">ETB —</strong><p data-i="availableHint">Galii mirkanaa'e irraa kaffaltii duraa hir'isee</p></article>
+ <article class="card"><small data-i="pending">Eegamaa jiru</small><strong id="pending">ETB —</strong><p data-i="pendingHint">Hojii sakatta'ama keessa jiru</p></article>
+ <article class="card"><small data-i="hold">Qabamee jiru</small><strong id="hold">ETB —</strong><p data-i="holdHint">Gaaffii withdrawal irratti qabame</p></article>
+ <article class="card"><small data-i="paid">Kaffalame</small><strong id="paid">ETB —</strong><p data-i="paidHint">Kaffaltii xumurame</p></article>
+</div>
+<div class="columns">
+ <section class="panel"><h2 data-i="sources">Madda galii</h2><p class="sub" data-i="sourcesSub">Galii mirkanaa'e akka madda isaatti.</p>
+  <div class="source"><b>Ethio Earn</b><strong id="earnSource">ETB —</strong></div>
+  <div class="source"><b data-i="sponsor">Sponsor rewards</b><strong id="sponsorSource">ETB —</strong></div>
+  <div class="notice" data-i="notice">Lakkoofsi kun galmee galii amma jiru irraa dubbifama. Galii hin mirkanoofne hin dabalamu.</div>
+  <button class="withdraw" disabled data-i="withdraw">Withdrawal yeroo ammaa hin banamne</button>
+ </section>
+ <section class="panel"><h2 data-i="activity">Sochii dhiyoo</h2><p class="sub" data-i="activitySub">Galmee galii fi kaffaltii dhiyoo.</p><div id="activity" class="empty">Waa'ee wallet fe'aa jira...</div></section>
+</div>
+<p id="message" class="error" role="status"></p>
+</main>
+<footer>ETHIO ONE · One Identity. Many Possibilities.</footer>
+<script>
+(() => {
+const API="https://ethio-one-api.onrender.com/api/v1", AUTH=API+"/auth", WALLET=API+"/wallet";
+const keys={access:"ethioOneAccessToken",refresh:"ethioOneRefreshToken"};
+const text={
+ OM:{eyebrow:"ETHIO ONE · WALLET",title:"Galii kee bakka tokkotti.",intro:"Ethio Earn fi tajaajiloota ETHIO ONE irraa galii mirkanaa'e bakka tokkotti ilaali.",readonly:"Balance dubbisuu qofa · Withdrawal hin banamne",available:"Kan argamu",availableHint:"Galii mirkanaa'e irraa kaffaltii duraa hir'isee",pending:"Eegamaa jiru",pendingHint:"Hojii sakatta'ama keessa jiru",hold:"Qabamee jiru",holdHint:"Gaaffii withdrawal irratti qabame",paid:"Kaffalame",paidHint:"Kaffaltii xumurame",sources:"Madda galii",sourcesSub:"Galii mirkanaa'e akka madda isaatti.",sponsor:"Sponsor rewards",notice:"Lakkoofsi kun galmee galii amma jiru irraa dubbifama. Galii hin mirkanoofne hin dabalamu.",withdraw:"Withdrawal yeroo ammaa hin banamne",activity:"Sochii dhiyoo",activitySub:"Galmee galii fi kaffaltii dhiyoo.",loading:"Wallet fe'aa jira...",empty:"Sochii galmee hin jiru.",task:"Badhaasa hojii",sponsorReward:"Badhaasa sponsor",withdrawal:"Withdrawal",err:"Wallet yeroo ammaa argachuun hin danda'amne.",login:"Maaloo dura Ethio One seeni.",date:"Guyyaa"},
+ AM:{eyebrow:"ETHIO ONE · ዋሌት",title:"ገቢዎን በአንድ ቦታ።",intro:"ከEthio Earn እና ከETHIO ONE አገልግሎቶች የተረጋገጠ ገቢዎን በአንድ ቦታ ይመልከቱ።",readonly:"ቀሪ ሂሳብ ማሳያ ብቻ · ማውጣት አልነቃም",available:"የሚገኝ",availableHint:"ከተረጋገጠ ገቢ የተቀነሰ ክፍያ",pending:"በመጠባበቅ ላይ",pendingHint:"በግምገማ ላይ ያለ ሥራ",hold:"የተያዘ",holdHint:"ለማውጣት ጥያቄ የተያዘ",paid:"የተከፈለ",paidHint:"የተጠናቀቀ ክፍያ",sources:"የገቢ ምንጮች",sourcesSub:"የተረጋገጠ ገቢ በምንጩ።",sponsor:"የስፖንሰር ሽልማት",notice:"ይህ መጠን ከአሁኑ የገቢ መዝገቦች ይነበባል። ያልተረጋገጠ ገቢ አይጨመርም።",withdraw:"ማውጣት አሁን አልነቃም",activity:"የቅርብ ጊዜ እንቅስቃሴ",activitySub:"የቅርብ ጊዜ የገቢና ክፍያ መዝገቦች።",loading:"ዋሌቱን በመጫን ላይ...",empty:"ምንም የእንቅስቃሴ መዝገብ የለም።",task:"የሥራ ሽልማት",sponsorReward:"የስፖንሰር ሽልማት",withdrawal:"ማውጣት",err:"ዋሌቱ አሁን ማግኘት አልተቻለም።",login:"እባክዎ መጀመሪያ ወደ Ethio One ይግቡ።",date:"ቀን"},
+ EN:{eyebrow:"ETHIO ONE · WALLET",title:"All your earnings in one place.",intro:"View verified earnings from Ethio Earn and other ETHIO ONE services in one place.",readonly:"Read-only balance · Withdrawals are not enabled",available:"Available",availableHint:"Verified earnings after payouts",pending:"Pending",pendingHint:"Work still under review",hold:"On hold",holdHint:"Reserved for withdrawal requests",paid:"Paid out",paidHint:"Completed payouts",sources:"Earning sources",sourcesSub:"Verified earnings by source.",sponsor:"Sponsor rewards",notice:"These figures are read from current earnings records. Unverified earnings are not included.",withdraw:"Withdrawals are not enabled yet",activity:"Recent activity",activitySub:"Latest earnings and payout records.",loading:"Loading wallet...",empty:"No wallet activity yet.",task:"Task reward",sponsorReward:"Sponsor reward",withdrawal:"Withdrawal",err:"Wallet is temporarily unavailable.",login:"Please sign in to Ethio One first.",date:"Date"}
+};
+let lang=localStorage.getItem("ethioOneLocale")||"OM";if(!text[lang])lang="OM";
+const $=id=>document.getElementById(id),money=n=>"ETB "+(Number(n||0)/100).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+function applyLanguage(){document.documentElement.lang=lang.toLowerCase();$("lang").textContent=lang;document.querySelectorAll("[data-i]").forEach(el=>{const k=el.dataset.i;if(text[lang][k])el.textContent=text[lang][k];});}
+$("lang").addEventListener("click",()=>{lang=lang==="OM"?"AM":lang==="AM"?"EN":"OM";localStorage.setItem("ethioOneLocale",lang);applyLanguage();});
+function get(k){try{return sessionStorage.getItem(k)||""}catch{return""}}function put(k,v){try{if(v)sessionStorage.setItem(k,v);else sessionStorage.removeItem(k)}catch{}}
+let access=get(keys.access),refresh=get(keys.refresh),renewing=null;
+async function renew(){if(!refresh)return false;if(!renewing)renewing=(async()=>{try{const r=await fetch(AUTH+"/refresh",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({refreshToken:refresh})});if(!r.ok){put(keys.access,"");put(keys.refresh,"");return false;}const t=await r.json();access=t.accessToken;refresh=t.refreshToken;put(keys.access,access);put(keys.refresh,refresh);return true;}catch{return false;}})().finally(()=>renewing=null);return renewing;}
+async function load(){applyLanguage();$("activity").textContent=text[lang].loading;if(!access&&!await renew()){$("message").textContent=text[lang].login;$("activity").textContent="";return;}try{let r=await fetch(WALLET+"/summary",{headers:{Authorization:"Bearer "+access}});if(r.status===401&&await renew())r=await fetch(WALLET+"/summary",{headers:{Authorization:"Bearer "+access}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||text[lang].err);const b=d.balances||{},src=d.sources||{};$("available").textContent=money(b.availableMinor);$("pending").textContent=money(b.pendingMinor);$("hold").textContent=money(b.onHoldMinor);$("paid").textContent=money(b.paidOutMinor);$("earnSource").textContent=money(src.ethioEarnMinor);$("sponsorSource").textContent=money(src.sponsorRewardsMinor);render(d.activity||[]);}catch(e){$("message").textContent=text[lang].err;$("activity").textContent="";}}
+function render(rows){const host=$("activity");if(!rows.length){host.className="empty";host.textContent=text[lang].empty;return;}host.className="";host.innerHTML=rows.map(x=>{const kind=x.kind==="task_reward"?text[lang].task:x.kind==="sponsor_reward"?text[lang].sponsorReward:text[lang].withdrawal;const dt=x.created_at?new Date(x.created_at).toLocaleDateString():"";const amount=(x.kind==="withdrawal"?"−":"+")+money(x.amount_minor);return '<div class="activity"><div>'+kind+'<span>'+dt+' · '+String(x.status||"").replace(/</g,"&lt;")+'</span></div><b>'+amount+'</b></div>';}).join("");}
+load();
+})();
+</script>
+</body></html>

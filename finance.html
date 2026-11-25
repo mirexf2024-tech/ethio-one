@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="om">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#082b59">
+<title>ETHIO ONE · Finance</title>
+<style>
+:root{color-scheme:dark;--navy:#082b59;--deep:#061a35;--gold:#d9a928;--ink:#edf3fc;--muted:#a8b8ce;--panel:#102f55;--line:#315173;--green:#35c58b;--amber:#f3c75b;--red:#ff7884}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 10% 0%,#174879 0,transparent 42%),linear-gradient(145deg,#061a35,#082b59 65%,#071d38);color:var(--ink);font:14px/1.5 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+button,input,select{font:inherit}button{cursor:pointer;border:0;border-radius:11px;padding:10px 15px;background:var(--gold);color:#17243a;font-weight:800}button:disabled{opacity:.55;cursor:not-allowed}
+.shell{max-width:1200px;margin:auto;padding:clamp(14px,3vw,30px)}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:14px 17px;border:1px solid #ffffff1b;border-radius:17px;background:#ffffff0a;margin-bottom:25px}.brand{font-weight:900;letter-spacing:-.04em;font-size:18px}.brand span{color:var(--gold)}.actions{display:flex;gap:8px;align-items:center}.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);text-decoration:none;padding:9px 12px;border-radius:10px;font-size:12px;font-weight:700}
+.panel{background:linear-gradient(145deg,#12365fef,#0a2444f5);border:1px solid #ffffff1b;border-radius:18px;padding:20px;box-shadow:0 16px 42px #0002}.login{max-width:430px;margin:8vh auto}.eyebrow{color:var(--gold);font-size:11px;font-weight:850;letter-spacing:.15em}.login h1,.heading h1{margin:8px 0;font-size:26px;letter-spacing:-.04em}.muted{color:var(--muted)}.field{display:grid;gap:7px;margin:14px 0}.field label{font-size:12px;color:var(--muted)}input{width:100%;padding:12px;border:1px solid var(--line);border-radius:11px;background:#071f3c;color:var(--ink)}input:focus{outline:2px solid #d9a92866;border-color:var(--gold)}.wide{width:100%;margin-top:8px}.error{color:#ffc0c5;min-height:20px;font-size:12px}.hidden{display:none!important}
+.heading{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;margin:22px 0 15px}.heading p{margin:3px 0 0;color:var(--muted);font-size:12px}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.stat{min-width:0;padding:17px}.stat small{display:block;color:var(--muted);font-size:11px}.stat strong{display:block;font-size:clamp(21px,3vw,29px);margin-top:7px;letter-spacing:-.04em;font-variant-numeric:tabular-nums}.stat p{margin:4px 0 0;color:var(--muted);font-size:10px}.two{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:14px}.panel h2{font-size:16px;margin:0 0 5px}.sub{font-size:11px;color:var(--muted);margin:0 0 14px}.bar{height:9px;border-radius:99px;background:#061a35;overflow:hidden;margin:13px 0 8px}.bar i{display:block;height:100%;background:var(--gold);width:0}.legend{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px}.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;min-width:620px;font-size:12px}th,td{text-align:left;padding:11px 9px;border-bottom:1px solid #ffffff16;vertical-align:top}th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.07em}td b{font-variant-numeric:tabular-nums}.pill{display:inline-block;padding:4px 8px;border-radius:99px;background:#ffffff13;font-size:10px;font-weight:800}.pending{color:var(--amber)}.paid{color:var(--green)}.rejected{color:var(--red)}.notice{margin-top:14px;padding:12px 14px;border:1px solid #d9a92855;background:#d9a92812;color:#f5dfa0;border-radius:13px;font-size:11px;line-height:1.6}.empty{text-align:center;padding:22px;color:var(--muted);font-size:12px}.feedback{font-size:12px;color:var(--muted);min-height:18px;margin-top:10px}footer{text-align:center;color:#8299b5;font-size:11px;padding:24px}
+@media(max-width:760px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.two{grid-template-columns:1fr}.top{flex-wrap:wrap}.actions{width:100%;justify-content:flex-end}.heading{align-items:flex-start;flex-direction:column}.panel{padding:16px}.stat{padding:14px}}
+</style>
+</head>
+<body><div class="shell">
+<header class="top"><a class="brand" href="/admin.html" style="color:inherit;text-decoration:none">ETHIO <span>ONE</span> / FINANCE</a><div class="actions"><a class="ghost" href="/admin.html">Control Center</a><button class="ghost hidden" id="logout" type="button">Logout</button></div></header>
+<section class="panel login" id="loginView"><div class="eyebrow">SECURE FINANCE ACCESS</div><h1>Finance Dashboard</h1><p class="muted">Sign in with an authorized Finance Manager, Admin or Super Admin account.</p><form id="loginForm"><div class="field"><label for="identity">Email / Ethio ID</label><input id="identity" autocomplete="username" required></div><div class="field"><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required></div><button class="wide" id="loginButton">Sign in securely</button></form><p class="error" id="loginMessage" role="status"></p></section>
+<main id="dashboard" class="hidden">
+<div class="heading"><div><div class="eyebrow">FINANCIAL CONTROL</div><h1>Finance overview</h1><p>Verified sponsor funding, platform commission, worker rewards and payout queue.</p></div><button id="refresh">Refresh data</button></div>
+<div class="grid">
+<article class="panel stat"><small>Gross sponsor funding</small><strong id="gross">ETB —</strong><p>Verified funding recorded in Earn revenue ledger</p></article>
+<article class="panel stat"><small>ETHIO ONE platform fee</small><strong id="fee">ETB —</strong><p>Recorded platform commission</p></article>
+<article class="panel stat"><small>Worker reward pool</small><strong id="pool">ETB —</strong><p>Budget allocated to task rewards</p></article>
+<article class="panel stat"><small>Rewards credited</small><strong id="credited">ETB —</strong><p>Approved rewards already credited</p></article>
+</div>
+<div class="two">
+<section class="panel"><h2>Reward allocation</h2><p class="sub">Credited rewards compared with the unallocated funded pool.</p><div class="bar"><i id="allocationBar"></i></div><div class="legend"><span id="allocatedLabel">Credited: —</span><span id="unallocatedLabel">Unallocated: —</span></div><div class="notice">The platform fee shown here is the amount recorded in the verified funding ledger. It is not a bank settlement confirmation or proof that the funds have been transferred to a company account.</div></section>
+<section class="panel"><h2>Finance safeguards</h2><p class="sub">Current operational state</p><div class="legend"><span>Funding records</span><b id="campaignCount">—</b></div><div class="legend" style="margin-top:12px"><span>Withdrawal requests</span><b>Manual review only</b></div><div class="legend" style="margin-top:12px"><span>Automated Chapa payouts</span><b class="pending">Disabled</b></div><div class="notice">Do not mark a payout as paid until the provider confirms final success and the finance record is reconciled.</div></section>
+</div>
+<section class="panel" style="margin-top:14px"><div class="heading" style="margin:0 0 12px"><div><h2>Payout requests</h2><p>Read-only queue view. This dashboard cannot approve or dispatch payments.</p></div><select id="payoutStatus" aria-label="Payout status" style="background:#0c2748;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px"><option value="pending">Pending</option><option value="processing">Processing</option><option value="paid">Paid</option><option value="rejected">Rejected</option></select></div><div class="table-wrap"><table><thead><tr><th>Worker</th><th>Method</th><th>Amount</th><th>Destination</th><th>Status</th><th>Requested</th></tr></thead><tbody id="payoutRows"><tr><td colspan="6" class="empty">Sign in to load records.</td></tr></tbody></table></div><p class="feedback" id="feedback" role="status"></p></section>
+<div class="notice">This is a finance monitoring page, not a banking or stored-value wallet. It displays existing verified Earn records only. No live withdrawals, Chapa dispatch, balance editing or finance ledger mutations are available here.</div>
+</main><footer>ETHIO ONE · One Identity. Many Possibilities.</footer></div>
+<script>
+(()=>{
+const API="https://ethio-one-api.onrender.com/api/v1",EARN=API+"/earn",keys={access:"ethioOneAccessToken",refresh:"ethioOneRefreshToken"};
+let access=sessionStorage.getItem(keys.access)||"",refresh=sessionStorage.getItem(keys.refresh)||"";
+const $=id=>document.getElementById(id);
+const money=v=>"ETB "+(Number(v||0)/100).toLocaleString("en-ET",{minimumFractionDigits:2,maximumFractionDigits:2});
+function showLogin(msg){access="";refresh="";sessionStorage.removeItem(keys.access);sessionStorage.removeItem(keys.refresh);$("dashboard").classList.add("hidden");$("loginView").classList.remove("hidden");$("logout").classList.add("hidden");$("loginMessage").textContent=msg||"Please sign in to continue."}
+async function request(path,opts={},retry=true){
+ const headers={"Content-Type":"application/json",...(opts.headers||{})};if(access)headers.Authorization="Bearer "+access;
+ let r=await fetch(EARN+path,{...opts,headers,cache:"no-store"});
+ if(r.status===401&&retry&&refresh){const rr=await fetch(API+"/auth/refresh",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({refreshToken:refresh}),cache:"no-store"});let ss={};try{ss=await rr.json()}catch{}if(rr.ok&&ss.accessToken&&ss.refreshToken){access=ss.accessToken;refresh=ss.refreshToken;sessionStorage.setItem(keys.access,access);sessionStorage.setItem(keys.refresh,refresh);return request(path,opts,false)}}
+ let d={};try{d=await r.json()}catch{}if(!r.ok){const e=new Error(d.error||"Request failed");e.status=r.status;throw e}return d;
+}
+async function loadSummary(){
+ const d=await request("/admin/finance/summary"),s=d.summary||{};
+ $("gross").textContent=money(s.grossFundingMinor);$("fee").textContent=money(s.platformFeeMinor);$("pool").textContent=money(s.rewardPoolMinor);$("credited").textContent=money(s.rewardsCreditedMinor);
+ $("allocatedLabel").textContent="Credited: "+money(s.rewardsCreditedMinor);$("unallocatedLabel").textContent="Unallocated: "+money(s.rewardsUnallocatedMinor);$("campaignCount").textContent=String(s.fundedCampaigns??0);
+ const pool=Number(s.rewardPoolMinor||0),credited=Number(s.rewardsCreditedMinor||0);$("allocationBar").style.width=(pool>0?Math.min(100,credited/pool*100):0)+"%";
+}
+async function loadPayouts(){
+ const status=$("payoutStatus").value;
+ try{
+  const d=await request("/admin/payouts?status="+encodeURIComponent(status)),rows=d.requests||[];
+  $("payoutRows").innerHTML=rows.map(p=>'<tr><td><b>'+esc(p.full_name||p.username||"Worker")+'</b><br><small class="muted">'+esc(p.username||"")+'</small></td><td>'+esc(p.payout_method)+'</td><td><b>'+money(p.amount_minor)+'</b></td><td>'+esc(p.account_hint||"Protected")+'</td><td><span class="pill '+esc(p.status)+'">'+esc(p.status)+'</span></td><td>'+esc(p.created_at?new Date(p.created_at).toLocaleString():"—")+'</td></tr>').join("")||'<tr><td colspan="6" class="empty">No '+esc(status)+' payout requests.</td></tr>';
+ }catch(e){$("payoutRows").innerHTML='<tr><td colspan="6" class="empty">'+esc(e.message)+'</td></tr>';throw e}
+}
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+async function load(){ $("refresh").disabled=true;$("feedback").textContent="Loading verified finance records…";try{await Promise.all([loadSummary(),loadPayouts()]);$("feedback").textContent="Data refreshed. All amounts are read from existing server records."}catch(e){$("feedback").textContent=e.message;if(e.status===401||e.status===403)showLogin(e.status===403?"This account does not have Finance Manager or Admin access.":"Session expired. Please sign in again.")}finally{$("refresh").disabled=false}}
+$("loginForm").addEventListener("submit",async e=>{e.preventDefault();$("loginButton").disabled=true;$("loginMessage").textContent="Signing in…";try{const r=await fetch(API+"/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({identity:$("identity").value.trim(),password:$("password").value}),cache:"no-store"});const d=await r.json();if(!r.ok)throw new Error(d.error||"Sign in failed.");access=d.accessToken;refresh=d.refreshToken;sessionStorage.setItem(keys.access,access);sessionStorage.setItem(keys.refresh,refresh);$("password").value="";$("loginView").classList.add("hidden");$("dashboard").classList.remove("hidden");$("logout").classList.remove("hidden");await load()}catch(err){$("loginMessage").textContent=err.message}finally{$("loginButton").disabled=false}});
+$("refresh").addEventListener("click",load);$("payoutStatus").addEventListener("change",()=>loadPayouts().catch(e=>$("feedback").textContent=e.message));
+$("logout").addEventListener("click",async()=>{try{if(refresh)await fetch(API+"/auth/logout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({refreshToken:refresh})})}catch{}showLogin("You have signed out.")});
+if(access){$("loginView").classList.add("hidden");$("dashboard").classList.remove("hidden");$("logout").classList.remove("hidden");load()}
+})();
+</script></body></html>
