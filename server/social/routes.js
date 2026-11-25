@@ -743,7 +743,7 @@ router.patch("/video-view-preference",requireAuth,async(req,res)=>{
 
 /* Canonical Ethio Social community API. Keep /groups as a compatibility alias; message routes are retired below. */
 router.use("/communities",(req,res,next)=>{
- req.url=req.url.replace(/^\/communities(?=\/|$)/,"/groups");
+ req.url="/groups"+req.url;
  next();
 });
 
