@@ -741,7 +741,13 @@ router.patch("/video-view-preference",requireAuth,async(req,res)=>{
  catch{return res.status(503).json({error:"Preference could not be saved."});}
 });
 
-/* Telegram-inspired group chats with explicit admin, moderator and member roles. */
+/* Canonical Ethio Social community API. Keep /groups as a compatibility alias; message routes are retired below. */
+router.use("/communities",(req,res,next)=>{
+ req.url=req.url.replace(/^\/communities(?=\/|$)/,"/groups");
+ next();
+});
+
+/* Community creation, membership and moderation. Messaging belongs to Ethio Chat. */
 router.get("/groups",requireAuth,async(req,res)=>{
  try{
   const r=await req.app.locals.db.query(
