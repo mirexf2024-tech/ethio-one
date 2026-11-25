@@ -753,11 +753,9 @@ router.get("/groups",requireAuth,async(req,res)=>{
   const r=await req.app.locals.db.query(
    `SELECT g.id,g.name,g.description,g.avatar_url,g.created_at,gm.role,
     (SELECT COUNT(*)::int FROM social_group_members x WHERE x.group_id=g.id) AS member_count,
-    (SELECT body FROM social_group_messages m WHERE m.group_id=g.id ORDER BY m.created_at DESC LIMIT 1) AS last_message,
-    (SELECT created_at FROM social_group_messages m WHERE m.group_id=g.id ORDER BY m.created_at DESC LIMIT 1) AS last_message_at
     FROM social_groups g JOIN social_group_members gm ON gm.group_id=g.id
-    WHERE gm.user_id=$1 ORDER BY COALESCE((SELECT MAX(created_at) FROM social_group_messages m WHERE m.group_id=g.id),g.created_at) DESC LIMIT 100`,[req.socialUserId]);
-  return res.set("Cache-Control","no-store").json({groups:r.rows});
+    WHERE gm.user_id=$1 ORDER BY g.created_at DESC LIMIT 100`,[req.socialUserId]);
+  const key=req.originalUrl.includes("/communities")?"communities":"groups";return res.set("Cache-Control","no-store").json({[key]:r.rows});
  }catch{return res.status(503).json({error:"Groups could not be loaded."});}
 });
 router.post("/groups",requireAuth,async(req,res)=>{
@@ -768,7 +766,7 @@ router.post("/groups",requireAuth,async(req,res)=>{
   await client.query("BEGIN");
   const g=await client.query("INSERT INTO social_groups(name,description,created_by) VALUES($1,$2,$3) RETURNING id,name,description,created_at",[name,description,req.socialUserId]);
   await client.query("INSERT INTO social_group_members(group_id,user_id,role) VALUES($1,$2,'admin')",[g.rows[0].id,req.socialUserId]);
-  await client.query("COMMIT");return res.status(201).json({group:{...g.rows[0],role:"admin",member_count:1}});
+  await client.query("COMMIT");const key=req.originalUrl.includes("/communities")?"community":"group";return res.status(201).json({[key]:{...g.rows[0],role:"admin",member_count:1}});
  }catch{await client.query("ROLLBACK").catch(()=>{});return res.status(503).json({error:"Group could not be created."})}
  finally{client.release()}
 });
@@ -778,7 +776,7 @@ router.get("/groups/:id",requireAuth,async(req,res)=>{
   const g=await req.app.locals.db.query("SELECT g.*,m.role,(SELECT COUNT(*)::int FROM social_group_members WHERE group_id=g.id) AS member_count FROM social_groups g JOIN social_group_members m ON m.group_id=g.id WHERE g.id=$1 AND m.user_id=$2",[req.params.id,req.socialUserId]);
   if(!g.rowCount)return res.status(404).json({error:"Group not found."});
   const members=await req.app.locals.db.query("SELECT u.id,u.username,u.full_name,p.avatar_url,m.role,m.joined_at FROM social_group_members m JOIN users u ON u.id=m.user_id LEFT JOIN user_profiles p ON p.user_id=u.id WHERE m.group_id=$1 AND u.status='active' ORDER BY CASE m.role WHEN 'admin' THEN 1 WHEN 'moderator' THEN 2 ELSE 3 END,m.joined_at",[req.params.id]);
-  return res.set("Cache-Control","no-store").json({group:g.rows[0],members:members.rows});
+  const key=req.originalUrl.includes("/communities")?"community":"group";return res.set("Cache-Control","no-store").json({[key]:g.rows[0],members:members.rows});
  }catch{return res.status(503).json({error:"Group details are unavailable."});}
 });
 router.patch("/groups/:id",requireAuth,async(req,res)=>{
@@ -791,7 +789,7 @@ router.patch("/groups/:id",requireAuth,async(req,res)=>{
    "UPDATE social_groups g SET name=$3,description=$4,updated_at=NOW() WHERE g.id=$1 AND EXISTS(SELECT 1 FROM social_group_members m WHERE m.group_id=g.id AND m.user_id=$2 AND m.role='admin') RETURNING g.id,g.name,g.description,g.avatar_url,g.updated_at",
    [req.params.id,req.socialUserId,name,description]);
   if(!result.rowCount)return res.status(403).json({error:"Only a group admin can edit group information."});
-  return res.json({group:result.rows[0]});
+  const key=req.originalUrl.includes("/communities")?"community":"group";return res.json({[key]:result.rows[0]});
  }catch{return res.status(503).json({error:"Group information could not be updated."});}
 });
 router.post("/groups/:id/members",requireAuth,async(req,res)=>{
