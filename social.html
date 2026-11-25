@@ -359,16 +359,18 @@ $("#actionBlock").onclick=async()=>{if(!actionTarget?.userId)return;if(!confirm(
 $("#actionDelete").onclick=async()=>{if(!actionTarget?.own)return;if(!confirm(tr("confirmDelete")))return;try{await api("/posts/"+actionTarget.id,{method:"DELETE"});close("#postActionsModal");await loadFeed();toast(tr("deletePost"))}catch(e){toast(e.message)}};
 $("#sendReport").onclick=async()=>{if(!reportTarget)return;try{await api("/reports",{method:"POST",body:JSON.stringify({targetType:reportTarget.type,targetId:reportTarget.id,reason:$("#reportReason").value,details:$("#reportDetails").value})});close("#reportModal");$("#reportDetails").value="";reportTarget=null;toast(tr("reportSent"))}catch(e){toast(e.message)}};
 
-async function uploadOne(file){
- const isVideo=file.type.startsWith("video/");
- if(!(file.type.startsWith("image/")||isVideo))throw new Error("Unsupported file type.");
- if(file.size>(isVideo?50:8)*1024*1024)throw new Error(isVideo?"Video must be under 50MB.":"Image must be under 8MB.");
- const cfg=await apiAccount("/media/sign",{method:"POST",body:JSON.stringify({resourceType:isVideo?"video":"image"})});
+async function uploadOne(file,{allowRaw=false}={}){
+ const image=file.type.startsWith("image/"),video=file.type.startsWith("video/");
+ const type=image?"image":video?"video":"raw";
+ if(!image&&!video&&!allowRaw)throw new Error("Unsupported file type.");
+ const max=image?8*1024*1024:video?50*1024*1024:20*1024*1024;
+ if(file.size>max)throw new Error(image?"Image must be under 8MB.":video?"Video must be under 50MB.":"Document must be under 20MB.");
+ const cfg=await apiAccount("/media/sign",{method:"POST",body:JSON.stringify({resourceType:type})});
  const fd=new FormData();fd.append("file",file);fd.append("api_key",cfg.apiKey);fd.append("timestamp",cfg.timestamp);fd.append("folder",cfg.folder);fd.append("signature",cfg.signature);
  const up=await fetch("https://api.cloudinary.com/v1_1/"+cfg.cloudName+"/"+cfg.resourceType+"/upload",{method:"POST",body:fd});
  const asset=await up.json();if(!up.ok)throw new Error(asset.error?.message||"Upload failed.");
- const saved=await apiAccount("/media",{method:"POST",body:JSON.stringify({publicId:asset.public_id,secureUrl:asset.secure_url,resourceType:isVideo?"video":"image",bytes:asset.bytes})});
- return {publicId:asset.public_id,url:saved.media.secure_url,type:isVideo?"video":"image"};
+ const saved=await apiAccount("/media",{method:"POST",body:JSON.stringify({publicId:asset.public_id,secureUrl:asset.secure_url,resourceType:type,bytes:asset.bytes})});
+ return {publicId:asset.public_id,url:saved.media.secure_url,type,name:file.name};
 }
 async function apiAccount(path,opts={}){const send=()=>fetch("https://ethio-one-api.onrender.com/api/v1/account"+path,{...opts,headers:{"Content-Type":"application/json",Authorization:"Bearer "+token()}});let r=await send();if(r.status===401&&await refresh())r=await send();const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"Account service unavailable.");return d}
 $("#mediaFiles").addEventListener("change",async e=>{
@@ -586,17 +588,7 @@ $("#newMessageSearch").addEventListener("input",()=>{clearTimeout(newMessageTime
 $("#newMessageResults").addEventListener("click",async e=>{const b=e.target.closest("[data-new-message-user]");if(!b)return;const name=b.dataset.newMessageName||"Member";b.disabled=true;try{await startConversation(b.dataset.newMessageUser,name);$("#newMessagePanel").hidden=true;$("#newMessageSearch").value="";$("#newMessageResults").innerHTML='<p class="hint">Search for a member to start a chat.</p>'}finally{b.disabled=false}});
 $("#conversationList").addEventListener("click",async e=>{const b=e.target.closest("[data-conversation]");if(!b)return;activeConversationKind="private";privateMessagesSignature="";groupMessagesSignature="";setMessengerChatView(true);window.activeConversation=b.dataset.conversation;activeConversationName=b.dataset.name||"Member";document.querySelectorAll(".messenger-person").forEach(x=>x.classList.toggle("active",x===b));const avatar=b.querySelector(".avatar");$("#chatAvatar").innerHTML=avatar?avatar.innerHTML:esc(initials(activeConversationName));await (activeConversationKind==="group"?loadGroupMessages(window.activeConversation):loadMessages(window.activeConversation))});
 let pendingMessageMedia=[];
-async function uploadMessageFile(file){
- const image=file.type.startsWith("image/"),video=file.type.startsWith("video/"),type=image?"image":video?"video":"raw";
- const max=image?8*1024*1024:video?50*1024*1024:20*1024*1024;
- if(file.size>max)throw new Error(image?"Image must be under 8MB.":video?"Video must be under 50MB.":"Document must be under 20MB.");
- const cfg=await apiAccount("/media/sign",{method:"POST",body:JSON.stringify({resourceType:type})});
- const fd=new FormData();fd.append("file",file);fd.append("api_key",cfg.apiKey);fd.append("timestamp",cfg.timestamp);fd.append("folder",cfg.folder);fd.append("signature",cfg.signature);
- const up=await fetch("https://api.cloudinary.com/v1_1/"+cfg.cloudName+"/"+type+"/upload",{method:"POST",body:fd}),asset=await up.json();
- if(!up.ok)throw new Error(asset.error?.message||"Upload failed.");
- const saved=await apiAccount("/media",{method:"POST",body:JSON.stringify({publicId:asset.public_id,secureUrl:asset.secure_url,resourceType:type,bytes:asset.bytes})});
- return {publicId:asset.public_id,url:saved.media.secure_url,type,name:file.name};
-}
+async function uploadMessageFile(file){return uploadOne(file,{allowRaw:true});}
 $("#messageFiles").addEventListener("change",async e=>{
  const files=Array.from(e.target.files||[]);if(pendingMessageMedia.length+files.length>4){toast("Choose up to 4 attachments.");e.target.value="";return}
  const hint=$("#messageMediaHint");hint.textContent="Uploading…";
