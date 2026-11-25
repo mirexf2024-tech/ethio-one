@@ -828,8 +828,7 @@ router.get("/communities/:id/posts",requireAuth,async(req,res)=>{
   const posts=await req.app.locals.db.query(
    `SELECT p.id,p.community_id,p.body,p.media,p.created_at,p.user_id AS author_id,
     u.username,u.full_name,up.avatar_url,
-    (SELECT COUNT(*)::int FROM social_community_post_comments c WHERE c.post_id=p.id AND c.status='published') AS comment_count,
-    CASE WHEN EXISTS(SELECT 1 FROM social_likes l WHERE false) THEN true ELSE false END AS reserved
+    (SELECT COUNT(*)::int FROM social_community_post_comments c WHERE c.post_id=p.id AND c.status='published') AS comment_count
     FROM social_community_posts p JOIN users u ON u.id=p.user_id
     LEFT JOIN user_profiles up ON up.user_id=u.id
     WHERE p.community_id=$1 AND p.status='published'
