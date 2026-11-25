@@ -12,7 +12,7 @@ if (!databaseUrl) {
 
 const pool = new Pool({
   connectionString: databaseUrl,
-  ssl: { rejectUnauthorized: true },
+  ssl: { rejectUnauthorized: process.env.NODE_ENV !== "staging" },
   max: 1,
   connectionTimeoutMillis: 10000
 });
