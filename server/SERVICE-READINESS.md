@@ -19,7 +19,7 @@ The production registry currently reports all 20 services as `planned`. API rout
 
 | # | Service | Module key | API / implementation note | Registry status |
 |---:|---|---|---|---|
-| 1 | Ethio Social | `social` | Feed, posts, comments, follows, stories and community membership APIs exist. Social messaging entry points are retired; Ethio Chat backend is not yet implemented. Channel publishing is not yet implemented. | Planned |
+| 1 | Ethio Social | `social` | Feed, posts, comments, follows, stories and community membership APIs exist under the canonical `/communities` API path (with `/groups` retained as a compatibility alias). Social messaging entry points are retired; Ethio Chat backend is not yet implemented. Channel publishing is not yet implemented. | Planned |
 | 2 | Ethio Tube | `tube` | No dedicated service API router verified | Planned |
 | 3 | Ethio Live | `live` | No dedicated service API router verified | Planned |
 | 4 | Ethio Chat | `chat` | No dedicated service API router verified | Planned |
