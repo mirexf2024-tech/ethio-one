@@ -19,7 +19,7 @@ The production registry currently reports all 20 services as `planned`. API rout
 
 | # | Service | Module key | API / implementation note | Registry status |
 |---:|---|---|---|---|
-| 1 | Ethio Social | `social` | Feed, posts, comments, follows, stories and member-community APIs exist; private/group messaging and call routes are redirected to Ethio Chat. Channel publishing is not yet implemented. | Planned |
+| 1 | Ethio Social | `social` | Feed, posts, comments, follows, stories and community membership APIs exist. Social messaging entry points are retired; Ethio Chat backend is not yet implemented. Channel publishing is not yet implemented. | Planned |
 | 2 | Ethio Tube | `tube` | No dedicated service API router verified | Planned |
 | 3 | Ethio Live | `live` | No dedicated service API router verified | Planned |
 | 4 | Ethio Chat | `chat` | No dedicated service API router verified | Planned |
@@ -86,4 +86,4 @@ Release gates still required: run the latest CI after all commits, verify the ex
 
 ## Ethio Social / Ethio Chat boundary
 
-Ethio Social is the public-content and community layer: feed, posts, comments, reactions, sharing, follows, stories and community membership/moderation. Private conversations, group messages and audio/video call signaling belong only to Ethio Chat. The Social API returns HTTP 410 with an Ethio Chat handoff for legacy conversation, call and community-message endpoints; existing stored records are not deleted. Community membership and moderation remain in Social, but community chat is not part of Social. Channel creation/publishing and channel roles are still planned and must be implemented separately before they are shown as available.
+Ethio Social is the public-content and community layer: feed, posts, comments, reactions, sharing, follows, stories and community membership/moderation. Private conversations, group messages and audio/video call signaling belong only to Ethio Chat. The Social API returns HTTP 410 for legacy conversation, call and community-message endpoints and identifies Ethio Chat as the owning service; this is not a working redirect because the Ethio Chat API is not yet implemented. Social UI messaging entry points now show a coming-soon notice instead of opening the retired inbox. Existing stored records are not deleted. Community membership and moderation remain in Social, but community chat is not part of Social. Channel creation/publishing and channel roles are still planned and must be implemented separately before they are shown as available.
