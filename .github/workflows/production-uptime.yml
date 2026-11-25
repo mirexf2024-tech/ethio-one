@@ -1,0 +1,51 @@
+name: Ethio One Production Uptime Monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ethio-one-production-uptime
+  cancel-in-progress: true
+
+jobs:
+  check-production:
+    name: Check public API and database readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check API health and database readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://ethio-one-api.onrender.com"
+          check_endpoint() {
+            local path="$1"
+            local expected="$2"
+            local body=""
+            local ok="false"
+            for attempt in 1 2 3; do
+              echo "Checking ${path} (attempt ${attempt}/3)"
+              if body="$(curl --fail --silent --show-error --max-time 25 "${BASE}${path}")"; then
+                echo "Response received for ${path}"
+                if printf '%s' "$body" | grep -Eq "$expected"; then
+                  ok="true"
+                  break
+                fi
+                echo "Unexpected response shape for ${path}"
+              fi
+              sleep 12
+            done
+            if [ "$ok" != "true" ]; then
+              echo "::error::Production endpoint ${path} did not pass after 3 attempts."
+              return 1
+            fi
+          }
+          check_endpoint "/healthz" '"ok"[[:space:]]*:[[:space:]]*true'
+          check_endpoint "/readyz" '"ready"[[:space:]]*:[[:space:]]*true'
+          check_endpoint "/api/v1/system/status" '"database"[[:space:]]*:[[:space:]]*"connected"'
+          echo "All production health and readiness checks passed."
