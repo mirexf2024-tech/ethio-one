@@ -28,6 +28,6 @@ test("Ethio Social hands private messaging, calls and community chat to Ethio Ch
     assert.equal(response.status, 410, `${method} ${path} should be retired from Ethio Social`);
     const body = await response.json();
     assert.equal(body.service, "ethio-chat");
-    assert.equal(body.redirect, "/chat");
+    assert.match(body.error, /not available in Ethio Social/);
   }
 });
