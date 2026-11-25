@@ -144,11 +144,12 @@ test("campaign creators cannot self-approve or self-verify campaign funding", ()
 });
 
 test("only admins can pause, archive or manually republish campaigns", () => {
-  assert.ok(routes.includes('router.patch("/admin/campaigns/:id/status",async(req,res)=>{\\n  if(!await requireRoles(req,res,["admin","super_admin"]))return;'));
+  const statusRoute=routes.slice(routes.indexOf('router.patch("/admin/campaigns/:id/status"'),routes.indexOf('router.post("/admin/submissions/:id/review"'));
+  assert.ok(statusRoute.includes('requireRoles(req,res,["admin","super_admin"])'));
 });
 
 test("finance access to decrypted payout account details is recorded before disclosure", () => {
   assert.match(audit, /earn_payout_account_accessed/);
   assert.match(routes, /type:"earn_payout_account_accessed",severity:"warning"/);
-  assert.match(routes, /if\\(!logged\\)return res\\.status\\(503\\)\\.json\\(\\{error:"Payout account access could not be audited\\."\\}\\)/);
+  assert.ok(routes.includes('if(!logged)return res.status(503).json({error:"Payout account access could not be audited."});'));
 });
