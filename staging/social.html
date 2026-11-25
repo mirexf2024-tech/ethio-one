@@ -400,7 +400,7 @@ async function uploadOne(file){
  const saved=await apiAccount("/media",{method:"POST",body:JSON.stringify({publicId:asset.public_id,secureUrl:asset.secure_url,resourceType:isVideo?"video":"image",bytes:asset.bytes})});
  return {publicId:asset.public_id,url:saved.media.secure_url,type:isVideo?"video":"image"};
 }
-async function apiAccount(path,opts={}){const send=()=>fetch("https://ethio-one-api.onrender.com/api/v1/account"+path,{...opts,headers:{"Content-Type":"application/json",Authorization:"Bearer "+token()}});let r=await send();if(r.status===401&&await refresh())r=await send();const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"Account service unavailable.");return d}
+async function apiAccount(path,opts={}){const send=()=>fetch("https://ethio-one-social-staging-api.onrender.com/api/v1/account"+path,{...opts,headers:{"Content-Type":"application/json",Authorization:"Bearer "+token()}});let r=await send();if(r.status===401&&await refresh())r=await send();const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"Account service unavailable.");return d}
 $("#mediaFiles").addEventListener("change",async e=>{
  const files=Array.from(e.target.files||[]);if(uploadedMedia.length+files.length>4){toast("Choose up to 4 files.");return}
  $("#mediaHint").textContent="Uploading…";
