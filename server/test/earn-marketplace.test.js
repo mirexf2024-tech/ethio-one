@@ -153,3 +153,10 @@ test("finance access to decrypted payout account details is recorded before disc
   assert.match(routes, /type:"earn_payout_account_accessed",severity:"warning"/);
   assert.ok(routes.includes('if(!logged)return res.status(503).json({error:"Payout account access could not be audited."});'));
 });
+
+
+test("appeal resubmissions reserve only the funded reward pool, excluding platform fees", () => {
+  const resubmit=routes.slice(routes.indexOf('router.post("/submissions/:id/resubmit"'),routes.indexOf('router.get("/admin/appeals"'));
+  assert.match(resubmit, /reserved_minor\)\+Number\(s\.reward_minor\)>Number\(s\.reward_pool_minor\)/);
+  assert.doesNotMatch(resubmit, /reserved_minor\)\+Number\(s\.reward_minor\)>Number\(s\.budget_minor\)/);
+});
