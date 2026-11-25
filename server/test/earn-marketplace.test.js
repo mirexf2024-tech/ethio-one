@@ -136,3 +136,19 @@ test("Ethio Earn payout controls are present, localized and disabled by default"
   assert.doesNotMatch(earnPage, /[\u4e00-\u9fff]/);
   assert.match(earnPage, /id="payoutSubmit" type="submit" disabled/);
 });
+
+
+test("campaign creators cannot self-approve or self-verify campaign funding", () => {
+  assert.match(routes, /AND created_by<>\$3 RETURNING id,title,status,moderation_status,funding_status/);
+  assert.match(routes, /AND created_by<>\$4 RETURNING id,title,status,funding_status,moderation_status/);
+});
+
+test("only admins can pause, archive or manually republish campaigns", () => {
+  assert.match(routes, /router\\.patch\\("\\/admin\\/campaigns\\/:id\\/status",async\\(req,res\\)=>\\{\\s*if\\(!await requireRoles\\(req,res,\\["admin","super_admin"\\]\\)\\)return;/);
+});
+
+test("finance access to decrypted payout account details is recorded before disclosure", () => {
+  assert.match(audit, /earn_payout_account_accessed/);
+  assert.match(routes, /type:"earn_payout_account_accessed",severity:"warning"/);
+  assert.match(routes, /if\\(!logged\\)return res\\.status\\(503\\)\\.json\\(\\{error:"Payout account access could not be audited\\."\\}\\)/);
+});
