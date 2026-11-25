@@ -6,7 +6,7 @@
 
 ## Executive finding
 
-ETHIO ONE already has one account-level media signing and asset-registration API, but the implementation is not yet provider-neutral. Most web upload experiences share a helper; messaging duplicates the upload logic. The API, social validation and parts of the schema hard-code Cloudinary URLs and identifiers. This means the current provider is centralized only partially, and a future move to R2 or owned S3-compatible storage would require coordinated code and data migration.
+ETHIO ONE already has one account-level media signing and asset-registration API, but the implementation is not yet provider-neutral. The web upload paths now share one client helper for profile photos, posts, stories and message attachments. The API, social validation and parts of the schema still hard-code Cloudinary URLs and identifiers. A future move to R2 or owned S3-compatible storage therefore still requires a provider adapter and coordinated data migration.
 
 ## Existing upload paths found
 
@@ -25,7 +25,7 @@ ETHIO ONE already has one account-level media signing and asset-registration API
 3. `server/social/routes.js` `safeMedia` only accepts Cloudinary URLs. Post, story, direct-message and group-message ownership checks query `media_assets` by Cloudinary public ID, URL and resource type.
 4. `server/schema/008_identity_roles_profile_notifications_media.sql` has a provider column, but also makes `public_id` unique and stores `secure_url`; this is not a complete provider-neutral object model.
 5. `server/schema/012_ethio_social_stories.sql` enforces `media_url LIKE 'https://res.cloudinary.com/%'`, so switching provider requires a forward-only schema migration and careful preservation of old rows.
-6. `social.html` shares `uploadOne()` across posts, stories and profile photos, but `uploadMessageFile()` separately repeats the same sign → direct provider upload → register flow. These should use one common client upload helper.
+6. `social.html` now routes profile photos, post/story media and message attachments through one `uploadOne()` helper. `uploadMessageFile()` delegates to it with raw-file support, removing duplicated client-side signing, upload and registration logic. The helper still uses the current Cloudinary-specific response fields, so the server contract remains the next abstraction boundary.
 7. The mobile app code inspected does not currently expose a member-media upload flow; confirm separately before mobile media features are enabled.
 
 ## Recommended unified contract
