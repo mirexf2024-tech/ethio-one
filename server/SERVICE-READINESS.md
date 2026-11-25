@@ -87,3 +87,11 @@ Release gates still required: run the latest CI after all commits, verify the ex
 ## Ethio Social / Ethio Chat boundary
 
 Ethio Social is the public-content and community layer: feed, posts, comments, reactions, sharing, follows, stories and community membership/moderation. Private conversations, group messages and audio/video call signaling belong only to Ethio Chat. The Social API returns HTTP 410 for legacy conversation, call and community-message endpoints and identifies Ethio Chat as the owning service; this is not a working redirect because the Ethio Chat API is not yet implemented. Social UI messaging entry points now show a coming-soon notice instead of opening the retired inbox. The community UI uses the canonical API contract. Existing communities are currently discoverable to signed-in members and open to join because the current schema has no private-visibility field; private/invite-only communities require a separately designed visibility and invitation model. Existing database tables remain unchanged. Existing stored records are not deleted. Community membership and moderation remain in Social, but community chat is not part of Social. Channel creation/publishing and channel roles are still planned and must be implemented separately before they are shown as available.
+
+
+### Ethio Social community content (feature branch)
+- Added additive schema migration `022_ethio_social_community_posts.sql` for community-scoped posts and comments. Existing global `social_posts` and community membership data are unchanged.
+- Added member-only API routes: `GET/POST /api/v1/social/communities/:id/posts`, `GET/POST /api/v1/social/communities/:communityId/posts/:postId/comments`, and author/admin/moderator removal.
+- Community feed and discussion reads require active membership; posting requires membership; attachments must be previously registered to the signed-in account in `media_assets`.
+- Added initial community detail UI for text posts and feed display. Photo/video payloads are supported by the API's existing Cloudinary ownership validation, but the community composer UI still needs media picker integration and localized copy.
+- This is feature-branch code only. Migration has not been applied to production, and no deployment has occurred.
