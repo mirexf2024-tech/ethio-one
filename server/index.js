@@ -24,7 +24,7 @@ const allowedOrigins = (process.env.CORS_ORIGINS || "https://ethio-one.onrender.
 const pool = process.env.DATABASE_URL
   ? new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: true },
+      ssl: { rejectUnauthorized: process.env.NODE_ENV !== "staging" },
       max: 5,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000
