@@ -773,6 +773,35 @@ const createCommunity=async(req,res)=>{
 router.post("/communities",requireAuth,createCommunity);
 router.post("/groups",requireAuth,createCommunity);
 
+/* Public community discovery: the current community model has no private-visibility field, so communities are discoverable and members may join them. */
+router.get("/communities/discover",requireAuth,async(req,res)=>{
+ const q=typeof req.query.q==="string"?req.query.q.trim().slice(0,60):"";
+ try{
+  const result=await req.app.locals.db.query(
+   `SELECT g.id,g.name,g.description,g.avatar_url,g.created_at,
+    (SELECT COUNT(*)::int FROM social_group_members x WHERE x.group_id=g.id) AS member_count,
+    (mine.user_id IS NOT NULL) AS is_member
+    FROM social_groups g
+    LEFT JOIN social_group_members mine ON mine.group_id=g.id AND mine.user_id=$1
+    WHERE ($2='' OR g.name ILIKE '%'||$2||'%' OR g.description ILIKE '%'||$2||'%')
+    ORDER BY g.created_at DESC LIMIT 60`,
+   [req.socialUserId,q]);
+  return res.set("Cache-Control","no-store").json({communities:result.rows});
+ }catch{return res.status(503).json({error:"Communities could not be discovered."});}
+});
+
+router.post("/communities/:id/join",requireAuth,async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid community."});
+ try{
+  const exists=await req.app.locals.db.query("SELECT id FROM social_groups WHERE id=$1",[req.params.id]);
+  if(!exists.rowCount)return res.status(404).json({error:"Community not found."});
+  const joined=await req.app.locals.db.query(
+   "INSERT INTO social_group_members(group_id,user_id,role) VALUES($1,$2,'member') ON CONFLICT(group_id,user_id) DO NOTHING RETURNING user_id",
+   [req.params.id,req.socialUserId]);
+  return res.status(joined.rowCount?201:200).json({ok:true,joined:!!joined.rowCount});
+ }catch{return res.status(503).json({error:"Could not join this community."});}
+});
+
 const getCommunity=async(req,res)=>{
  if(!uuid(req.params.id))return res.status(400).json({error:"Invalid community."});
  try{
