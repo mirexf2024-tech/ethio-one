@@ -15,8 +15,7 @@ services:
     branch: feature/social-chat-boundary
     rootDir: server
     buildCommand: npm install
-    preDeployCommand: node scripts/migrate.js
-    startCommand: npm start
+    startCommand: node scripts/migrate.js && npm start
     healthCheckPath: /healthz
     autoDeploy: false
     envVars:
