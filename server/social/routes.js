@@ -68,9 +68,8 @@ router.use(optionalAuth);
 // and call flows belong to the separate Ethio Chat service.
 router.use(["/conversations", "/calls", "/groups/:id/messages"], (req, res) => {
   return res.status(410).set("Cache-Control", "no-store").json({
-    error: "Messaging and calls are available in Ethio Chat.",
-    service: "ethio-chat",
-    redirect: "/chat"
+    error: "Messaging and calls belong in Ethio Chat and are not available in Ethio Social.",
+    service: "ethio-chat"
   });
 });
 
