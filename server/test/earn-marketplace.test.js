@@ -144,7 +144,7 @@ test("campaign creators cannot self-approve or self-verify campaign funding", ()
 });
 
 test("only admins can pause, archive or manually republish campaigns", () => {
-  assert.match(routes, /router\\.patch\\("\\/admin\\/campaigns\\/:id\\/status",async\\(req,res\\)=>\\{\\s*if\\(!await requireRoles\\(req,res,\\["admin","super_admin"\\]\\)\\)return;/);
+  assert.ok(routes.includes('router.patch("/admin/campaigns/:id/status",async(req,res)=>{\\n  if(!await requireRoles(req,res,["admin","super_admin"]))return;'));
 });
 
 test("finance access to decrypted payout account details is recorded before disclosure", () => {
