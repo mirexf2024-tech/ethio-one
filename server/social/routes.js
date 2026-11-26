@@ -64,6 +64,15 @@ router.use(async(req,res,next)=>{
 });
 router.use(optionalAuth);
 
+// Social is a public-content and community space. All private/group messaging
+// and call flows belong to the separate Ethio Chat service.
+router.use(["/conversations", "/calls", "/groups/:id/messages"], (req, res) => {
+  return res.status(410).set("Cache-Control", "no-store").json({
+    error: "Messaging and calls belong in Ethio Chat and are not available in Ethio Social.",
+    service: "ethio-chat"
+  });
+});
+
 
 router.get("/profile/me",requireAuth,async(req,res)=>{
  try{
@@ -732,92 +741,229 @@ router.patch("/video-view-preference",requireAuth,async(req,res)=>{
  catch{return res.status(503).json({error:"Preference could not be saved."});}
 });
 
-/* Telegram-inspired group chats with explicit admin, moderator and member roles. */
-router.get("/groups",requireAuth,async(req,res)=>{
+/* Canonical Ethio Social communities API. Legacy /groups paths remain compatible. */
+const communityRequest=req=>req.originalUrl.includes("/communities");
+const listCommunities=async(req,res)=>{
  try{
   const r=await req.app.locals.db.query(
    `SELECT g.id,g.name,g.description,g.avatar_url,g.created_at,gm.role,
-    (SELECT COUNT(*)::int FROM social_group_members x WHERE x.group_id=g.id) AS member_count,
-    (SELECT body FROM social_group_messages m WHERE m.group_id=g.id ORDER BY m.created_at DESC LIMIT 1) AS last_message,
-    (SELECT created_at FROM social_group_messages m WHERE m.group_id=g.id ORDER BY m.created_at DESC LIMIT 1) AS last_message_at
+    (SELECT COUNT(*)::int FROM social_group_members x WHERE x.group_id=g.id) AS member_count
     FROM social_groups g JOIN social_group_members gm ON gm.group_id=g.id
-    WHERE gm.user_id=$1 ORDER BY COALESCE((SELECT MAX(created_at) FROM social_group_messages m WHERE m.group_id=g.id),g.created_at) DESC LIMIT 100`,[req.socialUserId]);
-  return res.set("Cache-Control","no-store").json({groups:r.rows});
- }catch{return res.status(503).json({error:"Groups could not be loaded."});}
-});
-router.post("/groups",requireAuth,async(req,res)=>{
+    WHERE gm.user_id=$1 ORDER BY g.created_at DESC LIMIT 100`,[req.socialUserId]);
+  return res.set("Cache-Control","no-store").json({[communityRequest(req)?"communities":"groups"]:r.rows});
+ }catch{return res.status(503).json({error:"Communities could not be loaded."});}
+};
+router.get("/communities",requireAuth,listCommunities);
+router.get("/groups",requireAuth,listCommunities);
+
+const createCommunity=async(req,res)=>{
  const name=typeof req.body?.name==="string"?req.body.name.trim():"",description=typeof req.body?.description==="string"?req.body.description.trim():"";
- if(name.length<2||name.length>80||description.length>300)return res.status(400).json({error:"Group name must be 2–80 characters; description up to 300."});
+ if(name.length<2||name.length>80||description.length>300)return res.status(400).json({error:"Community name must be 2–80 characters; description up to 300."});
  const client=await req.app.locals.db.connect();
  try{
   await client.query("BEGIN");
   const g=await client.query("INSERT INTO social_groups(name,description,created_by) VALUES($1,$2,$3) RETURNING id,name,description,created_at",[name,description,req.socialUserId]);
   await client.query("INSERT INTO social_group_members(group_id,user_id,role) VALUES($1,$2,'admin')",[g.rows[0].id,req.socialUserId]);
-  await client.query("COMMIT");return res.status(201).json({group:{...g.rows[0],role:"admin",member_count:1}});
- }catch{await client.query("ROLLBACK").catch(()=>{});return res.status(503).json({error:"Group could not be created."})}
+  await client.query("COMMIT");
+  const key=communityRequest(req)?"community":"group";
+  return res.status(201).json({[key]:{...g.rows[0],role:"admin",member_count:1}});
+ }catch{await client.query("ROLLBACK").catch(()=>{});return res.status(503).json({error:"Community could not be created."})}
  finally{client.release()}
+};
+router.post("/communities",requireAuth,createCommunity);
+router.post("/groups",requireAuth,createCommunity);
+
+/* Public community discovery: the current community model has no private-visibility field, so communities are discoverable and members may join them. */
+router.get("/communities/discover",requireAuth,async(req,res)=>{
+ const q=typeof req.query.q==="string"?req.query.q.trim().slice(0,60):"";
+ try{
+  const result=await req.app.locals.db.query(
+   `SELECT g.id,g.name,g.description,g.avatar_url,g.created_at,
+    (SELECT COUNT(*)::int FROM social_group_members x WHERE x.group_id=g.id) AS member_count,
+    (mine.user_id IS NOT NULL) AS is_member
+    FROM social_groups g
+    LEFT JOIN social_group_members mine ON mine.group_id=g.id AND mine.user_id=$1
+    WHERE ($2='' OR g.name ILIKE '%'||$2||'%' OR g.description ILIKE '%'||$2||'%')
+    ORDER BY g.created_at DESC LIMIT 60`,
+   [req.socialUserId,q]);
+  return res.set("Cache-Control","no-store").json({communities:result.rows});
+ }catch{return res.status(503).json({error:"Communities could not be discovered."});}
 });
-router.get("/groups/:id",requireAuth,async(req,res)=>{
- if(!uuid(req.params.id))return res.status(400).json({error:"Invalid group."});
+
+router.post("/communities/:id/join",requireAuth,async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid community."});
+ try{
+  const exists=await req.app.locals.db.query("SELECT id FROM social_groups WHERE id=$1",[req.params.id]);
+  if(!exists.rowCount)return res.status(404).json({error:"Community not found."});
+  const joined=await req.app.locals.db.query(
+   "INSERT INTO social_group_members(group_id,user_id,role) VALUES($1,$2,'member') ON CONFLICT(group_id,user_id) DO NOTHING RETURNING user_id",
+   [req.params.id,req.socialUserId]);
+  return res.status(joined.rowCount?201:200).json({ok:true,joined:!!joined.rowCount});
+ }catch{return res.status(503).json({error:"Could not join this community."});}
+});
+
+const getCommunity=async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid community."});
  try{
   const g=await req.app.locals.db.query("SELECT g.*,m.role,(SELECT COUNT(*)::int FROM social_group_members WHERE group_id=g.id) AS member_count FROM social_groups g JOIN social_group_members m ON m.group_id=g.id WHERE g.id=$1 AND m.user_id=$2",[req.params.id,req.socialUserId]);
-  if(!g.rowCount)return res.status(404).json({error:"Group not found."});
+  if(!g.rowCount)return res.status(404).json({error:"Community not found."});
   const members=await req.app.locals.db.query("SELECT u.id,u.username,u.full_name,p.avatar_url,m.role,m.joined_at FROM social_group_members m JOIN users u ON u.id=m.user_id LEFT JOIN user_profiles p ON p.user_id=u.id WHERE m.group_id=$1 AND u.status='active' ORDER BY CASE m.role WHEN 'admin' THEN 1 WHEN 'moderator' THEN 2 ELSE 3 END,m.joined_at",[req.params.id]);
-  return res.set("Cache-Control","no-store").json({group:g.rows[0],members:members.rows});
- }catch{return res.status(503).json({error:"Group details are unavailable."});}
+  const key=communityRequest(req)?"community":"group";
+  return res.set("Cache-Control","no-store").json({[key]:g.rows[0],members:members.rows});
+ }catch{return res.status(503).json({error:"Community details are unavailable."});}
+};
+router.get("/communities/:id",requireAuth,getCommunity);
+router.get("/groups/:id",requireAuth,getCommunity);
+
+/* Community content is isolated from the global Social feed and visible only to members. */
+router.get("/communities/:id/posts",requireAuth,async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid community."});
+ const limit=Math.min(30,Math.max(1,Number.parseInt(req.query.limit,10)||20));
+ const before=typeof req.query.before==="string"&&uuid(req.query.before)?req.query.before:null;
+ try{
+  const member=await req.app.locals.db.query("SELECT 1 FROM social_group_members WHERE group_id=$1 AND user_id=$2",[req.params.id,req.socialUserId]);
+  if(!member.rowCount)return res.status(403).json({error:"Join this community to view its posts."});
+  const values=[req.params.id,req.socialUserId,limit];let cursorSql="";
+  if(before){values.push(before);cursorSql=" AND p.created_at < (SELECT created_at FROM social_community_posts WHERE id=$4 AND community_id=$1)";}
+  const posts=await req.app.locals.db.query(
+   `SELECT p.id,p.community_id,p.body,p.media,p.created_at,p.user_id AS author_id,
+    u.username,u.full_name,up.avatar_url,
+    (SELECT COUNT(*)::int FROM social_community_post_comments c WHERE c.post_id=p.id AND c.status='published') AS comment_count
+    FROM social_community_posts p JOIN users u ON u.id=p.user_id
+    LEFT JOIN user_profiles up ON up.user_id=u.id
+    WHERE p.community_id=$1 AND p.status='published'
+    AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=$2))
+    ${cursorSql} ORDER BY p.created_at DESC LIMIT $3`,values);
+  return res.set("Cache-Control","no-store").json({posts:posts.rows});
+ }catch{return res.status(503).json({error:"Community posts are temporarily unavailable."});}
 });
-router.patch("/groups/:id",requireAuth,async(req,res)=>{
- if(!uuid(req.params.id))return res.status(400).json({error:"Invalid group."});
+router.post("/communities/:id/posts",postCreateLimit,requireAuth,async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid community."});
+ const body=typeof req.body?.body==="string"?req.body.body.trim():"";
+ const media=req.body?.media===undefined?[]:req.body.media;
+ if(body.length>2000||(!body&&(!Array.isArray(media)||!media.length))||!safeMedia(media))
+  return res.status(400).json({error:"Check your post text and attachments."});
+ try{
+  const member=await req.app.locals.db.query("SELECT 1 FROM social_group_members WHERE group_id=$1 AND user_id=$2",[req.params.id,req.socialUserId]);
+  if(!member.rowCount)return res.status(403).json({error:"Join this community before posting."});
+  for(const item of media){
+   const owned=await req.app.locals.db.query("SELECT id FROM media_assets WHERE user_id=$1 AND public_id=$2 AND secure_url=$3 AND resource_type=$4 LIMIT 1",[req.socialUserId,item.publicId,item.url,item.type]);
+   if(!owned.rowCount)return res.status(403).json({error:"One or more attachments do not belong to this account."});
+  }
+  const created=await req.app.locals.db.query(
+   "INSERT INTO social_community_posts(community_id,user_id,body,media) VALUES($1,$2,$3,$4::jsonb) RETURNING id,community_id,user_id,body,media,created_at",
+   [req.params.id,req.socialUserId,body,JSON.stringify(media)]);
+  return res.status(201).json({post:created.rows[0]});
+ }catch{return res.status(503).json({error:"Your community post could not be published."});}
+});
+router.post("/communities/:communityId/posts/:postId/comments",commentCreateLimit,requireAuth,async(req,res)=>{
+ const {communityId,postId}=req.params,body=typeof req.body?.body==="string"?req.body.body.trim():"";
+ if(!uuid(communityId)||!uuid(postId)||!body||body.length>1000)return res.status(400).json({error:"Check your comment."});
+ try{
+  const created=await req.app.locals.db.query(
+   `INSERT INTO social_community_post_comments(post_id,user_id,body)
+    SELECT p.id,$3,$4 FROM social_community_posts p
+    JOIN social_group_members m ON m.group_id=p.community_id AND m.user_id=$3
+    WHERE p.id=$1 AND p.community_id=$2 AND p.status='published'
+    RETURNING id,post_id,user_id,body,created_at`,
+   [postId,communityId,req.socialUserId,body]);
+  return created.rowCount?res.status(201).json({comment:created.rows[0]}):res.status(404).json({error:"Community post not found or unavailable."});
+ }catch{return res.status(503).json({error:"Comment could not be published."});}
+});
+router.get("/communities/:communityId/posts/:postId/comments",requireAuth,async(req,res)=>{
+ const {communityId,postId}=req.params;
+ if(!uuid(communityId)||!uuid(postId))return res.status(400).json({error:"Invalid community post."});
+ try{
+  const result=await req.app.locals.db.query(
+   `SELECT c.id,c.body,c.created_at,c.user_id AS author_id,u.username,u.full_name,up.avatar_url
+    FROM social_community_post_comments c
+    JOIN social_community_posts p ON p.id=c.post_id
+    JOIN social_group_members m ON m.group_id=p.community_id AND m.user_id=$3
+    JOIN users u ON u.id=c.user_id LEFT JOIN user_profiles up ON up.user_id=u.id
+    WHERE p.id=$1 AND p.community_id=$2 AND p.status='published' AND c.status='published'
+    ORDER BY c.created_at ASC LIMIT 100`,
+   [postId,communityId,req.socialUserId]);
+  return res.set("Cache-Control","no-store").json({comments:result.rows});
+ }catch{return res.status(503).json({error:"Comments are temporarily unavailable."});}
+});
+router.delete("/communities/:communityId/posts/:postId",requireAuth,async(req,res)=>{
+ const {communityId,postId}=req.params;
+ if(!uuid(communityId)||!uuid(postId))return res.status(400).json({error:"Invalid community post."});
+ try{
+  const removed=await req.app.locals.db.query(
+   `UPDATE social_community_posts p SET status='removed',updated_at=NOW()
+    WHERE p.id=$1 AND p.community_id=$2 AND p.status='published'
+    AND (p.user_id=$3 OR EXISTS(SELECT 1 FROM social_group_members m WHERE m.group_id=p.community_id AND m.user_id=$3 AND m.role IN ('admin','moderator')))
+    RETURNING p.id`,
+   [postId,communityId,req.socialUserId]);
+  return removed.rowCount?res.json({ok:true}):res.status(404).json({error:"Post not found or you cannot remove it."});
+ }catch{return res.status(503).json({error:"Post could not be removed."});}
+});
+
+
+const updateCommunity=async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid community."});
  const name=typeof req.body?.name==="string"?req.body.name.trim():"";
  const description=typeof req.body?.description==="string"?req.body.description.trim():"";
- if(name.length<2||name.length>80||description.length>300)return res.status(400).json({error:"Group name must be 2–80 characters and description up to 300."});
+ if(name.length<2||name.length>80||description.length>300)return res.status(400).json({error:"Community name must be 2–80 characters and description up to 300."});
  try{
   const result=await req.app.locals.db.query(
    "UPDATE social_groups g SET name=$3,description=$4,updated_at=NOW() WHERE g.id=$1 AND EXISTS(SELECT 1 FROM social_group_members m WHERE m.group_id=g.id AND m.user_id=$2 AND m.role='admin') RETURNING g.id,g.name,g.description,g.avatar_url,g.updated_at",
    [req.params.id,req.socialUserId,name,description]);
-  if(!result.rowCount)return res.status(403).json({error:"Only a group admin can edit group information."});
-  return res.json({group:result.rows[0]});
- }catch{return res.status(503).json({error:"Group information could not be updated."});}
-});
-router.post("/groups/:id/members",requireAuth,async(req,res)=>{
+  if(!result.rowCount)return res.status(403).json({error:"Only a community admin can edit community information."});
+  const key=communityRequest(req)?"community":"group";return res.json({[key]:result.rows[0]});
+ }catch{return res.status(503).json({error:"Community information could not be updated."});}
+};
+router.patch("/communities/:id",requireAuth,updateCommunity);
+router.patch("/groups/:id",requireAuth,updateCommunity);
+
+const addCommunityMember=async(req,res)=>{
  const userId=req.body?.userId;if(!uuid(req.params.id)||!uuid(userId))return res.status(400).json({error:"Choose a valid member."});
  try{
   const role=await req.app.locals.db.query("SELECT role FROM social_group_members WHERE group_id=$1 AND user_id=$2",[req.params.id,req.socialUserId]);
-  if(!role.rowCount||!["admin","moderator"].includes(role.rows[0].role))return res.status(403).json({error:"Only group admins and moderators can add members."});
+  if(!role.rowCount||!["admin","moderator"].includes(role.rows[0].role))return res.status(403).json({error:"Only community admins and moderators can add members."});
   const user=await req.app.locals.db.query("SELECT id FROM users WHERE id=$1 AND status='active'",[userId]);if(!user.rowCount)return res.status(404).json({error:"Account not found."});
   const added=await req.app.locals.db.query("INSERT INTO social_group_members(group_id,user_id,role) VALUES($1,$2,'member') ON CONFLICT(group_id,user_id) DO NOTHING RETURNING user_id",[req.params.id,userId]);
   return res.status(added.rowCount?201:200).json({ok:true,added:!!added.rowCount});
  }catch{return res.status(503).json({error:"Member could not be added."});}
-});
-router.patch("/groups/:id/members/:userId",requireAuth,async(req,res)=>{
+};
+router.post("/communities/:id/members",requireAuth,addCommunityMember);
+router.post("/groups/:id/members",requireAuth,addCommunityMember);
+
+const updateCommunityMember=async(req,res)=>{
  const role=req.body?.role;if(!uuid(req.params.id)||!uuid(req.params.userId)||!["admin","moderator","member","remove"].includes(role))return res.status(400).json({error:"Invalid member role."});
  try{
   const actor=await req.app.locals.db.query("SELECT role FROM social_group_members WHERE group_id=$1 AND user_id=$2",[req.params.id,req.socialUserId]);
   const target=await req.app.locals.db.query("SELECT role FROM social_group_members WHERE group_id=$1 AND user_id=$2",[req.params.id,req.params.userId]);
-  if(!actor.rowCount||!target.rowCount)return res.status(404).json({error:"Group member not found."});
+  if(!actor.rowCount||!target.rowCount)return res.status(404).json({error:"Community member not found."});
   const actorRole=actor.rows[0].role,targetRole=target.rows[0].role;
   if(actorRole!=="admin"&&!(role==="remove"&&actorRole==="moderator"&&targetRole==="member"))return res.status(403).json({error:"Only admins can change roles; moderators can remove regular members."});
-  if(req.params.userId===req.socialUserId&&role!=="remove")return res.status(400).json({error:"You cannot change your own group role."});
+  if(req.params.userId===req.socialUserId&&role!=="remove")return res.status(400).json({error:"You cannot change your own role."});
   if(role==="remove"&&targetRole!=="member"&&actorRole!=="admin")return res.status(403).json({error:"Moderators can only remove regular members."});
   if(targetRole==="admin"&&role==="remove")return res.status(400).json({error:"Transfer admin role before removing an admin."});
   if(role==="remove")await req.app.locals.db.query("DELETE FROM social_group_members WHERE group_id=$1 AND user_id=$2",[req.params.id,req.params.userId]);
   else await req.app.locals.db.query("UPDATE social_group_members SET role=$3 WHERE group_id=$1 AND user_id=$2",[req.params.id,req.params.userId,role]);
   return res.json({ok:true});
- }catch{return res.status(503).json({error:"Group role could not be changed."});}
-});
-router.delete("/groups/:id/members/me",requireAuth,async(req,res)=>{
- if(!uuid(req.params.id))return res.status(400).json({error:"Invalid group."});
+ }catch{return res.status(503).json({error:"Community member role could not be changed."});}
+};
+router.patch("/communities/:id/members/:userId",requireAuth,updateCommunityMember);
+router.patch("/groups/:id/members/:userId",requireAuth,updateCommunityMember);
+
+const leaveCommunity=async(req,res)=>{
+ if(!uuid(req.params.id))return res.status(400).json({error:"Invalid community."});
  const client=await req.app.locals.db.connect();
  try{
   await client.query("BEGIN");
   const member=await client.query("SELECT role FROM social_group_members WHERE group_id=$1 AND user_id=$2 FOR UPDATE",[req.params.id,req.socialUserId]);
-  if(!member.rowCount){await client.query("ROLLBACK");return res.status(404).json({error:"Group membership not found."});}
-  if(member.rows[0].role==="admin"){await client.query("ROLLBACK");return res.status(409).json({error:"Transfer the admin role before leaving this group."});}
+  if(!member.rowCount){await client.query("ROLLBACK");return res.status(404).json({error:"Community membership not found."});}
+  if(member.rows[0].role==="admin"){await client.query("ROLLBACK");return res.status(409).json({error:"Transfer the admin role before leaving this community."});}
   await client.query("DELETE FROM social_group_members WHERE group_id=$1 AND user_id=$2",[req.params.id,req.socialUserId]);
   await client.query("COMMIT");return res.json({ok:true});
- }catch{await client.query("ROLLBACK").catch(()=>{});return res.status(503).json({error:"Could not leave this group."});}
+ }catch{await client.query("ROLLBACK").catch(()=>{});return res.status(503).json({error:"Could not leave this community."});}
  finally{client.release()}
-});
+};
+router.delete("/communities/:id/members/me",requireAuth,leaveCommunity);
+router.delete("/groups/:id/members/me",requireAuth,leaveCommunity);
 router.delete("/groups/:id/messages/:messageId",requireAuth,async(req,res)=>{
  if(!uuid(req.params.id)||!uuid(req.params.messageId))return res.status(400).json({error:"Invalid group message."});
  try{
