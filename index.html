@@ -383,6 +383,7 @@ header{box-shadow:0 8px 24px #061a351c}.brand{letter-spacing:-.04em}
             <div class="welcome-copy">
               <div class="eyebrow"><span class="dot"></span> ETHIO ONE · CONCEPT PREVIEW</div>
               <h1 id="heroTitle">One Identity. <span>Many Possibilities.</span></h1>
+              <p class="lead ethio-one-subtagline" id="ethioOneSubTagline">Eenyummaa Tokko. Carraawwan Hedduu.</p>
               <p class="lead" data-i18n="heroLead">A vision for one trusted identity connecting people to a growing world of digital possibilities, designed with Ethiopia in mind.</p>
               <div class="hero-actions">
                 <a class="btn primary" href="#ecosystem"><span data-i18n="explore">Explore services</span> <span aria-hidden="true">→</span></a>
@@ -622,6 +623,7 @@ header{box-shadow:0 8px 24px #061a351c}.brand{letter-spacing:-.04em}
   };
   const languageNames = {OM:"Afaan Oromoo",AM:"አማርኛ",EN:"English"};
   const toggle = document.getElementById("languageToggle");
+  // Language preference is kept in memory only; no browser persistent storage.
   let currentLanguage = "OM";
   function setLanguage(language) {
     currentLanguage = language;
@@ -851,6 +853,34 @@ header{box-shadow:0 8px 24px #061a351c}.brand{letter-spacing:-.04em}
     }
   });
 })();
+</script>
+
+
+<script type="module">
+  import { getTranslations } from "/src/core/i18n/translations.js";
+  import { getEthioIdUser } from "/src/core/auth/ethioId.js";
+
+  const languageButton = document.getElementById("languageToggle");
+  const tagline = document.getElementById("ethioOneSubTagline");
+  const syncEthioOneLanguage = () => {
+    const language = (languageButton?.textContent.trim() || "OM").toLowerCase();
+    const copy = getTranslations(language);
+    if (tagline) tagline.textContent = copy.subTagline;
+    document.documentElement.lang = language;
+  };
+  syncEthioOneLanguage();
+  languageButton?.addEventListener("click", syncEthioOneLanguage);
+
+  // The dashboard displays a real server-issued Ethio ID from the existing session.
+  const user = getEthioIdUser();
+  if (user?.ethioId) {
+    const idNumber = document.querySelector(".ethio-id-card .id-number");
+    const idState = document.querySelector(".ethio-id-card .id-state");
+    if (idNumber) idNumber.textContent = user.ethioId;
+    if (idState) idState.textContent = user.identityVerificationStatus === "verified"
+      ? "Identity review completed"
+      : "Account active · identity review pending";
+  }
 </script>
 
 <script src="/pwa.js" defer></script></body>
