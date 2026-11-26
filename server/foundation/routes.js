@@ -1,5 +1,6 @@
 const express = require("express");
 const crypto = require("node:crypto");
+const { createCloudinaryMediaProvider } = require("../media/cloudinary");
 const rateLimit = require("express-rate-limit");
 const router = express.Router();
 
@@ -156,14 +157,13 @@ router.get("/media", async (req,res) => {
 
 router.post("/media/sign", rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:"draft-7",legacyHeaders:false,handler:(_req,res)=>res.status(429).json({error:"Too many upload attempts. Please try again later."})}), async (req,res) => {
   const env=req.app.locals.authEnv||process.env;
-  if(!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) return res.status(503).json({error:"Media upload is not configured yet."});
-  const resourceType=["image","video","raw"].includes(req.body?.resourceType)?req.body.resourceType:"image";
-  const timestamp=Math.floor(Date.now()/1000);
-  const folder="ethio-one/"+req.account.id;
-  const params={folder,timestamp};
-  const canonical=Object.keys(params).sort().map(k=>k+"="+params[k]).join("&");
-  const signature=crypto.createHash("sha1").update(canonical+env.CLOUDINARY_API_SECRET,"utf8").digest("hex");
-  return res.json({cloudName:env.CLOUDINARY_CLOUD_NAME,apiKey:env.CLOUDINARY_API_KEY,timestamp,folder,signature,resourceType});
+  const provider=createCloudinaryMediaProvider(env);
+  if(!provider.isConfigured()) return res.status(503).json({error:"Media upload is not configured yet."});
+  try {
+    return res.json(provider.signUpload({userId:req.account.id,resourceType:req.body?.resourceType}));
+  } catch {
+    return res.status(503).json({error:"Media upload could not be prepared."});
+  }
 });
 
 router.post("/media", rateLimit({windowMs:60*60*1000,limit:30,standardHeaders:"draft-7",legacyHeaders:false,handler:(_req,res)=>res.status(429).json({error:"Too many media registrations. Please try again later."})}), async (req,res) => {
