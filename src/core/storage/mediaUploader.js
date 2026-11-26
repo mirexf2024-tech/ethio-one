@@ -2,7 +2,7 @@
  * ETHIO ONE media upload helper.
  * Uses the existing authenticated account-media signing and registration API.
  * The browser receives a stable HTTPS media URL; no file data is stored in
- * localStorage, sessionStorage, or the application database.
+ * browser storage; the binary file is uploaded to the configured media provider.
  */
 import { getEthioIdAccessToken } from "../auth/ethioId.js";
 
