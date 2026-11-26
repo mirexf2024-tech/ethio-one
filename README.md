@@ -12,7 +12,7 @@ ETHIO ONE waltajjii dijitaalaa Itoophiyaa irratti xiyyeeffatu yoo ta'u, tajaajil
 - `apps/mobile/` — appii Expo / React Native.
 - `src/core/` — bu'uura waliinii: seensa, afaanota, kuusaa miidiyaa, database fi qaamolee UI.
 - `src/modules/` — tajaajiloota addaan qoodaman.
-- `src/config/services.js` — galmee tajaajiloota 20 fi maqaa isaanii afaanota sadaniin.
+- `src/config/services.js` — galmee tajaajiloota 21 fi maqaa isaanii afaanota sadaniin.
 - `public/` — qabeenya PWA fi mallattoolee appii.
 
 Caasaan `src/` bu'uura frontend modular fuulduraa ti; appii web fi server amma jiran bakka hin bu'u. Faayilota jiran tartiibaan gara caasaa kanaatti walitti fidna; commit kana keessatti refactor guutuu hin raawwanne.
