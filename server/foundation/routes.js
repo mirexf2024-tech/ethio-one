@@ -1,6 +1,6 @@
 const express = require("express");
 const crypto = require("node:crypto");
-const { createCloudinaryMediaProvider } = require("../media/cloudinary");
+const { createMediaProvider } = require("../media");
 const rateLimit = require("express-rate-limit");
 const router = express.Router();
 
@@ -157,7 +157,7 @@ router.get("/media", async (req,res) => {
 
 router.post("/media/sign", rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:"draft-7",legacyHeaders:false,handler:(_req,res)=>res.status(429).json({error:"Too many upload attempts. Please try again later."})}), async (req,res) => {
   const env=req.app.locals.authEnv||process.env;
-  const provider=createCloudinaryMediaProvider(env);
+  const provider=createMediaProvider(env);
   if(!provider.isConfigured()) return res.status(503).json({error:"Media upload is not configured yet."});
   try {
     return res.json(provider.signUpload({userId:req.account.id,resourceType:req.body?.resourceType}));
