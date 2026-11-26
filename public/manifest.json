@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "Ethio One — Eenyummaa Tokko. Carraawwan Hedduu.",
+  "short_name": "Ethio One",
+  "description": "Eenyummaa tokko, tajaajiloota hedduu. One Identity. Many Possibilities.",
+  "lang": "om",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#0A192F",
+  "theme_color": "#0A192F",
+  "categories": ["social", "communication", "productivity"],
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "/icons/ethio-one-app.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
