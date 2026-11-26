@@ -383,7 +383,7 @@ header{box-shadow:0 8px 24px #061a351c}.brand{letter-spacing:-.04em}
             <div class="welcome-copy">
               <div class="eyebrow"><span class="dot"></span> ETHIO ONE · CONCEPT PREVIEW</div>
               <h1 id="heroTitle">One Identity. <span>Many Possibilities.</span></h1>
-              <p class="ethio-one-subtagline" id="ethioOneSubTagline">Eenyummaa Tokko. Carraawwan Hedduu.</p>
+              <p class="lead ethio-one-subtagline" id="ethioOneSubTagline">Eenyummaa Tokko. Carraawwan Hedduu.</p>
               <p class="lead" data-i18n="heroLead">A vision for one trusted identity connecting people to a growing world of digital possibilities, designed with Ethiopia in mind.</p>
               <div class="hero-actions">
                 <a class="btn primary" href="#ecosystem"><span data-i18n="explore">Explore services</span> <span aria-hidden="true">→</span></a>
@@ -623,8 +623,9 @@ header{box-shadow:0 8px 24px #061a351c}.brand{letter-spacing:-.04em}
   };
   const languageNames = {OM:"Afaan Oromoo",AM:"አማርኛ",EN:"English"};
   const toggle = document.getElementById("languageToggle");
-  let currentLanguage = (localStorage.getItem("ethio_one_lang") || "OM").toUpperCase();
-  if (!translations[currentLanguage]) currentLanguage = "OM";
+  let savedLanguage = "OM";
+  try { savedLanguage = (localStorage.getItem("ethio_one_lang") || "OM").toUpperCase(); } catch {}
+  let currentLanguage = translations[savedLanguage] ? savedLanguage : "OM";
   function setLanguage(language) {
     currentLanguage = language;
     try { localStorage.setItem("ethio_one_lang", language.toLowerCase()); } catch {}
