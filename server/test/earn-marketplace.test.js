@@ -83,6 +83,12 @@ test("partner tasks include a transparent 10 percent service fee and funded rewa
   assert.match(finance, /earn_platform_revenue/);
 });
 
+test("all Ethio Earn admin data and lifecycle routes enforce explicit role checks", () => {
+  assert.match(routes, /router\.get\("\/admin\/campaigns",async\(req,res\)=>\{\s*if\(!await requireRoles\(req,res,\["finance_manager","moderator","admin","super_admin"\]\)\)return;/);
+  assert.match(routes, /router\.get\("\/admin\/requests",async\(req,res\)=>\{\s*if\(!await requireRoles\(req,res,\["moderator","admin","super_admin"\]\)\)return;/);
+  assert.match(routes, /router\.patch\("\/admin\/campaigns\/:id\/status",async\(req,res\)=>\{\s*if\(!await requireRoles\(req,res,\["admin","super_admin"\]\)\)return;/);
+});
+
 test("payout requests remain disabled until the owner configures a high-entropy encryption key and release flag", () => {
   assert.match(routes, /env\.EARN_PAYOUTS_ENABLED==="true"/);
   assert.match(routes, /EARN_PAYOUT_ENCRYPTION_KEY/);
