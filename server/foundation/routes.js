@@ -1,5 +1,6 @@
 const express = require("express");
 const crypto = require("node:crypto");
+const { createMediaProvider } = require("../media");
 const rateLimit = require("express-rate-limit");
 const router = express.Router();
 
@@ -149,21 +150,20 @@ router.post("/notifications/:id/read", async (req,res) => {
 
 router.get("/media", async (req,res) => {
   try {
-    const r=await req.app.locals.db.query("SELECT id,secure_url,resource_type,bytes,created_at FROM media_assets WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50",[req.account.id]);
-    return res.json({media:r.rows});
+    const r=await req.app.locals.db.query("SELECT id,id AS media_id,secure_url,resource_type,bytes,created_at FROM media_assets WHERE user_id=$1 AND lifecycle_status='ready' ORDER BY created_at DESC LIMIT 50",[req.account.id]);
+    return res.json({media:r.rows.map(item=>({...item,mediaId:item.media_id}))});
   } catch { return res.status(503).json({error:"Media library is temporarily unavailable."}); }
 });
 
 router.post("/media/sign", rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:"draft-7",legacyHeaders:false,handler:(_req,res)=>res.status(429).json({error:"Too many upload attempts. Please try again later."})}), async (req,res) => {
   const env=req.app.locals.authEnv||process.env;
-  if(!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) return res.status(503).json({error:"Media upload is not configured yet."});
-  const resourceType=["image","video","raw"].includes(req.body?.resourceType)?req.body.resourceType:"image";
-  const timestamp=Math.floor(Date.now()/1000);
-  const folder="ethio-one/"+req.account.id;
-  const params={folder,timestamp};
-  const canonical=Object.keys(params).sort().map(k=>k+"="+params[k]).join("&");
-  const signature=crypto.createHash("sha1").update(canonical+env.CLOUDINARY_API_SECRET,"utf8").digest("hex");
-  return res.json({cloudName:env.CLOUDINARY_CLOUD_NAME,apiKey:env.CLOUDINARY_API_KEY,timestamp,folder,signature,resourceType});
+  const provider=createMediaProvider(env);
+  if(!provider.isConfigured()) return res.status(503).json({error:"Media upload is not configured yet."});
+  try {
+    return res.json(provider.signUpload({userId:req.account.id,resourceType:req.body?.resourceType}));
+  } catch {
+    return res.status(503).json({error:"Media upload could not be prepared."});
+  }
 });
 
 router.post("/media", rateLimit({windowMs:60*60*1000,limit:30,standardHeaders:"draft-7",legacyHeaders:false,handler:(_req,res)=>res.status(429).json({error:"Too many media registrations. Please try again later."})}), async (req,res) => {
@@ -179,8 +179,9 @@ router.post("/media", rateLimit({windowMs:60*60*1000,limit:30,standardHeaders:"d
     return res.status(400).json({error:"Invalid media details or media ownership."});
   }
   try {
-    const r=await req.app.locals.db.query("INSERT INTO media_assets (user_id,public_id,secure_url,resource_type,bytes) VALUES ($1,$2,$3,$4,$5) RETURNING id,secure_url,resource_type,bytes,created_at",[req.account.id,b.publicId,b.secureUrl,b.resourceType,b.bytes]);
-    return res.status(201).json({media:r.rows[0]});
+    const r=await req.app.locals.db.query("INSERT INTO media_assets (user_id,provider,public_id,provider_asset_id,storage_key,secure_url,resource_type,bytes,lifecycle_status) VALUES ($1,'cloudinary',$2,$2,'media/'||gen_random_uuid()::text,$3,$4,$5,'ready') RETURNING id,secure_url,resource_type,bytes,created_at",[req.account.id,b.publicId,b.secureUrl,b.resourceType,b.bytes]);
+    const media=r.rows[0];
+    return res.status(201).json({media:{...media,mediaId:media.id}});
   } catch { return res.status(409).json({error:"Media asset could not be saved."}); }
 });
 
