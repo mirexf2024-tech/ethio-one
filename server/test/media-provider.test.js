@@ -60,3 +60,23 @@ test("Cloudinary adapter rejects an invalid owner identifier", () => {
   });
   assert.throws(() => provider.signUpload({ userId: "../other-account" }), error => error.code === "INVALID_MEDIA_OWNER");
 });
+
+
+const { createMediaProvider } = require("../media");
+
+test("media provider factory defaults to Cloudinary for existing deployments", () => {
+  const provider = createMediaProvider({
+    CLOUDINARY_CLOUD_NAME: "example-cloud",
+    CLOUDINARY_API_KEY: "public-key",
+    CLOUDINARY_API_SECRET: "secret"
+  });
+  assert.equal(provider.key, "cloudinary");
+  assert.equal(provider.isConfigured(), true);
+});
+
+test("media provider factory rejects unknown providers instead of silently falling back", () => {
+  assert.throws(
+    () => createMediaProvider({ MEDIA_STORAGE_PROVIDER: "unknown-storage" }),
+    error => error.code === "MEDIA_PROVIDER_UNSUPPORTED"
+  );
+});
