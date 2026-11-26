@@ -623,12 +623,10 @@ header{box-shadow:0 8px 24px #061a351c}.brand{letter-spacing:-.04em}
   };
   const languageNames = {OM:"Afaan Oromoo",AM:"አማርኛ",EN:"English"};
   const toggle = document.getElementById("languageToggle");
-  let savedLanguage = "OM";
-  try { savedLanguage = (localStorage.getItem("ethio_one_lang") || "OM").toUpperCase(); } catch {}
-  let currentLanguage = translations[savedLanguage] ? savedLanguage : "OM";
+  // Language preference is kept in memory only; no browser persistent storage.
+  let currentLanguage = "OM";
   function setLanguage(language) {
     currentLanguage = language;
-    try { localStorage.setItem("ethio_one_lang", language.toLowerCase()); } catch {}
     const copy = translations[language];
     document.documentElement.lang = language.toLowerCase();
     document.title = copy.metaTitle;
