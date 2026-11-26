@@ -150,8 +150,8 @@ router.post("/notifications/:id/read", async (req,res) => {
 
 router.get("/media", async (req,res) => {
   try {
-    const r=await req.app.locals.db.query("SELECT id,secure_url,resource_type,bytes,created_at FROM media_assets WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50",[req.account.id]);
-    return res.json({media:r.rows});
+    const r=await req.app.locals.db.query("SELECT id,id AS media_id,secure_url,resource_type,bytes,created_at FROM media_assets WHERE user_id=$1 AND lifecycle_status='ready' ORDER BY created_at DESC LIMIT 50",[req.account.id]);
+    return res.json({media:r.rows.map(item=>({...item,mediaId:item.media_id}))});
   } catch { return res.status(503).json({error:"Media library is temporarily unavailable."}); }
 });
 
@@ -179,8 +179,9 @@ router.post("/media", rateLimit({windowMs:60*60*1000,limit:30,standardHeaders:"d
     return res.status(400).json({error:"Invalid media details or media ownership."});
   }
   try {
-    const r=await req.app.locals.db.query("INSERT INTO media_assets (user_id,public_id,secure_url,resource_type,bytes) VALUES ($1,$2,$3,$4,$5) RETURNING id,secure_url,resource_type,bytes,created_at",[req.account.id,b.publicId,b.secureUrl,b.resourceType,b.bytes]);
-    return res.status(201).json({media:r.rows[0]});
+    const r=await req.app.locals.db.query("INSERT INTO media_assets (user_id,provider,public_id,provider_asset_id,storage_key,secure_url,resource_type,bytes,lifecycle_status) VALUES ($1,'cloudinary',$2,$2,'media/'||gen_random_uuid()::text,$3,$4,$5,'ready') RETURNING id,secure_url,resource_type,bytes,created_at",[req.account.id,b.publicId,b.secureUrl,b.resourceType,b.bytes]);
+    const media=r.rows[0];
+    return res.status(201).json({media:{...media,mediaId:media.id}});
   } catch { return res.status(409).json({error:"Media asset could not be saved."}); }
 });
 
