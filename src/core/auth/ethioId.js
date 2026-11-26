@@ -59,6 +59,8 @@ async function request(path, { method = "GET", body, token } = {}) {
 
 /** Odeeffannoo profile cache irraa dubbisa; account dhugaa mirkaneessuuf getEthioIdProfile fayyadami. */
 export function getEthioIdUser() {
+  // Cached profile alone is not proof of an active login; require a session token.
+  if (!read(SESSION_KEYS.access) && !read(SESSION_KEYS.refresh)) return null;
   const raw = read(SESSION_KEYS.user);
   if (!raw) return null;
   try {
@@ -71,6 +73,10 @@ export function getEthioIdUser() {
 
 export function getEthioIdAccessToken() {
   return read(SESSION_KEYS.access);
+}
+
+export function hasEthioIdSession() {
+  return Boolean(read(SESSION_KEYS.access) || read(SESSION_KEYS.refresh));
 }
 
 /** Ethio ID, username, email ykn bilbilaan password waliin seena. */
