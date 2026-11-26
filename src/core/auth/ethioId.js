@@ -18,15 +18,19 @@ function sessionStore() {
 function read(key) {
   try { return sessionStore()?.getItem(key) || null; } catch { return null; }
 }
-function writeSession(data) {
+function writeTokens(data) {
   const store = sessionStore();
-  if (!store) throw new Error("This browser cannot securely keep an active session.");
-  if (!data?.accessToken || !data?.refreshToken || !data?.user) {
-    throw new Error("The authentication server returned an incomplete session.");
+  if (!store) throw new Error("This browser cannot keep an active session.");
+  if (!data?.accessToken || !data?.refreshToken) {
+    throw new Error("The authentication server returned incomplete session tokens.");
   }
   store.setItem(SESSION_KEYS.access, data.accessToken);
   store.setItem(SESSION_KEYS.refresh, data.refreshToken);
-  store.setItem(SESSION_KEYS.user, JSON.stringify(data.user));
+}
+function writeSession(data) {
+  if (!data?.user) throw new Error("The authentication server did not return an account profile.");
+  writeTokens(data);
+  sessionStore().setItem(SESSION_KEYS.user, JSON.stringify(data.user));
 }
 function clearSession() {
   const store = sessionStore();
@@ -110,7 +114,7 @@ export async function getEthioIdProfile() {
     } catch (error) {
       if (error.status !== 401 || !refreshToken) throw error;
       const renewed = await request("/refresh", { method: "POST", body: { refreshToken } });
-      writeSession({ ...renewed, user: getEthioIdUser() });
+      writeTokens(renewed);
       accessToken = renewed.accessToken;
       data = await request("/me", { token: accessToken });
     }
