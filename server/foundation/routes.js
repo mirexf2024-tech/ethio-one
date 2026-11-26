@@ -184,4 +184,66 @@ router.post("/media", rateLimit({windowMs:60*60*1000,limit:30,standardHeaders:"d
   } catch { return res.status(409).json({error:"Media asset could not be saved."}); }
 });
 
+
+router.get("/entitlements", async (req,res) => {
+  try {
+    const result=await req.app.locals.db.query(
+      `WITH effective_plan AS (
+         SELECT s.plan_key
+         FROM user_subscriptions s
+         JOIN subscription_plans sp ON sp.plan_key=s.plan_key
+         WHERE s.user_id=$1
+           AND s.status='active'
+           AND (s.plan_key='free' OR (
+             sp.status='active'
+             AND EXISTS (
+               SELECT 1 FROM payment_transactions t
+               WHERE t.subscription_id=s.id
+                 AND t.user_id=s.user_id
+                 AND t.status='succeeded'
+                 AND t.verified_at IS NOT NULL
+             )
+           ))
+         ORDER BY s.created_at DESC
+         LIMIT 1
+       ),
+       selected_plan AS (
+         SELECT COALESCE((SELECT plan_key FROM effective_plan),'free') AS plan_key
+       )
+       SELECT m.module_key,m.display_name,m.status,sp.plan_key,
+         CASE
+           WHEN m.status <> 'active' THEN 'locked'
+           WHEN sp.plan_key='free' THEN 'included'
+           ELSE COALESCE(pma.access_level,'locked')
+         END AS access_level,
+         CASE
+           WHEN m.status <> 'active' THEN FALSE
+           WHEN sp.plan_key='free' THEN TRUE
+           ELSE COALESCE(pma.access_level IN ('included','limited'),FALSE)
+         END AS available,
+         CASE WHEN pma.access_level='limited' THEN pma.limits ELSE '{}'::jsonb END AS limits
+       FROM platform_modules m
+       CROSS JOIN selected_plan sp
+       LEFT JOIN plan_module_access pma
+         ON pma.plan_key=sp.plan_key AND pma.module_key=m.module_key
+       ORDER BY m.display_name`,
+      [req.account.id]
+    );
+    const planKey=result.rows[0]?.plan_key||"free";
+    return res.set("Cache-Control","no-store").json({
+      planKey,
+      modules:result.rows.map(({module_key,display_name,status,access_level,available,limits})=>({
+        moduleKey:module_key,
+        name:display_name,
+        status,
+        accessLevel:access_level,
+        available,
+        limits:limits||{}
+      }))
+    });
+  } catch {
+    return res.status(503).json({error:"Service access information is temporarily unavailable."});
+  }
+});
+
 module.exports=router;
