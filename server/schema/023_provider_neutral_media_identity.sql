@@ -12,9 +12,18 @@ SET storage_key = 'legacy/' || provider || '/' || id::text,
     provider_asset_id = public_id
 WHERE storage_key IS NULL OR provider_asset_id IS NULL;
 
-ALTER TABLE media_assets
-  ADD CONSTRAINT media_assets_lifecycle_status_check
-  CHECK (lifecycle_status IN ('pending','ready','quarantined','deleted'));
+DO $
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'media_assets_lifecycle_status_check'
+      AND conrelid = 'media_assets'::regclass
+  ) THEN
+    ALTER TABLE media_assets
+      ADD CONSTRAINT media_assets_lifecycle_status_check
+      CHECK (lifecycle_status IN ('pending','ready','quarantined','deleted'));
+  END IF;
+END $;
 
 CREATE UNIQUE INDEX IF NOT EXISTS media_assets_storage_key_uq
   ON media_assets (storage_key) WHERE storage_key IS NOT NULL;
